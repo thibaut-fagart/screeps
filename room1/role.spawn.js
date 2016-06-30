@@ -6,21 +6,26 @@
  * var mod = require('role.spawn');
  * mod.thing == 'a thing'; // true
  */
-
+//  Game.spawns.Spawn1.createCreep([WORK, MOVE, WORK, WORK, WORK, WORK, ], undefined, {role:'harvester'})
 module.exports = {
-    maxCreeps: 13,
+    maxCreeps: 15,
     BODY_COST :{"move":50, "work":100, "carry":50, "attack":80,"ranged_attack":150,"heal":250, "claim":600, "tough":10},
     patterns: {
-                'harvester': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE, /*400*/ MOVE,WORK, CARRY, MOVE, CARRY, WORK, /* 800*/ MOVE,MOVE], count: 3, memory: {role: 'harvester'}},
-                'upgrader': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count: 4, memory: {role: 'upgrader'}},
-                'builder': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count: 1, memory: {role: 'builder'}},
-                'repair': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count: 4, memory: {role: 'repair'}},
+                'harvester': {body: [WORK, MOVE, WORK, WORK, WORK, WORK,], count: 0, scale:false, memory: {role: 'harvester'}},
+                'carry': {body: [CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 300 */CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 600 */
+                    CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 900 */CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 1200 */], count: 2, scale:false, memory: {role: 'carry'}},
+                'upgrader': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count: 4, scale:true, memory: {role: 'upgrader'}},
+                'remoteHarvester': {body: [CARRY, MOVE, WORK, MOVE, CARRY, MOVE, WORK, MOVE, CARRY, MOVE,WORK, MOVE, CARRY,MOVE, WORK, MOVE,MOVE,CARRY], scale:true, count: 3, memory: {role: 'remoteHarvester'}},
+                'builder': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count: 2, scale:true, memory: {role: 'builder'}},
+                // 'repair': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count: 2, scale:true, memory: {role: 'repair'}},
+                'repair2': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count: 4, scale:true, memory: {role: 'repair2'}},
                 // 'attack': {body: [WORK, CARRY, MOVE, ATTACK, CARRY, MOVE,ATTACK , MOVE,WORK, CARRY, MOVE, ATTACK, CARRY, ATTACK, MOVE,MOVE], count: 1, memory: {role: 'attack'}},
     },
+    //Game.spawns.Spawn1.createCreep([CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 300 */CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, CARRY, CARRY, MOVE], undefined, {role:'carry'})
     shapeBody: function(spawn, perfectBody) {
 
         // adds the parts untill they can't be built
-        var maxEnergy = spawn.room.energyCapacityAvailable;
+        var maxEnergy = spawn.room.energyAvailable;
         var body  = [];
         var cost = 0;
         for (var i = 0; i < perfectBody.length && cost < maxEnergy; i++) {
@@ -31,6 +36,7 @@ module.exports = {
                 body.push(part);
             }
         }
+        
         return body;
 
     },
@@ -51,9 +57,11 @@ module.exports = {
             this.patterns.repair.count = 0;
             // console.log("NO NEED FOR REPAIRERS");
         }
+/*
         if (_.size(Game.creeps) >= this.maxCreeps) {
             this.patterns.harvester.count = 1;
         }
+*/
 /*
         if (_.size(creep.room.find(FIND_STRUCTURES, {
                 filter: function(structure) {
@@ -68,6 +76,15 @@ module.exports = {
 
     },
     whatToBuild: function(patterns, creep){
+        var harvesters = _.filter(creep.room.find(FIND_MY_CREEPS), function(c) {return c.memory.role == 'harvester';});
+        if (harvesters < 2 || _.filter(harvesters, function(c) {return c.ticksToLive> 100}).length<2) {
+            return patterns.harvester;
+        }
+        var carrys = _.filter(creep.room.find(FIND_MY_CREEPS), function(c) {return c.memory.role == 'carry';});
+        if (_.filter(carrys, function(c) {return c.ticksToLive> 100}).length < 1) {
+            return patterns.carry;
+        }
+
         var targetCount = _.reduce(patterns, (s, spec) => {return s + spec.count;}, 0);
 
         var targetSplit = _.mapValues(patterns,(spec)=>{return spec.count / targetCount}); /* {role: target%}*/
@@ -77,16 +94,13 @@ module.exports = {
             _.map(Game.creeps,(creep)=>{return creep.memory.role}),
             (m, role)=>{ m[role] =(undefined === m[role])?1:m[role] +1; return m;},
             {});
-        if (currentSplit.harvester==0){
-            return patterns.harvester;
-        }
         currentSplit = _.mapValues(currentSplit, (v)=>{return v/creepCount;});
         console.log("currentSplit " , JSON.stringify(currentSplit));
         var required = {};
         /* required : {role : need filled%}*/
          _.keys(targetSplit).forEach(function(role) {if (role) required[role] = (currentSplit[role]?currentSplit[role]:0)/targetSplit[role]});
-        console.log("building " , JSON.stringify(required));
-        var result = 'harvester';
+        // console.log("building " , JSON.stringify(required));
+        var result = 'upgrader';
         var roleScore = required[result];
         _.keys(patterns).forEach(function(role) {if (roleScore > required[role]) {result = role; roleScore = required[result]}});
         // _.keys(patterns).forEach(function(role) {if (required[role]> currentSplit[role]) {result = role}});
@@ -101,6 +115,7 @@ module.exports = {
         for (var i = 0; i < reassign.length;i++) {
             var role = this.whatToBuild(this.patterns, spawn).memory.role;
             console.log("reassigning to ", role);
+            delete Memory.creeps[reassign[i].name];
             reassign[i].memory.role = role;
         }
         
@@ -109,6 +124,20 @@ module.exports = {
         this.updateNeeds(creep);
         this.reassignCreeps(creep);
         if (creep.spawning) return;
+
+        var harvesters = _.filter(creep.room.find(FIND_MY_CREEPS), function(c) {return c.memory.role == 'harvester';});
+        if ((harvesters.length< 2 || _.filter(harvesters, (c)=>c.ticksToLive > 100) <2) && creep.room.energyAvailable > 250) {
+            console.log("emergency harvester");
+            creep.createCreep(this.shapeBody(creep, this.patterns.harvester.body), undefined, this.patterns.harvester.memory);
+            return ; 
+        }
+        var carrys = _.filter(creep.room.find(FIND_MY_CREEPS), function(c) {return c.memory.role == 'carry';});
+        if ((carrys.length< 1 || (carrys.length == 1 && carrys[0].ticksToLive < 100)) && creep.room.energyAvailable > 250) {
+            console.log("emergency carry");
+            creep.createCreep(this.shapeBody(creep, this.patterns.carry.body), undefined, this.patterns.carry.memory);
+            return ;
+        }
+
         var full = this.isFull(creep);
         if (!full) return;
         var energy = _.reduce(creep.room.find(FIND_SOURCES), function (total, source){ return total + source.energy});
@@ -116,8 +145,31 @@ module.exports = {
             console.log("LIMITING CREEPS ", _.size(Game.creeps) - 1);
             this.maxCreeps =_.size(Game.creeps)-1;
         }
+        // TODO if drop containers are > 75% increase creep count ?
         if (_.size(Game.creeps) >= this.maxCreeps) {
-            return;
+            var sourceContainers =
+                _.map(creep.room.find(FIND_SOURCES), function (source) {
+                    var structuresAroundSource = creep.room.lookForAtArea(LOOK_STRUCTURES, source.pos.y - 1, source.pos.x - 1, source.pos.y + 1, source.pos.x + 1, true);
+                    var containers = _.filter(_.map(structuresAroundSource, function (o) {
+                        return o.structure;
+                    }), {structureType: STRUCTURE_CONTAINER});
+                    if (containers.length) return containers[0];
+                    return null;
+                });
+
+            var fillRatio = _.reduce(sourceContainers, function(total, c) {
+                if (c) {
+                    total.energy = total.energy + c.store.energy;
+                    total.capacity = total.capacity + c.storeCapacity;
+                }
+                return total;
+            },
+                {energy:0, capacity:0});
+            fillRatio = fillRatio.energy / fillRatio.capacity;
+            // console.log("fillRatio = ", fillRatio);
+            if (fillRatio < 0.75) return; else {
+                console.log("building because of overflowing");
+            }
         }
 
         var buildSpec = this.whatToBuild(this.patterns, creep);
@@ -130,12 +182,9 @@ module.exports = {
         console.log("building ", JSON.stringify(buildSpec));
         creep.createCreep(buildSpec.body, undefined, buildSpec.memory);
 
-        var harvesters = creep.room.find(FIND_MY_CREEPS, {
-            filter: function (creep) {
-                return 'harvester' === creep.memory.role
-            }
-        });
-        if (harvesters.length == 0) {
+
+/*
+        if (harvesters.length == 0 || ) {
             var target = _.sample(Game.creeps);
             // reassign another creep to harvester
             console.log("no more harvesters, reassigning a ", target.memory.role);
@@ -143,6 +192,7 @@ module.exports = {
             delete target.memory.source;
             target.memory.role = 'harvester';
         }
+*/
     }
 
 };
