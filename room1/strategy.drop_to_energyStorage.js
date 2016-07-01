@@ -29,8 +29,10 @@ class DropToEnergyStorageStrategy {
 
             var targets = creep.room.find(FIND_STRUCTURES, {
                 filter: (structure) =>
-                    ((!(structure.structureType) || (structure.structureType == this.structureType))) && structure.energy < structure.energyCapacity
+                    ((!(this.structure && structure.energy && structure.energyCapacity) 
+                    || (structure.structureType == this.structureType))) && structure.energy < structure.energyCapacity
             });
+
             if (targets.length >0 ) {
                 target = this.setTarget(creep, creep.pos.findClosestByPath(targets));
             }
@@ -47,7 +49,7 @@ class DropToEnergyStorageStrategy {
             }
         }
         // creep.log('source', null == source);
-        return target;
+        return (target?this:null);
     }
 }
 

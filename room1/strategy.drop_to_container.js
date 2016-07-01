@@ -24,6 +24,14 @@ class DropToContainerStrategy {
                                 && (s.store &&_.sum(s.store)<s.storeCapacity)});
 
             var emptyEnoughContainers = _.filter(allContainers, (s) => s.storeCapacity >(_.sum(s.store) +creep.carry[this.resource]));
+            if (this.structureType ==STRUCTURE_LINK || !this.structure) {
+                creep.log('links allowed');
+                let links = creep.room.find(FIND_STRUCTURES, {filter:{structureType: STRUCTURE_LINK}});
+                allContainers.concat(links);
+                if (_.sum(links, (s)=>(s.energyCapacity - s.energy)>=creep.carry.energy)) {
+                    emptyEnoughContainers = emptyEnoughContainers.concat(links);
+                }
+            }
             var targets = emptyEnoughContainers.length > 0 ? emptyEnoughContainers : allContainers;
             target = creep.pos.findClosestByRange(targets);
             if (target) {
@@ -31,7 +39,22 @@ class DropToContainerStrategy {
             }
         }
         if (target) {
+            // creep.log(target.structureType);
             // try transfering/moving
+            if (target.structureType == STRUCTURE_LINK && (target.energyCapacity -target.energy) < creep.carry.energy) {
+                let otherLinks = creep.room.find(FIND_STRUCTURES, {filter:(s)=> s.structureType== STRUCTURE_LINK && s.id != target.id});
+                otherLinks = _.sortBy(otherLinks, (s)=>s.energy);
+                for (let i =0, sum= 0; i< otherLinks.length && sum < creep.carry.energy; i++) {
+                    let otherLink = otherLinks[i];
+                    if (target.cooldown == 0) {
+                        let k = Math.min(otherLink.carryCapacity - otherLink.energy, creep.carry.energy);
+                        creep.log('otherLink', otherLink);
+                        let ret = target.transferEnergy(otherLink, k);
+                        sum += (ret == 0) ? k : 0;
+                        creep.log('link =>link', ret, k);
+                    }
+                }
+            }
             let ret = creep.transfer(target, this.resource);
             if (ret == ERR_NOT_IN_RANGE) {
                 ret = creep.moveTo(target);
@@ -42,7 +65,7 @@ class DropToContainerStrategy {
             }
         }
         // creep.log('source', null == source);
-        return target;
+        return (target?this:null);
     }
 }
 

@@ -124,7 +124,8 @@ class PickupStrategy {
             }
         }
         // creep.log("pickup ? ", true && source);
-        return (source);
+        return (source?this:null);
+        
 
 
     }

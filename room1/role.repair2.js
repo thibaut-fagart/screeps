@@ -17,17 +17,26 @@ class RoleRepair2 {
     run(creep) {
 		if (creep.carry.energy == 0) {
 			creep.memory.action = this.ACTION_FILL;
+			delete creep.memory.targetid;
 			delete creep.memory.source;
 		} else if (creep.carry.energy == creep.carryCapacity) {
 			delete creep.memory.action;
 
 		}
 		if (creep.memory.action == this.ACTION_FILL) {
-			let strategy = _.find(this.loadStrategies, (strat)=>undefined !== strat.accepts(creep));
+			let strategy =util.getAndExecuteCurrentStrategy(creep,this.loadStrategies);
 			if (!strategy) {
+				strategy = _.find(this.loadStrategies, (strat)=> (strat.accepts(creep)));
+			}
+
+			if (strategy) {
+				util.setCurrentStrategy(creep, strategy);
+				// creep.log('strategy ', strategy.constructor.name);
+			} else {
 				creep.log('no loadStrategy');
 				return;
 			}
+
 		}
 		else {
 			var target = this.findTarget(creep);
@@ -65,7 +74,7 @@ class RoleRepair2 {
 							&& (structure.hits < structure.hitsMax);
 				}
 			}), (s) => s.hits);
-			creep.log("findDamagedStructures",JSON.stringify(_.countBy(this.myTargets,(s)=>s.structureType)));
+			// creep.log("findDamagedStructures",JSON.stringify(_.countBy(this.myTargets,(s)=>s.structureType)));
 		}
 		return this.myTargets;
 	}
@@ -93,10 +102,16 @@ class RoleRepair2 {
 			}
 			// first repair structures in bad shape, then walls, try getting one for each creep
 			if (myDamagedStructures.length && (myDamagedStructures[0].hits / myDamagedStructures[0].hitsMax) < 0.5) {
-				target = _.min(myDamagedStructures, (s) => s.hits);
-				this.repair(target);
+				let damagedContainers = _.filter(myDamagedStructures, (s)=>s.structureType == STRUCTURE_CONTAINER);
+				let mostDamagedContainer = _.min(damagedContainers, (s) => s.hits/s.hitsMax);
+				if (mostDamagedContainer.hits < 10000) {
+					target = mostDamagedContainer;
+				} else {
+					target = _.min(myDamagedStructures, (s) => s.hits / s.hitsMax);
+                    this.repair(target);
+                }
 			} else if (myDamagedWalls.length) {
-				target = _.min(myDamagedWalls, (s) => s.hits);
+				target = _.min(myDamagedWalls, (s) => s.hits/s.hitsMax);
 				this.repair(target);
 			} else {
 				target = _.sample(this.needRepairs);
@@ -104,7 +119,8 @@ class RoleRepair2 {
 					this.repair(target);
 				}
 			}
-			// creep.log("repairing", target.structureType, JSON.stringify(target.pos));
+			creep.log('damagedStructures', JSON.stringify(_.countBy(myDamagedStructures,(s)=>s.structureType)));
+			creep.log("repairing", target.structureType, JSON.stringify(target.pos), target.hits);
 			creep.memory.targetid = target.id;
 			return target;
 		} else {

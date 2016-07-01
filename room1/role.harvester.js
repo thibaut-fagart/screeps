@@ -12,28 +12,36 @@ class RoleHarvester {
     }
 
     run(creep) {
-        let currentstrategy;
+        let strategy;
         // creep.log(creep.carry.energy, creep.carryCapacity, creep.memory.currentStrategy);
         if (creep.carry.energy == creep.carryCapacity && creep.carryCapacity > 0) {
-            // unload
+            strategy = util.getAndExecuteCurrentStrategy(creep, this.unloadStrategies);
+            if (!strategy) {
+                strategy = _.find(this.unloadStrategies, (strat)=> (strat.accepts(creep)));
+            }
+            // creep.log(util.strategyToLog(strategy));
+
+            if (strategy) {
+				util.setCurrentStrategy(creep, strategy);
+				// creep.log('strategy ', strategy.constructor.name);
+			} else {
+				creep.log('no harvestStrategy');
+				return;
+			}
         } else {
-            if (creep.memory.currentStrategy) {
-                currentstrategy = _.find(((creep.carry.energy == 0) ? this.loadStrategies : this.unloadStrategies), (strat)=> strat.constructor.name == creep.memory.currentStrategy);
-                if (currentstrategy && currentstrategy.accepts(creep)) {
-
-                } else {
-                    delete creep.memory.currentStrategy;
-                    currentstrategy = null;
-                }
-            } else {
-                currentstrategy = _.find(this.loadStrategies, (strat)=> !(null == strat.accepts(creep)));
+            strategy = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);
+            if (!strategy) {
+                strategy = _.find(this.loadStrategies, (strat)=> (strat.accepts(creep)));
             }
-
-            if (currentstrategy) {
-                creep.memory.currentStrategy = currentstrategy.constructor.name;
-            } else {
-                creep.log('no harvest');
-            }
+            // creep.log(util.strategyToLog(strategy));
+            
+            if (strategy) {
+				util.setCurrentStrategy(creep, strategy);
+				// creep.log('strategy ', strategy.constructor.name);
+			} else {
+				creep.log('no harvestStrategy');
+				return;
+			}
         }
     }
 }

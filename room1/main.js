@@ -100,12 +100,7 @@ module.exports.loop = function () {
             if (hostiles.length>0) {
                 messages.push(' strangers ' + JSON.stringify(_.map(hostiles, (h) => {
                         let subset = _.pick(h, ['name', 'pos', 'body', 'owner', 'hits', 'hitsMax']);
-                        subset.body = _.map(
-                            _.pairs(
-                                _.groupBy(subset.body, 'type') // 'work' : [{"type":"work","hits":100},{"type":"carry","hits":100}]
-                            ), //[work, [{"type":"work","hits":100},{"type":"carry","hits":100}]]
-                            (pair)=>(pair[1] = pair[1].length // [work, 2]
-                            ));
+                        subset.body = _.countBy(subset.body, 'type');
                         return subset;
                     })));
             }

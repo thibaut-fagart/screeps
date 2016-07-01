@@ -1,3 +1,4 @@
+var util = require('./util');
 var LoadFromContainerStrategy = require('./strategy.load_from_container');
 var HarvestEnergySourceStrategy = require('./strategy.harvest_source');
 var PickupStrategy = require('./strategy.pickup');
@@ -18,14 +19,22 @@ class RoleUpgrader {
             delete creep.memory.source;
         } else if (creep.carry.energy == creep.carryCapacity) {
             delete creep.memory.action;
-            
+
         }
         if (creep.memory.action == this.ACTION_FILL) {
-            let strategy = _.find(this.loadStrategies, (strat)=>undefined !== strat.accepts(creep));
-            if (!strategy ) {
+            let strategy = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);
+            if (!strategy) {
+                strategy = _.find(this.loadStrategies, (strat)=> (strat.accepts(creep)));
+            }
+
+            if (strategy) {
+                util.setCurrentStrategy(creep, strategy);
+                // creep.log('strategy ', strategy.constructor.name);
+            } else {
                 creep.log('no loadStrategy');
                 return;
             }
+
         }
         else {
             if (creep.upgradeController(creep.room.controller) == ERR_NOT_IN_RANGE) {

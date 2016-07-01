@@ -1,3 +1,4 @@
+var util = require('./util');
 var LoadFromContainerStrategy = require('./strategy.load_from_container');
 var HarvestEnergySourceStrategy = require('./strategy.harvest_source');
 var PickupStrategy = require('./strategy.pickup');
@@ -13,8 +14,6 @@ class RoleBuilder {
 	resign(creep) {
 		creep.log("resigning ");
 		delete creep.memory.role;
-		delete creep.memory.source;
-		delete creep.memory.target;
 	}
 	findTarget(creep) {
 		var target ;
@@ -65,20 +64,18 @@ class RoleBuilder {
 			}
 		}
 		else {
-			let strategy;
-			if (creep.memory.currentStrategy) {
-				strategy = _.find(this.loadStrategies, (strat)=> strat.constructor.name == creep.memory.currentStrategy);
-				if (strategy) strategy = strategy.accepts(creep);
-			} else {
-				strategy = _.find(this.loadStrategies, (strat)=> !(null == strat.accepts(creep)));
+			let strategy =util.getAndExecuteCurrentStrategy(creep,this.loadStrategies);
+            
+			if (!strategy) {
+				strategy = _.find(this.loadStrategies, (strat)=> (strat.accepts(creep)));
 			}
 
-			if (!strategy) {
+			if (strategy) {
+				util.setCurrentStrategy(creep, strategy);
+				// creep.log('strategy ', strategy.constructor.name);
+			} else {
 				creep.log('no loadStrategy');
 				return;
-			} else {
-				creep.memory.currentStrategy = strategy.constructor.name;
-				// creep.log('strategy ', strategy.constructor.name);
 			}
 
 		}

@@ -18,7 +18,7 @@ class HarvestEnergySourceToContainerStrategy {
         // creep.log('HarvestEnergySourceToContainerStrategy');
         // creep.log('source', this.constructor.name);
         let source = util.objectFromMemory(creep.memory, this.SOURCE_PATH, (s)=> s instanceof Source);
-        let container = util.objectFromMemory(creep.memory, this.CONTAINER_PATH, (s) =>  s instanceof StructureContainer && _.isEmpty(_.map(s.pos.findInRange(FIND_CREEPS), (c)=>c.id)));
+        let container = util.objectFromMemory(creep.memory, this.CONTAINER_PATH, (s) =>  s instanceof StructureContainer && !util.isReserved(s));
         // creep.log('source', source);
         if (!source || ! container) {
             source = container = null;
@@ -37,15 +37,17 @@ class HarvestEnergySourceToContainerStrategy {
             if (source && container) {
                 creep.memory[this.SOURCE_PATH] = source.id;
                 creep.memory[this.CONTAINER_PATH] = container.id;
+                util.reserve(creep, container);
             }
             // creep.log('source', source);
             // creep.log('Container', container);
         }
         if (source && container) {
             // try transfering/moving
+            // creep.log('moving');
             if (!ERR_NOT_IN_RANGE == creep.moveTo(container)) {
                 let ret = creep.harvest(source);
-                // console.log("transfer ? ", ret, ", ", container.store[this.resource]);
+                // creep.log("transfer ? ", ret, ", ", container.store[this.resource]);
 /*
                 if (ret == ERR_NOT_IN_RANGE) {
                     console.log(creep.name, " moving to source");
@@ -58,9 +60,11 @@ class HarvestEnergySourceToContainerStrategy {
 */
             }
         }
-        if (undefined === source || undefined === container) {
-            return null;
-        } else return source;
+        if (creep.memory.role =='remoteHarvester') {
+            creep.log(source,container, undefined === source || undefined === container)
+        }
+        return (undefined === source || undefined === container?false:this);
+        
     }
 }
 

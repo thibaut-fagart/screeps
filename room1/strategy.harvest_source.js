@@ -40,7 +40,7 @@ class HarvestEnergySourceStrategy {
                 }
             }
         }
-        return source;
+        return (source?this:null);
     }
 }
 

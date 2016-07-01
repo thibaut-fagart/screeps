@@ -40,6 +40,43 @@ class Util {
             return false;
         }
     }
-    
+    isReserved(object) {
+        let reserved = creep.room.memory.reserved || {};
+        let old = reserved[object.id];
+        if (!old && Game.getObjectById(old)) {
+            delete reserved[object.id];
+            old = undefined;
+        }
+        return !old;
+    }
+    /**
+     *
+     * @param {Creep} creep
+     * @param {Object[]}candidates
+     * @returns {T|*}
+     */
+    getAndExecuteCurrentStrategy(creep, candidates) {
+        let s = creep.memory[this.CURRENT_STRATEGY];
+        var strategy = _.find(candidates, (strat)=> strat.constructor.name == s);
+        if (strategy) {
+            strategy = strategy.accepts(creep);
+        }
+        return strategy ;
+
+    }
+
+    /**
+     *
+     * @param {Creep} creep
+     * @param strategy
+     */
+    setCurrentStrategy(creep, strategy) {
+        if (strategy) creep.memory[this.CURRENT_STRATEGY] = strategy.constructor.name;
+        else delete creep.memory[this.CURRENT_STRATEGY];
+    }
+    strategyToLog(strategy) {
+        return (strategy ? strategy.constructor.name : 'none');
+    }
+
 }
 module.exports = new Util();

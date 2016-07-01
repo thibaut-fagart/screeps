@@ -6,7 +6,7 @@ var DropToContainerStrategy = require('./strategy.drop_to_container');
 
 class RoleRemoteHarvester {
     constructor() {
-        this.loadStrategies = [new HarvestEnergySourceToContainerStrategy(), new HarvestEnergySourceStrategy()];
+        this.loadStrategies = [/*new HarvestEnergySourceToContainerStrategy(),*/ new HarvestEnergySourceStrategy()];
         this.unloadStrategies = [new DropToContainerStrategy(RESOURCE_ENERGY), new DropToEnergyStorage()];
     }
     /*
@@ -48,19 +48,6 @@ class RoleRemoteHarvester {
     findRemoteExit(creep) {
         return this.findExit(creep, creep.memory.homeroom, 'remoteExit');
     }
-    getCurrentStrategy(creep, candidates) {
-        let s = creep.memory[this.CURRENT_STRATEGY];
-        let strat = _.find(candidates, (strat)=> strat.constructor.name == s);
-        if (strat && !strat.accepts(creep))  {
-            this.setCurrentStrategy(creep, strat = null);
-        }
-        return strat;
-
-    }
-    setCurrentStrategy(creep, strategy) {
-        if (strategy) creep.memory[this.CURRENT_STRATEGY] = strategy.constructor.name;
-        else delete creep.memory[this.CURRENT_STRATEGY];
-    }
 
     /** @param {Creep} creep **/
     run (creep) {
@@ -101,14 +88,17 @@ class RoleRemoteHarvester {
                 // console.log("moving to homeExit ", );
             }
         }
+
         if (creep.memory.action == 'load' && creep.memory.remoteRoom == creep.room.name) {
-            let strategy = this.getCurrentStrategy(creep, this.loadStrategies);
+            let strategy = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);
+            // creep.log('previousStrategy',this.strategyToLog(strategy));
             if (!strategy) {
                 strategy = _.find(this.loadStrategies, (strat)=>strat.accepts(creep));
+                // creep.log('newStrategy',this.strategyToLog(strategy));
             }
             if (strategy) {
                 // creep.log('strategy', strategy.constructor.name);
-                this.setCurrentStrategy(creep, strategy);
+                util.setCurrentStrategy(creep, strategy);
             } else {
                 creep.log('no loadStrategy');
                 return;
@@ -125,18 +115,19 @@ class RoleRemoteHarvester {
             // console.log("moving to remoteExit ", );
         }
         if (creep.memory.action == 'unload' && creep.room.name == creep.memory.homeroom) {
-            let strategy = this.getCurrentStrategy(creep, this.unloadStrategies);
+            let strategy = util.getAndExecuteCurrentStrategy(creep, this.unloadStrategies);
             if (!strategy) {
                 strategy = _.find(this.unloadStrategies, (strat)=>!(null == strat.accepts(creep)));
             }
             if (strategy) {
-                this.setCurrentStrategy(creep, strategy);
+                util.setCurrentStrategy(creep, strategy);
             } else {
                 creep.log('no unloadStrategy');
                 return;
             }
         }
     }
+
 }
 
 module.exports = RoleRemoteHarvester;

@@ -20,20 +20,6 @@ class RoleCarry {
         this.CURRENT_STRATEGY='currentStrategy';
     }
 
-    getCurrentStrategy(creep, candidates) {
-        let s = creep.memory[this.CURRENT_STRATEGY];
-        let strat = _.find(candidates, (strat)=> strat.constructor.name == s);
-        if (strat && !strat.accepts(creep))  {
-            this.setCurrentStrategy(creep, strat = null);
-        }
-        return strat;
-
-    }
-    setCurrentStrategy(creep, strategy) {
-        if (strategy) creep.memory[this.CURRENT_STRATEGY] = strategy.constructor.name;
-        else delete creep.memory[this.CURRENT_STRATEGY];
-    }
-
 
     /** @param {Creep} creep **/
     run(creep) {
@@ -41,36 +27,36 @@ class RoleCarry {
             creep.memory.action = this.ACTION_FILL;
             delete creep.memory.source;
             delete creep.memory.currentStrategy;
-            let s = this.getCurrentStrategy(creep, this.loadStrategies);
+            let s = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);
             if (s) {s.clearMemory(creep);}
-            delete creep[this.CURRENT_STRATEGY];
+            util.setCurrentStrategy(creep, null);
         } else if (creep.carry.energy == creep.carryCapacity) {
             creep.memory.action = this.ACTION_UNLOAD;
             delete creep.memory.action;
             delete creep.memory.currentStrategy;
-            let s = this.getCurrentStrategy(creep, this.unloadStrategies);
+            let s = util.getAndExecuteCurrentStrategy(creep, this.unloadStrategies);
             if (s) {s.clearMemory(creep);}
-            delete creep[this.CURRENT_STRATEGY];
+            util.setCurrentStrategy(creep, null);
         }
         if (creep.memory.action == this.ACTION_FILL) {
-            let strategy = this.getCurrentStrategy(creep, this.loadStrategies);
+            let strategy = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);
             if (!strategy) {
                 strategy = _.find(this.loadStrategies, (strat)=>!(null == strat.accepts(creep)));
             }
             if (strategy) {
-                this.setCurrentStrategy(creep, strategy);
+                util.setCurrentStrategy(creep, strategy);
             } else {
                 creep.log('no loadStrategy');
                 return;
             }
         }
         else {
-            let strategy = this.getCurrentStrategy(creep, this.unloadStrategies);
+            let strategy = util.getAndExecuteCurrentStrategy(creep, this.unloadStrategies);
             if (!strategy) {
                 strategy = _.find(this.unloadStrategies, (strat)=>!(null == strat.accepts(creep)));
             }
             if (strategy) {
-                this.setCurrentStrategy(creep, strategy);
+                util.setCurrentStrategy(creep, strategy);
             } else {
                 creep.log('no unloadStrategy');
                 return;
