@@ -17,7 +17,6 @@ class RoleCarry {
         ];
         this.ACTION_UNLOAD = 'unload';
         this.ACTION_FILL = 'fill';
-        this.CURRENT_STRATEGY='currentStrategy';
     }
 
 

@@ -1,5 +1,8 @@
-class RemoteRepairStrategy {
+var BaseStrategy = require('./strategy.base'); 
+
+class RemoteRepairStrategy extends BaseStrategy {
     constructor() {
+        super();
     }
 
     /** @param {StructureTower} tower

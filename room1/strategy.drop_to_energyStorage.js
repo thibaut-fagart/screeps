@@ -1,13 +1,31 @@
 var util = require('./util');
+var BaseStrategy = require('./strategy.base'); 
 /**
  * finds a non-empty  energy container, preferably enough to fill this creep, otherwise closesst
  */
-class DropToEnergyStorageStrategy {
+class DropToEnergyStorageStrategy extends BaseStrategy {
     constructor(structureType) {
+        super();
         if (!structureType) structureType = STRUCTURE_EXTENSION;
         this.resource = RESOURCE_ENERGY;
         this.structureType = structureType;
         this.PATH = 'energyStoreTarget';
+    }
+    /**
+     *
+     * @param {Object}state
+     * @return {true|false}
+     */
+    acceptsState(state) {
+        return super.acceptsState(state)
+            && state.structureType == this.structureType
+            && state.resource == this.resource;
+    }
+    saveState() {
+        let s = super.saveState();
+        s.structureType = this.structureType;
+        s.resource = this.resource;
+        return s;
     }
     
     clearMemory(creep) {

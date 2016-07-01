@@ -1,9 +1,11 @@
 var util = require('./util');
+var BaseStrategy = require('./strategy.base'); 
 /**
  * finds a non-empty  energy source, chooses at random to spread the load
  */
-class HarvestEnergySourceStrategy {
+class HarvestEnergySourceStrategy extends BaseStrategy {
     constructor() {
+        super();
         this.PATH = 'source';
     }
 

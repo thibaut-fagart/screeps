@@ -1,24 +1,26 @@
-class Strategy {
-    constructor(name) {
-        this.name = (name ? name : this.constructor.name);
+class BaseStrategy {
+    constructor() {
     }
-    
+
     clearMemory(creep) {
         console.log("base clear", this.name, creep);
     }
+
+    /**
+     *
+     * @param {Object}state
+     * @return {true|false}
+     */
+    acceptsState(state) {
+        return state.name == this.constructor.name;
+    }
+    saveState() {
+        return {};
+    }
+    accepts(creep) {
+        return true;
+    }
 }
 
 
-class Extended extends Strategy {
-    constructor(name) {
-        super(name);
-    }
-    clearMemory(creep) {
-        super.clearMemory(creep);
-        console.log("extend clear", this.name,creep);
-    }
-    
-}
-
-new Strategy('base').clearMemory('c');
-new Extended('extended').clearMemory('d');
+module.exports = BaseStrategy;

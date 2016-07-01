@@ -1,8 +1,15 @@
+var BaseStrategy = require('./strategy.base');
 var util = require('./util');
-class RemoteTargetStrategy {
+
+class RemoteTargetStrategy extends BaseStrategy {
     constructor() {
+        super();
         this.path = 'attacking_remote';
     }
+    clearMemory(creep) {
+        delete creep.memory[this.path];
+    }
+
 
     /** @param {Creep||StructureTower} creep
      * @return {Creep|| null}**/

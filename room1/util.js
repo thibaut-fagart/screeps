@@ -1,5 +1,6 @@
 class Util {
     constructor() {
+        this.CURRENT_STRATEGY = 'strategy';
     }
 
     /**
@@ -57,7 +58,13 @@ class Util {
      */
     getAndExecuteCurrentStrategy(creep, candidates) {
         let s = creep.memory[this.CURRENT_STRATEGY];
-        var strategy = _.find(candidates, (strat)=> strat.constructor.name == s);
+        let stratAndParams= {};
+        if ('string' == typeof s || 'undefined' == typeof s) {
+            stratAndParams.name = s;
+        } else {
+            stratAndParams = s;
+        }
+        var strategy = _.find(candidates, (strat)=> strat.acceptsState(stratAndParams));
         if (strategy) {
             strategy = strategy.accepts(creep);
         }
@@ -71,7 +78,7 @@ class Util {
      * @param strategy
      */
     setCurrentStrategy(creep, strategy) {
-        if (strategy) creep.memory[this.CURRENT_STRATEGY] = strategy.constructor.name;
+        if (strategy) creep.memory[this.CURRENT_STRATEGY] = {name: strategy.constructor.name, state: strategy.saveState()};
         else delete creep.memory[this.CURRENT_STRATEGY];
     }
     strategyToLog(strategy) {

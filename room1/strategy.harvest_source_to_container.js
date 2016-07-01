@@ -1,15 +1,18 @@
 var util = require('./util');
-
+var BaseStrategy = require('./strategy.base'); 
 /**
  * finds a non-empty  energy source, chooses at random to spread the load
  */
-class HarvestEnergySourceToContainerStrategy {
+class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
     constructor() {
+        super();
         this.SOURCE_PATH = 'source';
         this.CONTAINER_PATH = 'source';
     }
+
     clearMemory(creep) {
-        delete creep.memory[this.PATH];
+        delete creep.memory[this.SOURCE_PATH];
+        delete creep.memory[this.CONTAINER_PATH];
     }
 
     /** @param {Creep} creep

@@ -1,13 +1,29 @@
 var util = require('./util');
+var BaseStrategy = require('./strategy.base'); 
 /**
  * finds a non-empty  energy container, preferably enough to fill this creep, otherwise closesst
  */
-class PickupStrategy {
+class PickupStrategy extends BaseStrategy {
     constructor(resource) {
+        super();
         if (!resource) resource = RESOURCE_ENERGY;
         this.resource = resource;
         this.PATH = 'pickupSource';
         this.plannedPickups = null; // {dropid: {creepid : amount }}
+    }
+    /**
+     *
+     * @param {Object}state
+     * @return {true|false}
+     */
+    acceptsState(state) {
+        return super.acceptsState(state)
+            && state.resource == this.resource;
+    }
+    saveState() {
+        let s = super.saveState();
+        s.resource = this.resource;
+        return s;
     }
     
     clearMemory(creep) {

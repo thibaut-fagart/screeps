@@ -1,5 +1,8 @@
-class RemoteHealStrategy {
+var BaseStrategy = require('./strategy.base'); 
+
+class RemoteHealStrategy extends BaseStrategy {
     constructor() {
+        super();
     }
 
     /** @param {Creep||StructureTower} creep
