@@ -23,5 +23,23 @@ class Util {
         }
 
     }
+
+    /**
+     * 
+     * @param creep
+     * @param object 
+     * @returns {boolean} true if object is not already reserved
+     */
+    reserve(creep, object) {
+        let reserved = creep.room.memory.reserved || {};
+        let old = reserved[object.id];
+        if (Game.getObjectById(old)) {
+            creep.room.memory.reserved = reserved;
+            return true;
+        } else {
+            return false;
+        }
+    }
+    
 }
 module.exports = new Util();

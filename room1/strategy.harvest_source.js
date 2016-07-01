@@ -3,40 +3,44 @@ var util = require('./util');
  * finds a non-empty  energy source, chooses at random to spread the load
  */
 class HarvestEnergySourceStrategy {
-    constructor(resource) {
+    constructor() {
         this.PATH = 'source';
+    }
+
+    clearMemory(creep) {
+        delete creep.memory[this.PATH];
     }
 
     /** @param {Creep} creep
      * @return {Source|| null}**/
     accepts(creep) {
-        creep.log('HarvestEnergySourceStrategy');
-        let source = util.objectFromMemory(creep.memory, this.PATH, (s) => s.energy > 0);
-        if (!source) {
-            delete creep.memory[this.PATH];
-            var sources = creep.room.find(FIND_SOURCES_ACTIVE);
-            if (sources.length) {
-                source = _.sample(sources);
-                creep.memory[this.PATH] = source.id;
+        // creep.log('HarvestEnergySourceStrategy');
+        let source;
+        if (creep.getActiveBodyparts(WORK)>0) {
+            // creep.log('body ok');
+            if (creep.carryCapacity > 0 && creep.carry.energy == creep.carryCapacity) {
+                // creep.log('full');
+                delete creep.memory[this.PATH];
             } else {
-                creep.log("failed finding source");
-            }
-        }
-        if (source) {
-            // try transfering/moving
-            let ret = creep.harvest(source);
-            // console.log("transfer ? ", ret, ", ", source.store[this.resource]);
-            if (ret == ERR_NOT_IN_RANGE) {
-                // console.log(creep.name, " moving to source");
-                ret = creep.moveTo(source);
-                if (ret == ERR_NO_PATH) {
-                    creep.log("no path to source");
-                    delete creep.memory[this.PATH];
+                source = util.objectFromMemory(creep.memory, this.PATH, (s)=> creep.carry.energy+s.energy >= creep.carryCapacity);
+                // creep.log('source', source);
+                if (!source) {
+                    source = creep.pos.findClosestByRange(FIND_SOURCES_ACTIVE);
+                }
+                // creep.log('source', source);
+                if (source) {
+                    creep.memory[this.PATH] = source.id;
+                    let transfer = creep.harvest(source);
+                    // creep.log('transfer', transfer);
+                    if (transfer == ERR_NOT_IN_RANGE) {
+                        let moveTo = creep.moveTo(source);
+                        // creep.log('move', moveTo);
+
+                    }
                 }
             }
-            return source;
         }
-        return null;
+        return source;
     }
 }
 

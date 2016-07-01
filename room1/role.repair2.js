@@ -5,8 +5,11 @@ var PickupStrategy = require('./strategy.pickup');
 
 class RoleRepair2 {
     constructor() {
-        this.loadStrategies = [new PickupStrategy(RESOURCE_ENERGY),
-			new LoadFromContainerStrategy(RESOURCE_ENERGY),new HarvestEnergySourceStrategy()];
+        this.loadStrategies = [
+			new PickupStrategy(RESOURCE_ENERGY),
+			new LoadFromContainerStrategy(RESOURCE_ENERGY),
+			new HarvestEnergySourceStrategy()
+		];
         this.ACTION_FILL = 'fill';
     }
 
@@ -62,6 +65,7 @@ class RoleRepair2 {
 							&& (structure.hits < structure.hitsMax);
 				}
 			}), (s) => s.hits);
+			creep.log("findDamagedStructures",JSON.stringify(_.countBy(this.myTargets,(s)=>s.structureType)));
 		}
 		return this.myTargets;
 	}
@@ -79,26 +83,20 @@ class RoleRepair2 {
 			// console.log("finding target for  ", creep.name);
 			var myDamagedStructures = this.findDamagedStructures(creep);
 			var myDamagedWalls = this.findDamagedWalls(creep);
-			if (! this.needRepairs) {
-				this.needRepairs = _.sortBy(myDamagedStructures.concat(myDamagedWalls), function(s) {return s.hits/s.hitsMax;});
+			if (!this.needRepairs) {
+				this.needRepairs = _.sortBy(myDamagedStructures.concat(myDamagedWalls), function (s) {
+					return s.hits / s.hitsMax;
+				});
 				this.needRepairAmount = _.reduce(this.needRepairs, function (total, s) {
 					return total + (s.hitsMax - s.hits)
 				}, 0);
 			}
-			var targets = this.needRepairs;
-			creep.log("damaged structures ? ", myDamagedStructures.length);
-			if (myDamagedStructures.length) {
-                            creep.log("lowest hit structure", myDamagedStructures[0].pos);
-                        }
-			if (myDamagedWalls.length) {
-                            creep.log("lowest hit wall", myDamagedWalls[0].pos);
-                        }
 			// first repair structures in bad shape, then walls, try getting one for each creep
-			if (myDamagedStructures.length && (myDamagedStructures[0].hits/myDamagedStructures[0].hitsMax) < 0.5) {
-				target = myDamagedStructures.shift();
+			if (myDamagedStructures.length && (myDamagedStructures[0].hits / myDamagedStructures[0].hitsMax) < 0.5) {
+				target = _.min(myDamagedStructures, (s) => s.hits);
 				this.repair(target);
-			} else  if (myDamagedWalls.length) {
-				target = myDamagedWalls.shift();
+			} else if (myDamagedWalls.length) {
+				target = _.min(myDamagedWalls, (s) => s.hits);
 				this.repair(target);
 			} else {
 				target = _.sample(this.needRepairs);
@@ -106,7 +104,7 @@ class RoleRepair2 {
 					this.repair(target);
 				}
 			}
-			creep.log("repairing", target.structureType, JSON.stringify(target.pos));
+			// creep.log("repairing", target.structureType, JSON.stringify(target.pos));
 			creep.memory.targetid = target.id;
 			return target;
 		} else {

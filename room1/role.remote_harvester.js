@@ -1,122 +1,96 @@
-//Game.spawns.Spawn1.createCreep([MOVE,CARRY,WORK],undefined,{role:'remoteHarvester'})
+var util = require('./util');
+var HarvestEnergySourceStrategy = require('./strategy.harvest_source');
+var HarvestEnergySourceToContainerStrategy = require('./strategy.harvest_source_to_container');
+var DropToEnergyStorage = require('./strategy.drop_to_energyStorage');
+var DropToContainerStrategy = require('./strategy.drop_to_container');
 
-var roleRemoteHarvester = {
+class RoleRemoteHarvester {
+    constructor() {
+        this.loadStrategies = [new HarvestEnergySourceToContainerStrategy(), new HarvestEnergySourceStrategy()];
+        this.unloadStrategies = [new DropToContainerStrategy(RESOURCE_ENERGY), new DropToEnergyStorage()];
+    }
     /*
     requires : remoteRoom=creep.room.remoteMining, homeroom = creep.room.name, homeroom, remoteSource
      */
-    resign: function(creep) {
+    resign(creep) {
         creep.log("resigning");
         delete creep.memory.role;
         delete creep.memory.action; //{go_remote_room, load, go_home, unload}
         delete creep.memory.remoteRoom;
         delete creep.memory.homeRoom;
         delete creep.memory.remoteSource;
-    },
-    findSource: function (creep, memoryName) {
-        if (!memoryName) {
-            memoryName = 'source';
-        }
-   		var source;
-   		if (!creep.memory[memoryName]) {
-   			var sources = creep.room.find(FIND_SOURCES_ACTIVE);
-   			if (!sources.length) {
-                // creep.log("failed finding source", creep.pos);
-                return null;
-   			}
-   			source = _.sample(sources);
-            creep.memory[memoryName] = source.id;
-            // source.consumers = source.consumers +1;
-            // console.log(" " + source.consumers + " / " + source.room.creeps.length);
-   			return source;
-   		} else {
-            var source = Game.getObjectById(creep.memory[memoryName]);
-            if (source.energy > 0) {
-                return source;
-            } else {
-                creep.log("source exhausted, recomputing");
-                delete creep.memory[memoryName];
-                return this.findSource(creep);
-            }
-        }
-   	},
-    /*
-     fill extensions first, the spawn slowly fills itself
-     */
-    findTarget: function(creep) {
-   		if (undefined === creep.memory.target) {
-   			// console.log("finding target for  ", creep.name);
-            var targets= creep.room.find(FIND_STRUCTURES, {
-                filter: function (structure)  {
-                    return ((structure.structureType == STRUCTURE_EXTENSION || structure.structureType == STRUCTURE_SPAWN)
-                            &&structure.energy < structure.energyCapacity)
-                        || (structure.structureType == STRUCTURE_CONTAINER && structure.store.energy < structure.storeCapacity);
-                }});
-            var target = creep.pos.findClosestByRange(targets);
-   			if (target && !_.isString(target) ) {
-   				// var target = _.sample(targets);
-   				creep.memory.target = target.id;
-   				return target;
-            } else {
-                creep.log("all full, sending to spawn");
-                return _.sample(creep.room.find(FIND_STRUCTURES, {structureType: STRUCTURE_SPAWN}));
-   			// } else {
-                // do not resign the last harvester
-                // if (_.size(creep.room.find(FIND_MY_CREEPS, {filter:(c) =>{return c.memory.role == 'harvester'}}))>1) this.resign(creep);
-            }
-   		} else {
-   			var target = Game.getObjectById(creep.memory.target);
-   			if (!target || (target.energy == target.energyCapacity)) {
-   				delete creep.memory.target;
-   				return this.findTarget(creep);
-   			} else {
-   				return target;
-   			}
-
-   		}
-   	},
-    init : function(creep) {
+    }
+    init (creep) {
         creep.memory.action = 'go_remote_room';
         creep.memory.homeroom = creep.room.name;
         creep.memory.remoteMining = creep.room.memory.remoteMining;
-    },
-    findExit: function(creep, room, memoryName) {
+        if (!creep.memory.remoteRoom && creep.room.memory.remoteMining) {
+            creep.memory.remoteRoom = creep.room.memory.remoteMining;
+        }
+
+    }
+    findExit(creep, room, memoryName) {
         var exit ;
-        if (!creep.memory[memoryName] || ((_.random(0, 50) +Game.time)% 1000 ==0)) {
+        if (!creep.memory[memoryName] || Game.time% 1000 ==0) {
             creep.log("finding exit to", room);
-            var exitDir = creep.room.findExitTo(room);// TODO do we need to recompute that when refreshing path ?
-            exit = creep.pos.findClosestByPath(exitDir);
+            var exitDir = creep.room.findExitTo(room);
+            exit = creep.pos.findClosestByPath(exitDir); // TODO cache
             creep.memory[memoryName] = JSON.stringify(exit);
         } else {
             exit = JSON.parse(creep.memory[memoryName]);
         }
         return exit;
 
-    },
-    findHomeExit: function(creep) {
+    }
+    findHomeExit(creep) {
         return this.findExit(creep, creep.room.memory.remoteMining, 'homeExit');
-    },
-    findRemoteExit: function(creep) {
+    }
+    findRemoteExit(creep) {
         return this.findExit(creep, creep.memory.homeroom, 'remoteExit');
-    },
+    }
+    getCurrentStrategy(creep, candidates) {
+        let s = creep.memory[this.CURRENT_STRATEGY];
+        let strat = _.find(candidates, (strat)=> strat.constructor.name == s);
+        if (strat && !strat.accepts(creep))  {
+            this.setCurrentStrategy(creep, strat = null);
+        }
+        return strat;
+
+    }
+    setCurrentStrategy(creep, strategy) {
+        if (strategy) creep.memory[this.CURRENT_STRATEGY] = strategy.constructor.name;
+        else delete creep.memory[this.CURRENT_STRATEGY];
+    }
+
     /** @param {Creep} creep **/
-    run: function (creep) {
+    run (creep) {
+        if (!creep.memory.homeroom) {
+            creep.memory.homeroom = creep.room.name;
+        }
+        if (creep.memory.remotesource) {
+            creep.memory.source = creep.memory.remotesource;
+            delete creep.memory.remotesource;
+        }
         if (!creep.memory.action) {
             this.init(creep)
-
         }
         if (creep.memory.action == 'go_remote_room' && creep.room.name != creep.memory.homeroom) {
             creep.memory.action = 'load';
+            // creep.log('reached remote room',creep.memory.action)
         } else if (creep.memory.action == 'load' && creep.carry.energy == creep.carryCapacity) {
             creep.memory.action = 'go_home_room';
-            // console.log(creep.memory.role + creep.memory.action);
+            // creep.log('full', creep.memory.action);
         } else if (creep.memory.action == 'go_home_room' && creep.room.name == creep.memory.homeroom) {
             creep.memory.action = 'unload';
-            // console.log(creep.memory.role + creep.memory.action);
+            // creep.log('reached home room', creep.memory.action);
         } else if (creep.memory.action == 'unload' && creep.room.name == creep.memory.homeroom && creep.carry.energy == 0) {
             creep.memory.action = 'go_remote_room';
-            creep.log(creep.memory.action);
+            // creep.log('empty',creep.memory.action);
+        } else {
+            // creep.log(JSON.stringify(creep.memory));
         }
 
+        // creep.log(creep.memory.action);
         if (creep.memory.action == 'go_remote_room' && creep.room.name == creep.memory.homeroom) {
             if (!creep.room.memory.remoteMining) {
                 creep.log("no remoteMining room");
@@ -127,21 +101,17 @@ var roleRemoteHarvester = {
                 // console.log("moving to homeExit ", );
             }
         }
-        if (creep.memory.action == 'load' && creep.room.name != creep.memory.homeroom) {
-            var source = this.findSource(creep, 'remotesource');
-            if (source && source.energy > 0) {
-                if (creep.harvest(source) == ERR_NOT_IN_RANGE) {
-                    var ret = creep.moveTo(source,{reusePath: 50});
-                    if (ret== OK){
-
-                    } else if (ret == ERR_NO_PATH) {
-                        creep.log("no path to source");
-                        creep.moveTo(source);
-                        delete creep.memory.remotesource;
-                    } else {
-                        creep.log("moveTo", ret);
-                    }
-                }
+        if (creep.memory.action == 'load' && creep.memory.remoteRoom == creep.room.name) {
+            let strategy = this.getCurrentStrategy(creep, this.loadStrategies);
+            if (!strategy) {
+                strategy = _.find(this.loadStrategies, (strat)=>strat.accepts(creep));
+            }
+            if (strategy) {
+                // creep.log('strategy', strategy.constructor.name);
+                this.setCurrentStrategy(creep, strategy);
+            } else {
+                creep.log('no loadStrategy');
+                return;
             }
         }
         if (creep.memory.action == 'go_home_room' && creep.room.name != creep.memory.homeroom) {
@@ -155,17 +125,18 @@ var roleRemoteHarvester = {
             // console.log("moving to remoteExit ", );
         }
         if (creep.memory.action == 'unload' && creep.room.name == creep.memory.homeroom) {
-            var target = this.findTarget(creep);
-            if (target) {
-                if (creep.transfer(target, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
-                    creep.moveTo(target,{reusePath: 50});
-                }
-                if (target.energy == target.energyCapacity) {
-                    delete creep.memory.target;
-                }
+            let strategy = this.getCurrentStrategy(creep, this.unloadStrategies);
+            if (!strategy) {
+                strategy = _.find(this.unloadStrategies, (strat)=>!(null == strat.accepts(creep)));
+            }
+            if (strategy) {
+                this.setCurrentStrategy(creep, strategy);
+            } else {
+                creep.log('no unloadStrategy');
+                return;
             }
         }
     }
-};
+}
 
-module.exports = roleRemoteHarvester;
+module.exports = RoleRemoteHarvester;

@@ -9,14 +9,25 @@ class PickupStrategy {
         this.PATH = 'pickupSource';
         this.plannedPickups = null; // {dropid: {creepid : amount }}
     }
+    
+    clearMemory(creep) {
+        delete creep.memory[this.PATH];
+    }
     /**
      * @param {Creep} creep
      */
     myMem(creep) {
         if (!this.plannedPickups) {
             this.plannedPickups = creep.room.memory[this.constructor.name] || {};
+            // console.log('loaded plannedPickups', JSON.stringify(this.plannedPickups));
+
+            
             let dropids = _.keys(this.plannedPickups);
+            // let beforeCount = _.size(dropids);
             _.filter(dropids,(id)=> !Game.getObjectById(id)).forEach((id)=>{delete this.plannedPickups[id]});
+            // let afterCount = _.size(_.keys(this.plannedPickups));
+            // creep.log('validating reserves','before', beforeCount, afterCount);
+            creep.room.memory[this.constructor.name] = this.plannedPickups;
 
         }
         return this.plannedPickups;
@@ -26,7 +37,9 @@ class PickupStrategy {
      * @param {Creep} creep
      */
     saveMem(creep) {
+        // console.log('saving plannedPickups', JSON.stringify(this.plannedPickups));
         creep.room.memory[this.constructor.name] = this.plannedPickups;
+        // console.log('saving plannedPickups', JSON.stringify(creep.room.memory[this.constructor.name]));
     }
     /**
      * @param {Creep} creep
@@ -67,7 +80,7 @@ class PickupStrategy {
     }
 
     /** @param {Creep} creep
-     * @return {StructureContainer|| null}**/
+     * @return {boolean}**/
     accepts(creep) {
         let source = util.objectFromMemory(creep.memory, this.PATH, (r)=>(r.resourceType ==  this.resource) && r.amount > 0);
         if (!source) {
@@ -110,7 +123,10 @@ class PickupStrategy {
                 this.saveMem(creep)
             }
         }
-        return source;
+        // creep.log("pickup ? ", true && source);
+        return (source);
+
+
     }
 }
 

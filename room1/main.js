@@ -1,16 +1,16 @@
-var roleHarvester = require('role.harvester');
-var roleCarry = require('role.carry');
-var roleUpgrader = require('role.upgrader');
-var roleSpawn = require('role.spawn');
-var RoleBuilder = require('role.builder');
-var RoleTower = require('role.tower');
-// var RoleBuilder = require('role.builder_class');
+var roleHarvester = require('./role.harvester');
+global.RoleCarry = require('./role.carry');
+var roleCarry = new RoleCarry();
+var roleUpgrader = require('./role.upgrader');
+var roleSpawn = require('./role.spawn');
+var RoleTower = require('./role.tower');
+global.RoleBuilder = require('./role.builder');
 var roleBuilder = new RoleBuilder();
 var roleTower = new RoleTower(); 
-var roleRepair = require('role.repair');
-var roleRepair2 = require('role.repair2');
-var roleRemoteHarvester = require('role.remote_harvester');
-var profiler = require('screeps-profiler');
+var roleRepair = require('./role.repair');
+var roleRepair2 = require('./role.repair2');
+var RoleRemoteHarvester = require('./role.remote_harvester'), roleRemoteHarvester = new RoleRemoteHarvester();
+var profiler = require('./screeps-profiler');
 
 // This line monkey patches the global prototypes.
 profiler.enable();
@@ -56,11 +56,7 @@ module.exports.loop = function () {
             // room.prototype.sourceConsumers = {};
             var creeps = room.find(FIND_MY_CREEPS);
             // room.creeps = creeps;
-            let creepCount = {};
             creeps.forEach(function (creep) {
-                // creep.log("test", "test2");
-                // var creep = roomCreeps[i];
-                creepCount[creep.memory.role] = ((creepCount[creep.memory.role]) || 0) + 1;
                     if (creep.memory.role == 'harvester') {
                         roleHarvester.run(creep);
                     } else if (creep.memory.role == 'carry') {
@@ -96,12 +92,13 @@ module.exports.loop = function () {
             Memory.stats["room." + room.name + ".energyCapacityAvailable"] = room.energyCapacityAvailable;
             Memory.stats["room." + room.name + ".energyInSources"] = _.sum(_.map(room.find(FIND_SOURCES_ACTIVE), (s)=> s.energy));
             Memory.stats["room." + room.name + ".energyInStructures"] = _.sum(_.map(room.find(FIND_MY_STRUCTURES), (s)=> s.store?s.store.energy :0));
+            Memory.stats["room." + room.name + ".energyDropped"] = _.sum(_.map(room.find(FIND_DROPPED_RESOURCES , {filter: (r) => r.resourceType == RESOURCE_ENERGY}),(s)=> s.amount));
 
             let hostiles = room.find(FIND_HOSTILE_CREEPS);
 //            {"pos":{"x":11,"y":28,"roomName":"E37S14"},"body":[{"type":"work","hits":100},{"type":"carry","hits":100},{"type":"move","hits":100},{"type":"carry","hits":100},{"type":"work","hits":100},{"type":"move","hits":100},{"type":"move","hits":100},{"type":"work","hits":100},{"type":"carry","hits":100},{"type":"move","hits":100},{"type":"carry","hits":100},{"type":"work","hits":100},{"type":"move","hits":100},{"type":"move","hits":100}],"owner":{"username":"Finndibaen"}"hits":1400,"hitsMax":1400}
 
             if (hostiles.length>0) {
-                messages.push(' strangers ' + JSON.stringify(_.reduce(hostiles, (h) => {
+                messages.push(' strangers ' + JSON.stringify(_.map(hostiles, (h) => {
                         let subset = _.pick(h, ['name', 'pos', 'body', 'owner', 'hits', 'hitsMax']);
                         subset.body = _.map(
                             _.pairs(
@@ -109,14 +106,20 @@ module.exports.loop = function () {
                             ), //[work, [{"type":"work","hits":100},{"type":"carry","hits":100}]]
                             (pair)=>(pair[1] = pair[1].length // [work, 2]
                             ));
+                        return subset;
                     })));
             }
             Memory.stats["room." + room.name + ".strangers"] = _.size(hostiles);
-            Memory.stats["room." + room.name + ".controllerProgress"] = room.controller.progress;
+            if (room.controller && room.controller.my) {
+                Memory.stats["room." + room.name + ".controllerProgress"] = room.controller.progress;
+            }
+            let creepCount = _.countBy(room.find(FIND_MY_CREEPS), (c)=>c.memory.role);
             _.pairs(creepCount).forEach((kv)=>{ Memory.stats["room." + room.name + ".creeps."+kv[0]] = kv[1];});
         }
         Memory.stats["cpu"] = Game.cpu.getUsed();
-        if (messages.length > 0) Game.notify(messages);
+        if (messages.length > 0) {
+            Game.notify(messages);
+        }
         // counting walkable tiles neer location:
         //_.filter(Game.rooms.E37S14.lookAtArea(y-1,x-1,y+1,x+1,true), function(o) {return o.type== 'terrain' &&(o.terrain =='plain' || o.terrain =='swamp')}).length
     });
