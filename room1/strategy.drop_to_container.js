@@ -68,10 +68,10 @@ class DropToContainerStrategy extends BaseStrategy{
                     let otherLink = otherLinks[i];
                     if (target.cooldown == 0) {
                         let k = Math.min(otherLink.carryCapacity - otherLink.energy, creep.carry.energy);
-                        creep.log('otherLink', otherLink);
+                        // creep.log('otherLink', otherLink);
                         let ret = target.transferEnergy(otherLink, k);
                         sum += (ret == 0) ? k : 0;
-                        creep.log('link =>link', ret, k);
+                        // creep.log('link =>link', ret, k);
                     }
                 }
             }

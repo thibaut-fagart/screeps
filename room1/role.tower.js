@@ -13,15 +13,15 @@ class RoleTower {
 
         let remoteTarget = this.remoteAttackStrategy.accepts(tower);
         if (remoteTarget) {
-            console.log("tower attacking at", remoteTarget.pos);
-            tower.attack(remoteTarget);
+            console.log("tower attacking");
+            // tower.attack(remoteTarget);
             let s = "room." + tower.room.name + ".attacks";
             let stat = Memory.stats[s];
             Memory.stats[s] = (stat ? 1 : stat + 1);
         } else {
             let remoteHeal = this.remoteHealStrategy.accepts(tower);
             if (remoteHeal) {
-                console.log("tower healing ", remoteHeal.name);
+                console.log("tower healing ");
                 let ret = tower.heal(remoteHeal);
                 if (!ret) console.log("heal ret", ret);
                 let s = "room." + tower.room.name + ".heals";

@@ -1,12 +1,13 @@
 var util = require('./util');
 var HarvestEnergySourceStrategy = require('./strategy.harvest_source');
 var HarvestEnergySourceToContainerStrategy = require('./strategy.harvest_source_to_container');
+var PickupStrategy = require('./strategy.pickup');
 var DropToEnergyStorage = require('./strategy.drop_to_energyStorage');
 var DropToContainerStrategy = require('./strategy.drop_to_container');
 
 class RoleRemoteHarvester {
     constructor() {
-        this.loadStrategies = [/*new HarvestEnergySourceToContainerStrategy(),*/ new HarvestEnergySourceStrategy()];
+        this.loadStrategies = [/*new HarvestEnergySourceToContainerStrategy(),*/ new PickupStrategy(), new HarvestEnergySourceStrategy()];
         this.unloadStrategies = [new DropToContainerStrategy(RESOURCE_ENERGY), new DropToEnergyStorage()];
     }
     /*
@@ -29,24 +30,11 @@ class RoleRemoteHarvester {
         }
 
     }
-    findExit(creep, room, memoryName) {
-        var exit ;
-        if (!creep.memory[memoryName] || Game.time% 1000 ==0) {
-            creep.log("finding exit to", room);
-            var exitDir = creep.room.findExitTo(room);
-            exit = creep.pos.findClosestByPath(exitDir); // TODO cache
-            creep.memory[memoryName] = JSON.stringify(exit);
-        } else {
-            exit = JSON.parse(creep.memory[memoryName]);
-        }
-        return exit;
-
-    }
     findHomeExit(creep) {
-        return this.findExit(creep, creep.room.memory.remoteMining, 'homeExit');
+        return util.findExit(creep, creep.room.memory.remoteMining, 'homeExit');
     }
     findRemoteExit(creep) {
-        return this.findExit(creep, creep.memory.homeroom, 'remoteExit');
+        return util.findExit(creep, creep.memory.homeroom, 'remoteExit');
     }
 
     /** @param {Creep} creep **/
@@ -91,16 +79,16 @@ class RoleRemoteHarvester {
 
         if (creep.memory.action == 'load' && creep.memory.remoteRoom == creep.room.name) {
             let strategy = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);
-            // creep.log('previousStrategy',this.strategyToLog(strategy));
+            // creep.log('previousStrategy',util.strategyToLog(strategy));
             if (!strategy) {
                 strategy = _.find(this.loadStrategies, (strat)=>strat.accepts(creep));
-                // creep.log('newStrategy',this.strategyToLog(strategy));
+                // creep.log('newStrategy',util.strategyToLog(strategy));
             }
             if (strategy) {
                 // creep.log('strategy', strategy.constructor.name);
                 util.setCurrentStrategy(creep, strategy);
             } else {
-                creep.log('no loadStrategy');
+                // creep.log('no loadStrategy');
                 return;
             }
         }

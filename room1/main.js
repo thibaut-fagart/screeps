@@ -10,6 +10,8 @@ var roleTower = new RoleTower();
 var roleRepair = require('./role.repair');
 var roleRepair2 = require('./role.repair2');
 var RoleRemoteHarvester = require('./role.remote_harvester'), roleRemoteHarvester = new RoleRemoteHarvester();
+var RoleGuard = require('./role.soldier.roomguard'); roleRemoteGuard = new RoleGuard();
+roleCloseGuard = new RoleGuard();
 var profiler = require('./screeps-profiler');
 
 // This line monkey patches the global prototypes.
@@ -71,6 +73,8 @@ module.exports.loop = function () {
                         roleBuilder.run(creep);
                     } else if (creep.memory.role == 'remoteHarvester') {
                         roleRemoteHarvester.run(creep);
+                    } else if (creep.memory.role == 'roleRemoteGuard' || creep.memory.role == 'roleCloseGuard') {
+                        roleRemoteGuard.run(creep);
                     }
             });
 
@@ -94,7 +98,8 @@ module.exports.loop = function () {
             Memory.stats["room." + room.name + ".energyInStructures"] = _.sum(_.map(room.find(FIND_MY_STRUCTURES), (s)=> s.store?s.store.energy :0));
             Memory.stats["room." + room.name + ".energyDropped"] = _.sum(_.map(room.find(FIND_DROPPED_RESOURCES , {filter: (r) => r.resourceType == RESOURCE_ENERGY}),(s)=> s.amount));
 
-            let hostiles = room.find(FIND_HOSTILE_CREEPS);
+            let strangers = room.find(FIND_HOSTILE_CREEPS);
+            let hostiles = _.filter(strangers,(c)=>{_.sum(c.body, (p)=>p == ATTACK|| p==RANGED_ATTACK)})
 //            {"pos":{"x":11,"y":28,"roomName":"E37S14"},"body":[{"type":"work","hits":100},{"type":"carry","hits":100},{"type":"move","hits":100},{"type":"carry","hits":100},{"type":"work","hits":100},{"type":"move","hits":100},{"type":"move","hits":100},{"type":"work","hits":100},{"type":"carry","hits":100},{"type":"move","hits":100},{"type":"carry","hits":100},{"type":"work","hits":100},{"type":"move","hits":100},{"type":"move","hits":100}],"owner":{"username":"Finndibaen"}"hits":1400,"hitsMax":1400}
 
             if (hostiles.length>0) {
@@ -104,7 +109,8 @@ module.exports.loop = function () {
                         return subset;
                     })));
             }
-            Memory.stats["room." + room.name + ".strangers"] = _.size(hostiles);
+            Memory.stats["room." + room.name + ".strangers"] = _.size(strangers);
+            Memory.stats["room." + room.name + ".hostiles"] = _.size(hostiles);
             if (room.controller && room.controller.my) {
                 Memory.stats["room." + room.name + ".controllerProgress"] = room.controller.progress;
             }

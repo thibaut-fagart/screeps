@@ -1,7 +1,7 @@
 var BaseStrategy = require('./strategy.base');
 var util = require('./util');
 
-class RemoteTargetStrategy extends BaseStrategy {
+class CloseAttackStrategy extends BaseStrategy {
     constructor() {
         super();
         this.path = 'attacking_remote';
@@ -14,8 +14,7 @@ class RemoteTargetStrategy extends BaseStrategy {
     /** @param {Creep||StructureTower} creep
      * @return {Creep|| null}**/
     accepts(creep) {
-        if (! creep instanceof StructureTower || (creep.body && (creep.getActiveBodyparts(RANGED_ATTACK).length==0))) {
-            // if(creep instanceof Creep)creep.log('not compatible with RemoteAttack');
+        if (! creep instanceof StructureTower || (creep.body && creep.getActiveBodyparts(ATTACK).length==0)) {
             return null;
         }
         // find strangers
@@ -35,21 +34,14 @@ class RemoteTargetStrategy extends BaseStrategy {
             // if(creep instanceof Creep) creep.log(target);
             target = target || creep.pos.findClosestByRange(hostiles);
             this.setRemoteTarget(creep, target);
-            // creep.attack(remoteTarget);
-            if (creep instanceof Creep) {
-                
-                // if(creep instanceof Creep) creep.log('attacking',target);
-                let rangedAttack = creep.rangedAttack(target);
+            creep.moveTo(target);
+            let attack = creep.attack(target);
+            if (attack == ERR_NOT_IN_RANGE) {
                 creep.moveTo(target);
-                if (rangedAttack == ERR_NOT_IN_RANGE) {
-                    // if(creep instanceof Creep) creep.log('not in range, moving');
-                } else if (rangedAttack !== OK) {
-                    if(creep instanceof Creep) creep.log('rangedAttack?', rangedAttack);
-                }
-
-            } else {
-                creep.attack(target);
+            } else if (attack !== OK) {
+                creep.log('attack?',attack);
             }
+            creep.moveTo(target); 
         }
         return target;
     }
@@ -75,4 +67,4 @@ class RemoteTargetStrategy extends BaseStrategy {
     }
 }
 
-module.exports = RemoteTargetStrategy;
+module.exports = CloseAttackStrategy;

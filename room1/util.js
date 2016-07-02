@@ -65,11 +65,11 @@ class Util {
             stratAndParams = s;
         }
         var strategy = _.find(candidates, (strat)=> strat.acceptsState(stratAndParams));
-        if (strategy) {
-            strategy = strategy.accepts(creep);
+        if (strategy && strategy.accepts(creep)) {
+            return strategy;
+        } else {
+            return null;
         }
-        return strategy ;
-
     }
 
     /**
@@ -83,6 +83,19 @@ class Util {
     }
     strategyToLog(strategy) {
         return (strategy ? strategy.constructor.name : 'none');
+    }
+    
+    findExit(creep, room, memoryName) {
+        var exit ;
+        if (!creep.memory[memoryName]) { // todo refresh  exit every once in a while ? 
+            creep.log("finding exit to", room);
+            var exitDir = creep.room.findExitTo(room);
+            exit = creep.pos.findClosestByPath(exitDir); // TODO cache
+            creep.memory[memoryName] = JSON.stringify(exit);
+        } else {
+            exit = JSON.parse(creep.memory[memoryName]);
+        }
+        return exit;
     }
 
 }

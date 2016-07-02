@@ -25,10 +25,11 @@ class RoleRepair2 {
 		}
 		if (creep.memory.action == this.ACTION_FILL) {
 			let strategy =util.getAndExecuteCurrentStrategy(creep,this.loadStrategies);
+			// creep.log('1',util.strategyToLog(strategy));
 			if (!strategy) {
 				strategy = _.find(this.loadStrategies, (strat)=> (strat.accepts(creep)));
 			}
-
+			// creep.log('2',util.strategyToLog(strategy));
 			if (strategy) {
 				util.setCurrentStrategy(creep, strategy);
 				// creep.log('strategy ', strategy.constructor.name);
@@ -43,8 +44,13 @@ class RoleRepair2 {
 			if (!target) {
 				creep.log("no repair target");
 			} else {
-				if (creep.repair(target) == ERR_NOT_IN_RANGE) {
+				// creep.log('3',target.hits, target.hitsMax, target.pos);
+				let ret = creep.repair(target);
+                if (ret == ERR_NOT_IN_RANGE) {
 					creep.moveTo(target);
+				} else if (ret !== OK) {
+					creep.log('unexpected repair value',ret);
+					delete creep.memory.target;
 				}
 				if (target.hits == target.hitsMax) {
 					delete creep.memory.targetid;
@@ -115,12 +121,11 @@ class RoleRepair2 {
 				this.repair(target);
 			} else {
 				target = _.sample(this.needRepairs);
-				if (target) {
-					this.repair(target);
-				}
+			if (target) {
+				this.repair(target);
 			}
-			creep.log('damagedStructures', JSON.stringify(_.countBy(myDamagedStructures,(s)=>s.structureType)));
-			creep.log("repairing", target.structureType, JSON.stringify(target.pos), target.hits);
+			}
+			creep.log("repairing", target.structureType, JSON.stringify(target.pos), ''+target.hits+'/'+target.hitsMax, 'damagedStructures', JSON.stringify(_.countBy(myDamagedStructures,(s)=>s.structureType)));
 			creep.memory.targetid = target.id;
 			return target;
 		} else {

@@ -31,7 +31,8 @@
             "threshold1": null,
             "threshold1Color": "rgba(216, 200, 27, 0.27)",
             "threshold2": null,
-            "threshold2Color": "rgba(234, 112, 112, 0.22)"
+            "threshold2Color": "rgba(234, 112, 112, 0.22)",
+            "thresholdLine": false
           },
           "id": 1,
           "legend": {
@@ -39,38 +40,52 @@
             "current": false,
             "max": false,
             "min": false,
+            "rightSide": false,
             "show": true,
             "total": false,
             "values": false
           },
           "lines": true,
           "linewidth": 2,
+          "links": [
+            {
+              "type": "dashboard"
+            }
+          ],
           "nullPointMode": "connected",
           "percentage": false,
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
-          "seriesOverrides": [],
+          "seriesOverrides": [
+            {
+              "alias": "E37S14.energyInStructures",
+              "yaxis": 2
+            }
+          ],
           "span": 12,
           "stack": false,
           "steppedLine": false,
           "targets": [
             {
-              "target": "stats.gauges.room.E37S14.energyCapacityAvailable"
+              "target": "aliasByNode(stats.gauges.room.E37S14.energyCapacityAvailable, 3, 4)"
             },
             {
-              "target": "stats.gauges.room.E37S14.energyAvailable"
+              "target": "aliasByNode(stats.gauges.room.E37S14.energyAvailable, 3, 4)"
             },
             {
-              "target": "stats.gauges.room.E37S14.energyInSources"
+              "target": "aliasByNode(stats.gauges.room.E37S14.energyInSources, 3, 4)"
             },
             {
-              "target": "stats.gauges.room.E37S14.energyDropped"
+              "target": "aliasByNode(stats.gauges.room.E37S14.energyDropped, 3, 4)"
+            },
+            {
+              "target": "aliasByNode(stats.gauges.room.E37S14.energyInStructures, 3, 4)"
             }
           ],
           "timeFrom": null,
           "timeShift": null,
-          "title": "no title (click here)",
+          "title": "E37S14 Energy",
           "tooltip": {
             "shared": true,
             "value_type": "cumulative"
@@ -138,7 +153,7 @@
           ],
           "timeFrom": null,
           "timeShift": null,
-          "title": "no title (click here)",
+          "title": "RemoteMining",
           "tooltip": {
             "shared": true,
             "value_type": "cumulative"
@@ -149,7 +164,8 @@
           "y_formats": [
             "short",
             "short"
-          ]
+          ],
+          "links": []
         }
       ],
       "title": "New row"
@@ -206,7 +222,7 @@
           ],
           "timeFrom": null,
           "timeShift": null,
-          "title": "no title (click here)",
+          "title": "Controllers",
           "tooltip": {
             "shared": true,
             "value_type": "cumulative"
@@ -217,7 +233,8 @@
           "y_formats": [
             "short",
             "short"
-          ]
+          ],
+          "links": []
         }
       ],
       "title": "New row"
@@ -231,6 +248,7 @@
           "aliasColors": {},
           "bars": false,
           "datasource": null,
+          "decimals": 0,
           "editable": true,
           "error": false,
           "fill": 0,
@@ -251,16 +269,17 @@
           "legend": {
             "avg": false,
             "current": false,
+            "hideEmpty": true,
             "max": false,
             "min": false,
             "show": true,
             "total": false,
-            "values": false,
-            "hideEmpty": true
+            "values": false
           },
           "lines": true,
           "linewidth": 1,
-          "nullPointMode": "connected",
+          "links": [],
+          "nullPointMode": "null as zero",
           "percentage": false,
           "pointradius": 5,
           "points": false,
@@ -274,13 +293,13 @@
           "targets": [
             {
               "hide": false,
-              "target": "stats.gauges.room.E37S14.creeps.*",
+              "target": "aliasByNode(stats.gauges.room.E37S14.creeps.*, 5)",
               "textEditor": false
             }
           ],
           "timeFrom": null,
           "timeShift": null,
-          "title": "no title (click here)",
+          "title": "Whole Roster",
           "tooltip": {
             "shared": true,
             "value_type": "individual"
@@ -291,9 +310,7 @@
           "y_formats": [
             "short",
             "short"
-          ],
-          "links": [],
-          "decimals": 0
+          ]
         }
       ],
       "title": "New row"
@@ -345,15 +362,24 @@
           "steppedLine": false,
           "targets": [
             {
-              "target": "stats.gauges.room.*.strangers"
+              "target": "aliasByNode(stats.gauges.room.E37S13.creeps.*, 3,5)",
+              "hide": false,
+              "textEditor": true
             },
             {
-              "target": "stats.gauges.room.E37S13.creeps.remoteHarvester"
+              "target": "aliasByNode(stats.gauges.room.E37S13.hostiles, 3,4)",
+              "hide": false,
+              "textEditor": true
+            },
+            {
+              "target": "aliasByNode(stats.gauges.room.E37S13.strangers, 3, 4)",
+              "hide": false,
+              "textEditor": false
             }
           ],
           "timeFrom": null,
           "timeShift": null,
-          "title": "no title (click here)",
+          "title": "E37S13 (RemoteMining)",
           "tooltip": {
             "shared": true,
             "value_type": "cumulative"
@@ -364,7 +390,9 @@
           "y_formats": [
             "short",
             "short"
-          ]
+          ],
+          "decimals": 0,
+          "links": []
         },
         {
           "aliasColors": {},
@@ -413,7 +441,7 @@
           ],
           "timeFrom": null,
           "timeShift": null,
-          "title": "no title (click here)",
+          "title": "CPU",
           "tooltip": {
             "shared": true,
             "value_type": "cumulative"
@@ -424,7 +452,8 @@
           "y_formats": [
             "short",
             "short"
-          ]
+          ],
+          "links": []
         }
       ],
       "title": "New row"
@@ -475,6 +504,6 @@
   },
   "refresh": "1m",
   "schemaVersion": 6,
-  "version": 6,
+  "version": 12,
   "links": []
 }

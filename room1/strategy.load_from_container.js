@@ -85,7 +85,7 @@ class LoadFromContainerStrategy extends BaseStrategy {
                         let k = otherLink.energy;
                         let ret = otherLink.transferEnergy(source, k);
                         sum += (ret == 0) ? k : 0;
-                        creep.log('link =>link', k,ret);
+                        // creep.log('link =>link', k,ret);
                     }
                 }
             }

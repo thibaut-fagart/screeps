@@ -8,7 +8,7 @@
  */
 //  Game.spawns.Spawn1.createCreep([WORK, MOVE, WORK, WORK, WORK, WORK, ], undefined, {role:'harvester'})
 module.exports = {
-    maxCreeps: 16,
+    maxCreeps: 15,
     BODY_COST :{"move":50, "work":100, "carry":50, "attack":80,"ranged_attack":150,"heal":250, "claim":600, "tough":10},
     patterns: {
                 'harvester': {body: [WORK, MOVE, WORK, WORK, WORK, WORK,], count: 1, scale:false, memory: {role: 'harvester'}},
@@ -19,6 +19,8 @@ module.exports = {
                 'builder': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count: 2, scale:true, memory: {role: 'builder'}},
                 // 'repair': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count: 2, scale:true, memory: {role: 'repair'}},
                 'repair2': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count: 5, scale:true, memory: {role: 'repair2'}},
+                'roleRemoteGuard': {body: [TOUGH,TOUGH, TOUGH,TOUGH,MOVE, MOVE,MOVE,MOVE, RANGED_ATTACK, RANGED_ATTACK,MOVE, MOVE, MOVE, HEAL], count: 1, scale:true, memory: {role: 'roleRemoteGuard'}},
+                'roleCloseGuard': {body: [TOUGH,TOUGH, TOUGH,TOUGH,MOVE, MOVE,MOVE,MOVE, ATTACK, ATTACK,MOVE, MOVE, MOVE, HEAL], count: 1, scale:true, memory: {role: 'roleCloseGuard'}},
                 // 'attack': {body: [WORK, CARRY, MOVE, ATTACK, CARRY, MOVE,ATTACK , MOVE,WORK, CARRY, MOVE, ATTACK, CARRY, ATTACK, MOVE,MOVE], count: 1, memory: {role: 'attack'}},
     },
     //Game.spawns.Spawn1.createCreep([CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 300 */CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, CARRY, CARRY, MOVE], undefined, {role:'carry'})
@@ -86,6 +88,10 @@ module.exports = {
 
         var targetSplit = _.mapValues(patterns,(spec)=>{return spec.count / targetCount}); /* {role: target%}*/
         console.log("targetSplit " , JSON.stringify(targetSplit));
+        if (creep.room.memory.remoteMining && Game.rooms[creep.room.memory.remoteMining].controller.owner && !Game.rooms[creep.room.memory.remoteMining].controller.my) {
+            creep.log('!remoteMining');
+            patterns.remoteHarvester.count = _.min(patterns, (p)=>p.count);
+        }
         var creepCount = _.keys(Game.creeps).length;
         var currentSplit = _.reduce(
             _.map(Game.creeps,(creep)=>{return creep.memory.role}),
