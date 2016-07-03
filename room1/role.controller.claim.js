@@ -1,3 +1,4 @@
+var _ = require('lodash');
 var util = require('./util');
 var ClaimControllerStrategy = require('./strategy.controller.claim');
 

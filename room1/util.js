@@ -1,3 +1,4 @@
+var _ = require('lodash');
 class Util {
     constructor() {
         this.CURRENT_STRATEGY = 'strategy';

@@ -1,3 +1,4 @@
+var _ = require('lodash');
 var DECAY_CONSTANTS_OWNED = {}
 DECAY_CONSTANTS_OWNED[STRUCTURE_CONTAINER] =  {decay: function(pos) {return 5000;}, delay:function(pos) {return 500;}};
 DECAY_CONSTANTS_OWNED[STRUCTURE_RAMPART] =  {decay: function(pos) {return 300;}, delay:function(pos) {return 100;}};

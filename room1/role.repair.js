@@ -1,3 +1,4 @@
+var _ = require('lodash');
 var roleRepair = {
 	findContainerSource: function (creep) {
 		var source;

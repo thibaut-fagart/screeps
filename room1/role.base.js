@@ -1,3 +1,4 @@
+var _ = require('lodash'); 
 var State = require('./state.js');
 /**
  * @property {State[]} states

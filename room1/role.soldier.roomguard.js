@@ -1,3 +1,4 @@
+var _ = require('lodash');
 var util = require('./util');
 var RemoteAttackStrategy = require('./strategy.remote_target');
 var CloseAttackStrategy = require('./strategy.closeattack_target');

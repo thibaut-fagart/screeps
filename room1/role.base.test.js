@@ -1,4 +1,4 @@
-var _= require('lodash');
+var _ = require('lodash');
 var Role = require('./role.base');
 var State = require('./state');
 

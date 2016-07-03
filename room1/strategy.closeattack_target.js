@@ -1,3 +1,4 @@
+var _ = require('lodash');
 var BaseStrategy = require('./strategy.base');
 var util = require('./util');
 

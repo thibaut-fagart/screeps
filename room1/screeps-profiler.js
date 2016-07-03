@@ -1,3 +1,4 @@
+var _ = require('lodash');
 var RoleHarvester = require('./role.harvester');
 var RoleCarry = require('./role.carry');
 var RoleUpgrader = require('./role.upgrader');

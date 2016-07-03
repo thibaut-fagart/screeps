@@ -1,3 +1,4 @@
+var _ = require('lodash');
 var util = require('./util');
 var LoadFromContainerStrategy = require('./strategy.load_from_container');
 var HarvestEnergySourceStrategy = require('./strategy.harvest_source');

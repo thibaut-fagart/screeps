@@ -1,3 +1,4 @@
+var _ = require('lodash');
 let RemoteTargetStrategy = require('./strategy.remote_target');
 let RemoteHealStrategy = require('./strategy.remote_heal');
 // let RemoteRepairStrategy = require('./strategy.remote_repair');
