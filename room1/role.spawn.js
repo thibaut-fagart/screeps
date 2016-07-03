@@ -42,7 +42,6 @@ module.exports = {
             }
         }
         var newbody =  perfectBody.slice(0, max+1);
-        console.log('shape', newbody.length, body.length);
         return newbody;
 
     },

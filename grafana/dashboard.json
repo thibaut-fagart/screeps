@@ -212,13 +212,28 @@
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
-          "seriesOverrides": [],
+          "seriesOverrides": [
+            {
+              "alias": "/derivative.*/",
+              "yaxis": 2
+            },
+            {
+              "alias": "/.*speed/",
+              "yaxis": 2
+            }
+          ],
           "span": 12,
           "stack": false,
           "steppedLine": false,
           "targets": [
             {
-              "target": "stats.gauges.room.*.controllerProgress"
+              "target": "aliasByNode(stats.gauges.room.*.controller.progress, 3)"
+            },
+            {
+              "target": "aliasSub(aliasByNode(derivative(stats.gauges.room.*.controller.progress), 3), '(.*)', '\\1.speed')"
+            },
+            {
+              "target": "aliasByNode(stats.gauges.room.*.controller.ProgressRatio, 3, 5)"
             }
           ],
           "timeFrom": null,
@@ -556,7 +571,7 @@
             "threshold2": null,
             "threshold2Color": "rgba(234, 112, 112, 0.22)"
           },
-          "id": 7,
+          "id": 10,
           "legend": {
             "avg": false,
             "current": false,
@@ -569,7 +584,7 @@
           "lines": true,
           "linewidth": 2,
           "links": [],
-          "nullPointMode": "connected",
+          "nullPointMode": "null",
           "percentage": false,
           "pointradius": 5,
           "points": false,
@@ -586,44 +601,119 @@
               "yaxis": 2
             }
           ],
-          "span": 12,
+          "span": 6,
           "stack": true,
           "steppedLine": false,
           "targets": [
             {
-              "target": "aliasByNode(stats.gauges.room.*.repairs.containerK, 3, 5)"
+              "target": "aliasByNode(stats.gauges.room.*.repairs2.containerK, 3, 5)"
             },
             {
-              "target": "aliasByNode(stats.gauges.room.*.repairs.controllerK, 3, 5)"
+              "target": "aliasByNode(stats.gauges.room.*.repairs2.controllerK, 3, 5)"
             },
             {
-              "target": "aliasByNode(stats.gauges.room.*.repairs.extensionK, 3, 5)"
+              "target": "aliasByNode(stats.gauges.room.*.repairs2.extensionK, 3, 5)"
             },
             {
-              "target": "aliasByNode(stats.gauges.room.*.repairs.linkK, 3, 5)"
+              "target": "aliasByNode(stats.gauges.room.*.repairs2.linkK, 3, 5)"
             },
             {
-              "target": "aliasByNode(stats.gauges.room.*.repairs.roadK, 3, 5)"
+              "target": "aliasByNode(stats.gauges.room.*.repairs2.roadK, 3, 5)"
             },
             {
-              "target": "aliasByNode(stats.gauges.room.*.repairs.spawnK, 3, 5)"
+              "target": "aliasByNode(stats.gauges.room.*.repairs2.spawnK, 3, 5)"
             },
             {
-              "target": "aliasByNode(stats.gauges.room.*.repairs.storageK, 3, 5)"
+              "target": "aliasByNode(stats.gauges.room.*.repairs2.storageK, 3, 5)"
             },
             {
-              "target": "aliasByNode(stats.gauges.room.*.repairs.towerK, 3, 5)"
+              "target": "aliasByNode(stats.gauges.room.*.repairs2.towerK, 3, 5)"
             },
             {
-              "target": "aliasByNode(stats.gauges.room.*.repairs.constructedWallK, 3, 5)"
+              "target": "aliasByNode(stats.gauges.room.*.repairs2.constructedWallK, 3, 5)"
             },
             {
-              "target": "aliasByNode(stats.gauges.room.*.repairs.rampartK, 3, 5)"
+              "target": "aliasByNode(stats.gauges.room.*.repairs2.rampartK, 3, 5)"
             }
           ],
           "timeFrom": null,
           "timeShift": null,
           "title": "Repairs needed",
+          "tooltip": {
+            "shared": true,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "x-axis": true,
+          "y-axis": true,
+          "y_formats": [
+            "short",
+            "short"
+          ]
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "datasource": null,
+          "editable": true,
+          "error": false,
+          "fill": 1,
+          "grid": {
+            "leftLogBase": 1,
+            "leftMax": null,
+            "leftMin": null,
+            "rightLogBase": 1,
+            "rightMax": null,
+            "rightMin": null,
+            "threshold1": null,
+            "threshold1Color": "rgba(216, 200, 27, 0.27)",
+            "threshold2": null,
+            "threshold2Color": "rgba(234, 112, 112, 0.22)"
+          },
+          "id": 12,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 2,
+          "links": [],
+          "nullPointMode": "null",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [
+            {
+              "alias": "/.*rampartK/",
+              "stack": false,
+              "yaxis": 2
+            },
+            {
+              "alias": "/.*constructedWallK/",
+              "stack": false,
+              "yaxis": 2
+            }
+          ],
+          "span": 6,
+          "stack": true,
+          "steppedLine": false,
+          "targets": [
+            {
+              "target": "derivative(aliasByNode(sumSeries(stats.gauges.room.E37S14.repairs2.*, *), 3))"
+            },
+            {
+              "target": "derivative(aliasByNode(stats.gauges.room.*.repairs2.*, 3, 5))"
+            }
+          ],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "Repairs speed",
           "tooltip": {
             "shared": true,
             "value_type": "individual"
@@ -645,65 +735,65 @@
       "height": "250px",
       "panels": [
         {
-          "title": "Structures under repair",
-          "error": false,
-          "span": 12,
-          "editable": true,
-          "type": "graph",
-          "id": 9,
+          "aliasColors": {},
+          "bars": false,
           "datasource": null,
-          "renderer": "flot",
-          "x-axis": true,
-          "y-axis": true,
-          "y_formats": [
-            "short",
-            "short"
-          ],
+          "editable": true,
+          "error": false,
+          "fill": 1,
           "grid": {
             "leftLogBase": 1,
             "leftMax": null,
-            "rightMax": null,
             "leftMin": null,
-            "rightMin": null,
             "rightLogBase": 1,
+            "rightMax": null,
+            "rightMin": null,
             "threshold1": null,
-            "threshold2": null,
             "threshold1Color": "rgba(216, 200, 27, 0.27)",
+            "threshold2": null,
             "threshold2Color": "rgba(234, 112, 112, 0.22)"
           },
-          "lines": true,
-          "fill": 1,
-          "linewidth": 2,
-          "points": false,
-          "pointradius": 5,
-          "bars": false,
-          "stack": false,
-          "percentage": false,
+          "id": 9,
           "legend": {
-            "show": true,
-            "values": false,
-            "min": false,
-            "max": false,
+            "avg": false,
             "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
             "total": false,
-            "avg": false
+            "values": false
           },
+          "lines": true,
+          "linewidth": 2,
+          "links": [],
           "nullPointMode": "connected",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "span": 12,
+          "stack": false,
           "steppedLine": false,
-          "tooltip": {
-            "value_type": "cumulative",
-            "shared": true
-          },
-          "timeFrom": null,
-          "timeShift": null,
           "targets": [
             {
               "target": "aliasByNode(stats.gauges.room.*.reservedCount, 3)"
             }
           ],
-          "aliasColors": {},
-          "seriesOverrides": [],
-          "links": []
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "Structures under repair",
+          "tooltip": {
+            "shared": true,
+            "value_type": "cumulative"
+          },
+          "type": "graph",
+          "x-axis": true,
+          "y-axis": true,
+          "y_formats": [
+            "short",
+            "short"
+          ]
         }
       ],
       "title": "New row"
@@ -754,6 +844,6 @@
   },
   "refresh": "1m",
   "schemaVersion": 6,
-  "version": 20,
+  "version": 23,
   "links": []
 }

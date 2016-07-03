@@ -36,7 +36,6 @@ Structure.prototype.memory = function() {
 // RoomObject.prototype.creeps = [];
 module.exports.loop = function () {
     profiler.wrap(function () {
-        Memory.stats = {};
         let messages = [];
         let oldSeenTick = Game.time || (Memory.counters && Memory.counters.seenTick);
         Memory.counters = {tick:Game.time, seenTick: oldSeenTick+1};
@@ -105,17 +104,20 @@ module.exports.loop = function () {
                     if (!Game.getObjectById(id)) { delete room.memory.reserved[id];}
                 }
             }
+            if (!(Game.time%10)) {
+                Memory.stats={};
+                let repairsNeededByStrcutureArray = _.map(_.pairs(_.groupBy(room.find(FIND_STRUCTURES), (s)=>s.structureType)), (array)=>[array[0], _.sum(array[1], (s)=>s.hitsMax - s.hits)])
+                repairsNeededByStrcutureArray.forEach((pair)=>{Memory.stats["room." + room.name + ".repairs2." + pair[0] + "K"] = pair[1];});
+            }
             Memory.stats["room." + room.name + ".reservedCount"] = _.size(room.memory.reserved);
             Memory.stats["room." + room.name + ".energyAvailable"] = room.energyAvailable;
             Memory.stats["room." + room.name + ".energyCapacityAvailable"] = room.energyCapacityAvailable;
             Memory.stats["room." + room.name + ".energyInSources"] = _.sum(_.map(room.find(FIND_SOURCES_ACTIVE), (s)=> s.energy));
             Memory.stats["room." + room.name + ".energyInStructures"] = _.sum(_.map(room.find(FIND_MY_STRUCTURES), (s)=> s.store?s.store.energy :0));
             Memory.stats["room." + room.name + ".energyDropped"] = _.sum(_.map(room.find(FIND_DROPPED_RESOURCES , {filter: (r) => r.resourceType == RESOURCE_ENERGY}),(s)=> s.amount));
-            let repairsNeededByStrcutureArray = _.map(_.pairs(_.groupBy(Game.spawns.Spawn1.room.find(FIND_STRUCTURES), (s)=>s.structureType)), (array)=>[array[0], _.sum(array[1], (s)=>s.hitsMax - s.hits)])
-            repairsNeededByStrcutureArray.forEach((pair)=>Memory.stats["room." + room.name + ".repairs."+pair[0]+"K"] =pair[1]);
 
             let strangers = room.find(FIND_HOSTILE_CREEPS);
-            let hostiles = _.filter(strangers,(c)=>{_.sum(c.body, (p)=>p == ATTACK|| p==RANGED_ATTACK)})
+            let hostiles = _.filter(strangers,(c)=>_.sum(c.body, (p)=>p == ATTACK|| p==RANGED_ATTACK)>0);
 //            {"pos":{"x":11,"y":28,"roomName":"E37S14"},"body":[{"type":"work","hits":100},{"type":"carry","hits":100},{"type":"move","hits":100},{"type":"carry","hits":100},{"type":"work","hits":100},{"type":"move","hits":100},{"type":"move","hits":100},{"type":"work","hits":100},{"type":"carry","hits":100},{"type":"move","hits":100},{"type":"carry","hits":100},{"type":"work","hits":100},{"type":"move","hits":100},{"type":"move","hits":100}],"owner":{"username":"Finndibaen"}"hits":1400,"hitsMax":1400}
 
             if (hostiles.length>0) {
@@ -128,9 +130,11 @@ module.exports.loop = function () {
             Memory.stats["room." + room.name + ".strangers"] = _.size(strangers);
             Memory.stats["room." + room.name + ".hostiles"] = _.size(hostiles);
             if (room.controller && room.controller.my) {
-                Memory.stats["room." + room.name + ".controllerProgress"] = room.controller.progress;
+                Memory.stats["room." + room.name + ".controller.progress"] = room.controller.progress;
+                Memory.stats["room." + room.name + ".controller.ProgressRatio"] = 100* room.controller.progress/room.controller.progressTotal;
             }
             let creepCount = _.countBy(room.find(FIND_MY_CREEPS), (c)=>c.memory.role);
+
             _.pairs(creepCount).forEach((kv)=>{ Memory.stats["room." + room.name + ".creeps."+kv[0]] = kv[1];});
         }
         Memory.stats["cpu"] = Game.cpu.getUsed();
