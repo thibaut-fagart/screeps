@@ -1,22 +1,23 @@
-var roleHarvester = require('./role.harvester');
-global.RoleCarry = require('./role.carry');
-var roleCarry = new RoleCarry();
-var roleUpgrader = require('./role.upgrader');
+var RoleHarvester = require('./role.harvester'), roleHarvester = new RoleHarvester();
+var RoleCarry = require('./role.carry'), roleCarry = new RoleCarry();
+var RoleRemoteCarry = require('./role.remote.carry'), roleRemoteCarry = new RoleRemoteCarry();
+var RoleUpgrader = require('./role.upgrader'), roleUpgrader = new RoleUpgrader();
 var roleSpawn = require('./role.spawn');
-var RoleTower = require('./role.tower');
-global.RoleBuilder = require('./role.builder');
-var roleBuilder = new RoleBuilder();
-var roleTower = new RoleTower(); 
+var RoleTower = require('./role.tower'), roleTower = new RoleTower(); 
+var RoleBuilder = require('./role.builder'), roleBuilder = new RoleBuilder();
 var roleRepair = require('./role.repair');
-var roleRepair2 = require('./role.repair2');
+var RoleRepair2 = require('./role.repair2'), roleRepair2 = new RoleRepair2();
+var RoleClaim = require('./role.controller.claim'), roleClaim=new RoleClaim();
 var RoleRemoteHarvester = require('./role.remote_harvester'), roleRemoteHarvester = new RoleRemoteHarvester();
-var RoleGuard = require('./role.soldier.roomguard'); roleRemoteGuard = new RoleGuard();
-roleCloseGuard = new RoleGuard();
+var RoleGuard = require('./role.soldier.roomguard'); roleRemoteGuard = new RoleGuard(), roleCloseGuard = new RoleGuard();
 var profiler = require('./screeps-profiler');
 
 // This line monkey patches the global prototypes.
 profiler.enable();
 Creep.prototype.log= function() {
+    console.log([this.name , this.memory.role ].concat(Array.prototype.slice.call(arguments)));
+};
+Spawn.prototype.log= function() {
     console.log([this.name , this.memory.role ].concat(Array.prototype.slice.call(arguments)));
 };
 Structure.prototype.memory = function() {
@@ -54,7 +55,10 @@ module.exports.loop = function () {
                     }
                 }
             }
-
+            delete roleRepair2.needRepairs;
+            delete roleRepair.needRepairs;
+            delete roleRepair2.needRepairAmount;
+            delete roleRepair.needRepairAmount;
             // room.prototype.sourceConsumers = {};
             var creeps = room.find(FIND_MY_CREEPS);
             // room.creeps = creeps;
@@ -63,12 +67,16 @@ module.exports.loop = function () {
                         roleHarvester.run(creep);
                     } else if (creep.memory.role == 'carry') {
                         roleCarry.run(creep);
+                    } else if (creep.memory.role == 'remoteCarry') {
+                        roleRemoteCarry.run(creep);
                     } else if (creep.memory.role == 'upgrader') {
                         roleUpgrader.run(creep);
                     } else if (creep.memory.role == 'repair') {
                         roleRepair.run(creep);
                     } else if (creep.memory.role == 'repair2') {
                         roleRepair2.run(creep);
+                    } else if (creep.memory.role == 'claimer') {
+                        roleClaim.run(creep);
                     } else if (creep.memory.role == 'builder') {
                         roleBuilder.run(creep);
                     } else if (creep.memory.role == 'remoteHarvester') {
@@ -92,11 +100,19 @@ module.exports.loop = function () {
                     console.log('' + roleRepair.needRepairs.length + ' waiting for repairs, delta ' + deltaRepair + ',total needed ' + roleRepair.needRepairAmount);
                 }
             }
+            if (!(Game.time%100)) {
+                for (let id in room.memory.reserved) {
+                    if (!Game.getObjectById(id)) { delete room.memory.reserved[id];}
+                }
+            }
+            Memory.stats["room." + room.name + ".reservedCount"] = _.size(room.memory.reserved);
             Memory.stats["room." + room.name + ".energyAvailable"] = room.energyAvailable;
             Memory.stats["room." + room.name + ".energyCapacityAvailable"] = room.energyCapacityAvailable;
             Memory.stats["room." + room.name + ".energyInSources"] = _.sum(_.map(room.find(FIND_SOURCES_ACTIVE), (s)=> s.energy));
             Memory.stats["room." + room.name + ".energyInStructures"] = _.sum(_.map(room.find(FIND_MY_STRUCTURES), (s)=> s.store?s.store.energy :0));
             Memory.stats["room." + room.name + ".energyDropped"] = _.sum(_.map(room.find(FIND_DROPPED_RESOURCES , {filter: (r) => r.resourceType == RESOURCE_ENERGY}),(s)=> s.amount));
+            let repairsNeededByStrcutureArray = _.map(_.pairs(_.groupBy(Game.spawns.Spawn1.room.find(FIND_STRUCTURES), (s)=>s.structureType)), (array)=>[array[0], _.sum(array[1], (s)=>s.hitsMax - s.hits)])
+            repairsNeededByStrcutureArray.forEach((pair)=>Memory.stats["room." + room.name + ".repairs."+pair[0]+"K"] =pair[1]);
 
             let strangers = room.find(FIND_HOSTILE_CREEPS);
             let hostiles = _.filter(strangers,(c)=>{_.sum(c.body, (p)=>p == ATTACK|| p==RANGED_ATTACK)})

@@ -1,3 +1,15 @@
+var RoleHarvester = require('./role.harvester');
+var RoleCarry = require('./role.carry');
+var RoleUpgrader = require('./role.upgrader');
+var roleSpawn = require('./role.spawn');
+var RoleTower = require('./role.tower');
+var RoleBuilder = require('./role.builder');
+var roleRepair = require('./role.repair');
+var RoleRepair2 = require('./role.repair2');
+var RoleClaim = require('./role.controller.claim');
+var RoleRemoteHarvester = require('./role.remote_harvester');
+var RoleGuard = require('./role.soldier.roomguard'); roleRemoteGuard = new RoleGuard();
+
 let usedOnStart = 0;
 let enabled = false;
 let depth = 0;
@@ -161,6 +173,16 @@ const Profiler = {
     { name: 'RoomPosition', val: RoomPosition },
     { name: 'Source', val: Source },
     { name: 'Flag', val: Flag },
+    { name: 'RoleUpgrader', val: RoleUpgrader },
+    { name: 'RoleRemoteCarry', val: RoleCarry },
+    { name: 'RoleBuilder', val: RoleBuilder },
+    { name: 'RoleHarvester', val: RoleHarvester },
+    { name: 'RoleUpgrader', val: RoleUpgrader },
+    { name: 'RoleTower', val: RoleTower },
+    { name: 'RoleRepair2', val: RoleRepair2 },
+    { name: 'RoleClaim', val: RoleClaim },
+    { name: 'RoleRemoteHarvester', val: RoleRemoteHarvester },
+    { name: 'RoleGuard', val: RoleGuard },
   ],
 
   record(functionName, time) {

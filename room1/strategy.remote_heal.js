@@ -1,4 +1,4 @@
-var BaseStrategy = require('./strategy.base'); 
+var BaseStrategy = require('./strategy.base');
 
 class RemoteHealStrategy extends BaseStrategy {
     constructor() {
@@ -8,25 +8,22 @@ class RemoteHealStrategy extends BaseStrategy {
     /** @param {Creep||StructureTower} creep
      * @return {Creep|| null}**/
     accepts(creep) {
-        if (! creep instanceof StructureTower || (creep.body && creep.getActiveBodyparts(HEAL)>0)) {
+        if (!creep instanceof StructureTower || (creep.body && creep.getActiveBodyparts(HEAL) == 0)) {
             return null;
         }
         // find my damaged creeps, heal closest if time
         // order by type (heal > *)  and distance
-        let previousTarget = this.getRemoteTarget(creep);
-        if (previousTarget) {
-            return previousTarget;
-        }
         let damaged = creep.pos.findClosestByRange(FIND_MY_CREEPS, {filter: (c) => (c.hits < c.hitsMax)});
-        if (creep instanceof StructureTower) {
-            creep.heal(damaged);
-        } else {
-            if (creep.pos.getRangeTo(damaged) > 3) {
-                creep.moveTo(damaged);
+        if (damaged) {
+            if (creep instanceof StructureTower) {
+                creep.heal(damaged);
             } else {
                 creep.heal(damaged);
-            }
+                if (creep.pos.getRangeTo(damaged) > 3) {
+                    creep.moveTo(damaged);
+                }
 
+            }
         }
         return this.setRemoteTarget(creep, damaged);
     }
@@ -44,7 +41,7 @@ class RemoteHealStrategy extends BaseStrategy {
         }
         return damaged;
     }
-    
+
     /** @param {Creep||StructureTower} creep
      * @return {Creep} damaged
      * **/

@@ -49,4 +49,4 @@ class RoleUpgrader {
 
 }
 
-module.exports = new RoleUpgrader();
+module.exports = RoleUpgrader;

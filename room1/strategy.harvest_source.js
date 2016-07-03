@@ -36,7 +36,7 @@ class HarvestEnergySourceStrategy extends BaseStrategy {
                     // creep.log('transfer', harvest);
                     if (harvest == ERR_NOT_IN_RANGE) {
                         let moveTo = creep.moveTo(source);
-                        if (source.room.controller.reservation.username != creep.owner.username) {
+                        if (source.room.controller.reservation && source.room.controller.reservation.username != creep.owner.username) {
                             // release strategy for pickup opportunity
                             return null;
                         }

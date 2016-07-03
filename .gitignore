@@ -2,3 +2,7 @@ node_modules
 .idea
 *.iml
 settings.js
+lib
+lib-cov
+build
+tasks

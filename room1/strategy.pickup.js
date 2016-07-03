@@ -101,7 +101,7 @@ class PickupStrategy extends BaseStrategy {
         let source = util.objectFromMemory(creep.memory, this.PATH, (r)=>(r.resourceType ==  this.resource) && r.amount > 0);
         if (!source) {
             let drops = creep.room.find(FIND_DROPPED_ENERGY);
-            let sortedDrops = _.sortBy(drops, (d) => d.amount - creep.pos.getRangeTo(d));
+            let sortedDrops = _.sortBy(drops, (d) => d.amount / creep.pos.getRangeTo(d));
             // creep.log('sortedDrops', sortedDrops.length);
             this.myMem(creep);
             while(sortedDrops.length && !source) {

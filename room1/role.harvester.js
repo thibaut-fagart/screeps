@@ -46,4 +46,4 @@ class RoleHarvester {
     }
 }
 
-module.exports = new RoleHarvester();
+module.exports = RoleHarvester;

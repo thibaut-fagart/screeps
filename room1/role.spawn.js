@@ -8,19 +8,23 @@
  */
 //  Game.spawns.Spawn1.createCreep([WORK, MOVE, WORK, WORK, WORK, WORK, ], undefined, {role:'harvester'})
 module.exports = {
-    maxCreeps: 15,
+    maxCreeps: 17,
     BODY_COST :{"move":50, "work":100, "carry":50, "attack":80,"ranged_attack":150,"heal":250, "claim":600, "tough":10},
     patterns: {
                 'harvester': {body: [WORK, MOVE, WORK, WORK, WORK, WORK,], count: 1, scale:false, memory: {role: 'harvester'}},
                 'carry': {body: [CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 300 */CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 600 */
-                    CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 900 */CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 1200 */], count: 2, scale:false, memory: {role: 'carry'}},
+                    CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 900 */CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 1200 */], count: 2, scale:false, memory: {role: 'carry'}} ,
+                'remoteCarry': {body: [CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 300 */CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 600 */
+                    CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 900 */CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 1200 */], count: 3, scale:false, memory: {role: 'remoteCarry'}},
                 'upgrader': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count: 2, scale:true, memory: {role: 'upgrader'}},
-                'remoteHarvester': {body: [CARRY, MOVE, WORK, MOVE, CARRY, MOVE, WORK, MOVE, CARRY, MOVE,WORK, MOVE, CARRY,MOVE, WORK, MOVE,MOVE,CARRY], scale:true, count: 3, memory: {role: 'remoteHarvester'}},
+                // 'remoteHarvester': {body: [CARRY, MOVE, WORK, MOVE, CARRY, MOVE, WORK, MOVE, CARRY, MOVE,WORK, MOVE, CARRY,MOVE, WORK, MOVE,MOVE,CARRY], scale:true, count: 2, memory: {role: 'remoteHarvester'}},
+                'remoteHarvester': {body: [MOVE, MOVE, WORK, WORK, WORK, WORK, WORK], scale:true, count: 1, memory: {role: 'remoteHarvester'}},
                 'builder': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count: 2, scale:true, memory: {role: 'builder'}},
+                'claimer': {body: [MOVE, MOVE, CLAIM, CLAIM, ], count: 0, scale:true, memory: {role: 'claimer'}},
                 // 'repair': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count: 2, scale:true, memory: {role: 'repair'}},
-                'repair2': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count: 5, scale:true, memory: {role: 'repair2'}},
-                'roleRemoteGuard': {body: [TOUGH,TOUGH, TOUGH,TOUGH,MOVE, MOVE,MOVE,MOVE, RANGED_ATTACK, RANGED_ATTACK,MOVE, MOVE, MOVE, HEAL], count: 1, scale:true, memory: {role: 'roleRemoteGuard'}},
-                'roleCloseGuard': {body: [TOUGH,TOUGH, TOUGH,TOUGH,MOVE, MOVE,MOVE,MOVE, ATTACK, ATTACK,MOVE, MOVE, MOVE, HEAL], count: 1, scale:true, memory: {role: 'roleCloseGuard'}},
+                'repair2': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count:3, scale:true, memory: {role: 'repair2'}},
+                // 'roleRemoteGuard': {body: [TOUGH,TOUGH, TOUGH,TOUGH,MOVE, MOVE,MOVE,MOVE, RANGED_ATTACK, RANGED_ATTACK,MOVE, MOVE, MOVE, HEAL], count: 0, scale:true, memory: {role: 'roleRemoteGuard'}},
+                'roleCloseGuard': {body: [TOUGH,TOUGH, TOUGH,TOUGH,MOVE, MOVE,MOVE,MOVE, ATTACK, ATTACK,ATTACK,ATTACK,MOVE, MOVE, MOVE, HEAL,HEAL,MOVE,MOVE], count: 2, scale:true, memory: {role: 'roleCloseGuard'}},
                 // 'attack': {body: [WORK, CARRY, MOVE, ATTACK, CARRY, MOVE,ATTACK , MOVE,WORK, CARRY, MOVE, ATTACK, CARRY, ATTACK, MOVE,MOVE], count: 1, memory: {role: 'attack'}},
     },
     //Game.spawns.Spawn1.createCreep([CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 300 */CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, CARRY, CARRY, MOVE], undefined, {role:'carry'})
@@ -30,14 +34,16 @@ module.exports = {
         var maxEnergy = spawn.room.energyAvailable;
         var body  = [];
         var cost = 0;
+        let max = 0;
         for (var i = 0; i < perfectBody.length && cost < maxEnergy; i++) {
             var part = perfectBody[i];
             if ((cost +=this.BODY_COST[part]) <= maxEnergy) {
-                body.push(part);
+                max = i;
             }
         }
-        
-        return body;
+        var newbody =  perfectBody.slice(0, max+1);
+        console.log('shape', newbody.length, body.length);
+        return newbody;
 
     },
     isFull: function (spawn) {
@@ -84,22 +90,31 @@ module.exports = {
             return patterns.carry;
         }
 
+        var creepCount = _.keys(Game.creeps).length;
+
+        var currentSplit = _.countBy(Game.creeps,(c) => c.memory.role);
+        if (creep.room.memory.remoteMining && Game.rooms[creep.room.memory.remoteMining].controller.owner && !Game.rooms[creep.room.memory.remoteMining].controller.my) {
+            creep.log('!remoteMining');
+            patterns.remoteHarvester.count = currentSplit['remoteHarvester'] == 0 ? 1 : 0;
+        }
+        if (!currentSplit['claimer'] && creep.room.memory.claim) {
+            console.log('adjusting for claims');
+            let remoteRoom = Game.rooms[creep.room.memory.claim];
+            if (remoteRoom && !remoteRoom.controller.my) {
+                patterns['claimer'].count = 1;
+            }
+        } else {
+            console.log('claimers', !currentSplit['claimer'], 'claim', creep.room.memory.claim);
+        }
+        currentSplit = _.mapValues(currentSplit, (v)=>{return v/creepCount;});
+        console.log("currentSplit " , JSON.stringify(currentSplit));
+        var required = {};
+
+
         var targetCount = _.reduce(patterns, (s, spec) => {return s + spec.count;}, 0);
 
         var targetSplit = _.mapValues(patterns,(spec)=>{return spec.count / targetCount}); /* {role: target%}*/
         console.log("targetSplit " , JSON.stringify(targetSplit));
-        if (creep.room.memory.remoteMining && Game.rooms[creep.room.memory.remoteMining].controller.owner && !Game.rooms[creep.room.memory.remoteMining].controller.my) {
-            creep.log('!remoteMining');
-            patterns.remoteHarvester.count = _.min(patterns, (p)=>p.count);
-        }
-        var creepCount = _.keys(Game.creeps).length;
-        var currentSplit = _.reduce(
-            _.map(Game.creeps,(creep)=>{return creep.memory.role}),
-            (m, role)=>{ m[role] =(undefined === m[role])?1:m[role] +1; return m;},
-            {});
-        currentSplit = _.mapValues(currentSplit, (v)=>{return v/creepCount;});
-        console.log("currentSplit " , JSON.stringify(currentSplit));
-        var required = {};
         /* required : {role : need filled%}*/
          _.keys(targetSplit).forEach(function(role) {if (role) required[role] = (currentSplit[role]?currentSplit[role]:0)/targetSplit[role]});
         // console.log("building " , JSON.stringify(required));

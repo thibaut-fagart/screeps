@@ -32,23 +32,32 @@ class Util {
      * @returns {boolean} true if object is not already reserved
      */
     reserve(creep, object) {
-        let reserved = creep.room.memory.reserved || {};
-        let old = reserved[object.id];
-        if (Game.getObjectById(old)) {
-            creep.room.memory.reserved = reserved;
+        if (object && !this.isReserved(creep,object)) {
+            creep.room.memory.reserved[object.id] = creep.id;
+            // creep.log('reserved',object.id)
             return true;
         } else {
             return false;
         }
     }
-    isReserved(object) {
+    isReserved(creep, object) {
+        if (!object) return false;
         let reserved = creep.room.memory.reserved || {};
+        creep.room.memory.reserved = reserved;
         let old = reserved[object.id];
-        if (!old && Game.getObjectById(old)) {
+        if (old && !Game.getObjectById(old)) {
             delete reserved[object.id];
-            old = undefined;
+            old = null;
         }
-        return !old;
+        return old;
+    }
+
+    release (creep, object) {
+        // creep.log('releasing ?', object);
+        if (!object) return;
+        let reserved = creep.room.memory.reserved || {};
+        delete  reserved[(typeof object === 'string'  )? object: object.id];
+        // creep.log('released',object.id)
     }
     /**
      *

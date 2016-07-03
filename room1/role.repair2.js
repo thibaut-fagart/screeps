@@ -17,7 +17,7 @@ class RoleRepair2 {
     run(creep) {
 		if (creep.carry.energy == 0) {
 			creep.memory.action = this.ACTION_FILL;
-			delete creep.memory.targetid;
+			this.clearTarget(creep);
 			delete creep.memory.source;
 		} else if (creep.carry.energy == creep.carryCapacity) {
 			delete creep.memory.action;
@@ -50,23 +50,26 @@ class RoleRepair2 {
 					creep.moveTo(target);
 				} else if (ret !== OK) {
 					creep.log('unexpected repair value',ret);
-					delete creep.memory.target;
+					this.clearTarget(creep);
 				}
 				if (target.hits == target.hitsMax) {
-					delete creep.memory.targetid;
+					this.clearTarget(creep);
 				}
 			}
 		}
 		return false;
     }
-/// LEGACY BELOW
 
-	repair (target) {
-		if (!this.underRepair) {
-			this.underRepair = [];
-		}
-		this.underRepair.push(target);
+	/**
+	 *
+	 * @param {Creep} creep
+     */
+	clearTarget(creep) {
+		util.release(creep, creep.memory.targetid);
+		delete creep.memory.targetid;
 	}
+
+/// LEGACY BELOW
 
 	findDamagedStructures (creep) {
 		if (!this.myTargets) {
@@ -93,40 +96,32 @@ class RoleRepair2 {
 		return this.myWalls;
 	}
 	findTarget(creep) {
-		var target = util.objectFromMemory(creep.memory, 'targetid',(s)=> s.hits < s.hitsMax);
+		var target = util.objectFromMemory(creep.memory, 'targetid');
+		if (target && target.hits == target.hitsMax) {
+			this.clearTarget(creep);
+			target = null;
+		}
 		if (! target) {
 			// console.log("finding target for  ", creep.name);
 			var myDamagedStructures = this.findDamagedStructures(creep);
 			var myDamagedWalls = this.findDamagedWalls(creep);
-			if (!this.needRepairs) {
-				this.needRepairs = _.sortBy(myDamagedStructures.concat(myDamagedWalls), function (s) {
-					return s.hits / s.hitsMax;
-				});
-				this.needRepairAmount = _.reduce(this.needRepairs, function (total, s) {
-					return total + (s.hitsMax - s.hits)
-				}, 0);
-			}
 			// first repair structures in bad shape, then walls, try getting one for each creep
 			if (myDamagedStructures.length && (myDamagedStructures[0].hits / myDamagedStructures[0].hitsMax) < 0.5) {
 				let damagedContainers = _.filter(myDamagedStructures, (s)=>s.structureType == STRUCTURE_CONTAINER);
-				let mostDamagedContainer = _.min(damagedContainers, (s) => s.hits/s.hitsMax);
-				if (mostDamagedContainer.hits < 10000) {
-					target = mostDamagedContainer;
+				let sortedContainers = _.sortBy(damagedContainers, (s) => s.hits / s.hitsMax);
+				let mostDamagedContainer2 = _.find(sortedContainers, (s) => !util.isReserved(creep,s));
+				if (mostDamagedContainer2.hits < 10000) {
+					target = mostDamagedContainer2;
 				} else {
-					target = _.min(myDamagedStructures, (s) => s.hits / s.hitsMax);
-                    this.repair(target);
-                }
+					target = _.find(_.sortBy(myDamagedStructures, (s) => s.hits / s.hitsMax), (s) => !util.isReserved(creep, s));
+				}
 			} else if (myDamagedWalls.length) {
-				target = _.min(myDamagedWalls, (s) => s.hits/s.hitsMax);
-				this.repair(target);
+				target =  _.find(_.sortBy(myDamagedWalls, (s) => s.hits / s.hitsMax), (s) => !util.isReserved(creep, s));
 			} else {
-				target = _.sample(this.needRepairs);
-			if (target) {
-				this.repair(target);
+				target = creep.pos.findClosestByRange(myDamagedStructures);
 			}
-			}
-			creep.log("repairing", target.structureType, JSON.stringify(target.pos), ''+target.hits+'/'+target.hitsMax, 'damagedStructures', JSON.stringify(_.countBy(myDamagedStructures,(s)=>s.structureType)));
-			creep.memory.targetid = target.id;
+			//creep.log("repairing", target.structureType, JSON.stringify(target.pos), '' + target.hits + '/' + target.hitsMax, 'damagedStructures', JSON.stringify(_.countBy(myDamagedStructures, (s)=>s.structureType)));
+			if (target &&  util.reserve(creep, target)) creep.memory.targetid = target.id;
 			return target;
 		} else {
 			return target;
@@ -135,4 +130,4 @@ class RoleRepair2 {
 
 }
 // module.exports = roleRepair2;
-module.exports = new RoleRepair2();
+module.exports = RoleRepair2;

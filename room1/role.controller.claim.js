@@ -1,17 +1,13 @@
 var util = require('./util');
-var HarvestEnergySourceStrategy = require('./strategy.harvest_source');
-var HarvestEnergySourceToContainerStrategy = require('./strategy.harvest_source_to_container');
-var PickupStrategy = require('./strategy.pickup');
-var DropToEnergyStorage = require('./strategy.drop_to_energyStorage');
-var DropToContainerStrategy = require('./strategy.drop_to_container');
+var ClaimControllerStrategy = require('./strategy.controller.claim');
 
-class RoleRemoteHarvester {
+class RoleReserveController {
     constructor() {
-        this.loadStrategies = [/*new HarvestEnergySourceToContainerStrategy(),*/ new PickupStrategy(), new HarvestEnergySourceStrategy()];
-        this.unloadStrategies = [new DropToContainerStrategy(RESOURCE_ENERGY), new DropToEnergyStorage()];
+        this.loadStrategies = [new ClaimControllerStrategy()];
     }
+
     /*
-    requires : remoteRoom=creep.room.remoteMining, homeroom = creep.room.name, homeroom, remoteSource
+     requires : remoteRoom=creep.room.remoteMining, homeroom = creep.room.name, homeroom, remoteSource
      */
     resign(creep) {
         creep.log("resigning");
@@ -19,48 +15,48 @@ class RoleRemoteHarvester {
         delete creep.memory.action; //{go_remote_room, load, go_home, unload}
         delete creep.memory.remoteRoom;
         delete creep.memory.homeRoom;
-        delete creep.memory.remoteSource;
     }
-    init (creep) {
+
+    init(creep) {
         creep.memory.action = 'go_remote_room';
         creep.memory.homeroom = creep.room.name;
-        creep.memory.remoteMining = creep.room.memory.remoteMining;
+        creep.memory.remoteRoom = creep.room.memory.remoteMining;
         if (!creep.memory.remoteRoom && creep.room.memory.remoteMining) {
             creep.memory.remoteRoom = creep.room.memory.remoteMining;
         }
 
     }
+
     findHomeExit(creep) {
         return util.findExit(creep, creep.room.memory.remoteMining, 'homeExit');
     }
+
     findRemoteExit(creep) {
         return util.findExit(creep, creep.memory.homeroom, 'remoteExit');
     }
 
     /** @param {Creep} creep **/
-    run (creep) {
+    run(creep) {
         if (!creep.memory.homeroom) {
             creep.memory.homeroom = creep.room.name;
-        }
-        if (creep.memory.remotesource) {
-            creep.memory.source = creep.memory.remotesource;
-            delete creep.memory.remotesource;
         }
         if (!creep.memory.action) {
             this.init(creep)
         }
-        if (creep.memory.action == 'go_remote_room' && creep.room.name == creep.memory.remoteRoom) {
+        let roomAlreadyClaimed = Game.rooms[creep.memory.remoteRoom] && Game.rooms[creep.memory.remoteRoom].controller
+            && Game.rooms[creep.memory.remoteRoom].controller.owner.username == creep.owner.username;
+        // creep.log('claimed ok ? ', roomAlreadyClaimed, JSON.stringify(Game.rooms[creep.memory.remoteRoom].controller.owner));
+        if (creep.memory.action == 'go_remote_room' && creep.room.name != creep.memory.homeroom
+            && !(roomAlreadyClaimed)) {
             creep.memory.action = 'load';
             // creep.log('reached remote room',creep.memory.action)
-        } else if (creep.memory.action == 'load' && creep.carry.energy == creep.carryCapacity && creep.carryCapacity>0) {
+        } else if (creep.memory.action == 'load' && creep.room.name != creep.memory.homeroom && roomAlreadyClaimed) {
             creep.memory.action = 'go_home_room';
+            delete creep.memory.target;
             // creep.log('full', creep.memory.action);
-        } else if (creep.memory.action == 'go_home_room' && creep.room.name == creep.memory.homeroom) {
-            creep.memory.action = 'unload';
-            // creep.log('reached home room', creep.memory.action);
-        } else if (creep.memory.action == 'unload' && creep.room.name == creep.memory.homeroom && creep.carry.energy == 0) {
+        } else if (creep.memory.action == 'go_home_room' && creep.room.name == creep.memory.homeroom && !roomAlreadyClaimed) {
             creep.memory.action = 'go_remote_room';
-            // creep.log('empty',creep.memory.action);
+            delete creep.memory.target;
         } else {
             // creep.log(JSON.stringify(creep.memory));
         }
@@ -92,30 +88,32 @@ class RoleRemoteHarvester {
                 return;
             }
         }
-        if (creep.memory.action == 'go_home_room' && creep.room.name != creep.memory.homeroom) {
-            var exit = this.findRemoteExit(creep);
-            if (exit) {
-                creep.moveTo(exit.x, exit.y,{reusePath: 50});
-            } else {
-                creep.log("no exit ?", creep.pos);
-            }
+        if (creep.memory.action == 'go_home_room') {
+            if (creep.room.name != creep.memory.homeroom) {
+                var exit = this.findRemoteExit(creep);
+                if (exit) {
+                    creep.moveTo(exit.x, exit.y, {reusePath: 50});
+                } else {
+                    creep.log("no exit ?", creep.pos);
+                }
 
-            // console.log("moving to remoteExit ", );
-        }
-        if (creep.memory.action == 'unload' && creep.room.name == creep.memory.homeroom) {
-            let strategy = util.getAndExecuteCurrentStrategy(creep, this.unloadStrategies);
-            if (!strategy) {
-                strategy = _.find(this.unloadStrategies, (strat)=>!(null == strat.accepts(creep)));
+                // console.log("moving to remoteExit ", );
+            } else if (roomAlreadyClaimed) {
+
+                let spawn = util.objectFromMemory(creep.memory, 'target');
+                if (!spawn) {
+                    spawn = creep.pos.findClosestByRange(FIND_MY_SPAWNS);
+                    creep.memory.target = spawn.id;
+                }
+
+
+                if (creep.pos.getRangeTo(spawn) < 5) {
+                    creep.moveTo(spawn);
+                }
             }
-            if (strategy) {
-                util.setCurrentStrategy(creep, strategy);
-            } else {
-                creep.log('no unloadStrategy');
-                return;
-            }
         }
+
     }
-
 }
 
-module.exports = RoleRemoteHarvester;
+    module.exports = RoleReserveController;

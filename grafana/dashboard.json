@@ -137,6 +137,7 @@
           },
           "lines": true,
           "linewidth": 2,
+          "links": [],
           "nullPointMode": "connected",
           "percentage": false,
           "pointradius": 5,
@@ -164,8 +165,7 @@
           "y_formats": [
             "short",
             "short"
-          ],
-          "links": []
+          ]
         }
       ],
       "title": "New row"
@@ -206,6 +206,7 @@
           },
           "lines": true,
           "linewidth": 2,
+          "links": [],
           "nullPointMode": "connected",
           "percentage": false,
           "pointradius": 5,
@@ -233,8 +234,7 @@
           "y_formats": [
             "short",
             "short"
-          ],
-          "links": []
+          ]
         }
       ],
       "title": "New row"
@@ -324,6 +324,7 @@
           "aliasColors": {},
           "bars": false,
           "datasource": null,
+          "decimals": 0,
           "editable": true,
           "error": false,
           "fill": 1,
@@ -350,30 +351,105 @@
             "values": false
           },
           "lines": true,
+          "linewidth": 1,
+          "links": [],
+          "nullPointMode": "connected",
+          "percentage": false,
+          "pointradius": 5,
+          "points": true,
+          "renderer": "png",
+          "seriesOverrides": [],
+          "span": 4,
+          "stack": true,
+          "steppedLine": false,
+          "targets": [
+            {
+              "hide": false,
+              "target": "aliasByNode(stats.gauges.room.E37S13.creeps.*, 3,5)",
+              "textEditor": true
+            },
+            {
+              "hide": false,
+              "target": "aliasByNode(stats.gauges.room.E37S13.hostiles, 3,4)",
+              "textEditor": true
+            },
+            {
+              "hide": false,
+              "target": "aliasByNode(stats.gauges.room.E37S13.strangers, 3, 4)",
+              "textEditor": false
+            }
+          ],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "E37S13 (RemoteMining)",
+          "tooltip": {
+            "shared": true,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "x-axis": true,
+          "y-axis": true,
+          "y_formats": [
+            "short",
+            "short"
+          ]
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "datasource": null,
+          "decimals": 0,
+          "editable": true,
+          "error": false,
+          "fill": 1,
+          "grid": {
+            "leftLogBase": 1,
+            "leftMax": null,
+            "leftMin": null,
+            "rightLogBase": 1,
+            "rightMax": null,
+            "rightMin": null,
+            "threshold1": null,
+            "threshold1Color": "rgba(216, 200, 27, 0.27)",
+            "threshold2": null,
+            "threshold2Color": "rgba(234, 112, 112, 0.22)"
+          },
+          "id": 8,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
           "linewidth": 2,
+          "links": [],
           "nullPointMode": "connected",
           "percentage": false,
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
           "seriesOverrides": [],
-          "span": 6,
-          "stack": false,
+          "span": 4,
+          "stack": true,
           "steppedLine": false,
           "targets": [
             {
-              "target": "aliasByNode(stats.gauges.room.E37S13.creeps.*, 3,5)",
-              "hide": false,
+              "hide": true,
+              "target": "aliasByNode(stats.gauges.room.E37S14.creeps.*, 3, 5)",
               "textEditor": true
             },
             {
-              "target": "aliasByNode(stats.gauges.room.E37S13.hostiles, 3,4)",
               "hide": false,
+              "target": "aliasByNode(stats.gauges.room.*.hostiles, 3, 4)",
               "textEditor": true
             },
             {
+              "hide": false,
               "target": "aliasByNode(stats.gauges.room.E37S13.strangers, 3, 4)",
-              "hide": false,
               "textEditor": false
             }
           ],
@@ -390,9 +466,7 @@
           "y_formats": [
             "short",
             "short"
-          ],
-          "decimals": 0,
-          "links": []
+          ]
         },
         {
           "aliasColors": {},
@@ -425,13 +499,14 @@
           },
           "lines": true,
           "linewidth": 2,
+          "links": [],
           "nullPointMode": "connected",
           "percentage": false,
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
           "seriesOverrides": [],
-          "span": 6,
+          "span": 4,
           "stack": false,
           "steppedLine": false,
           "targets": [
@@ -452,7 +527,182 @@
           "y_formats": [
             "short",
             "short"
+          ]
+        }
+      ],
+      "title": "New row"
+    },
+    {
+      "collapse": false,
+      "editable": true,
+      "height": "250px",
+      "panels": [
+        {
+          "aliasColors": {},
+          "bars": false,
+          "datasource": null,
+          "editable": true,
+          "error": false,
+          "fill": 1,
+          "grid": {
+            "leftLogBase": 1,
+            "leftMax": null,
+            "leftMin": null,
+            "rightLogBase": 1,
+            "rightMax": null,
+            "rightMin": null,
+            "threshold1": null,
+            "threshold1Color": "rgba(216, 200, 27, 0.27)",
+            "threshold2": null,
+            "threshold2Color": "rgba(234, 112, 112, 0.22)"
+          },
+          "id": 7,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 2,
+          "links": [],
+          "nullPointMode": "connected",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [
+            {
+              "alias": "/.*rampartK/",
+              "stack": false,
+              "yaxis": 2
+            },
+            {
+              "alias": "/.*constructedWallK/",
+              "stack": false,
+              "yaxis": 2
+            }
           ],
+          "span": 12,
+          "stack": true,
+          "steppedLine": false,
+          "targets": [
+            {
+              "target": "aliasByNode(stats.gauges.room.*.repairs.containerK, 3, 5)"
+            },
+            {
+              "target": "aliasByNode(stats.gauges.room.*.repairs.controllerK, 3, 5)"
+            },
+            {
+              "target": "aliasByNode(stats.gauges.room.*.repairs.extensionK, 3, 5)"
+            },
+            {
+              "target": "aliasByNode(stats.gauges.room.*.repairs.linkK, 3, 5)"
+            },
+            {
+              "target": "aliasByNode(stats.gauges.room.*.repairs.roadK, 3, 5)"
+            },
+            {
+              "target": "aliasByNode(stats.gauges.room.*.repairs.spawnK, 3, 5)"
+            },
+            {
+              "target": "aliasByNode(stats.gauges.room.*.repairs.storageK, 3, 5)"
+            },
+            {
+              "target": "aliasByNode(stats.gauges.room.*.repairs.towerK, 3, 5)"
+            },
+            {
+              "target": "aliasByNode(stats.gauges.room.*.repairs.constructedWallK, 3, 5)"
+            },
+            {
+              "target": "aliasByNode(stats.gauges.room.*.repairs.rampartK, 3, 5)"
+            }
+          ],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "Repairs needed",
+          "tooltip": {
+            "shared": true,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "x-axis": true,
+          "y-axis": true,
+          "y_formats": [
+            "short",
+            "short"
+          ]
+        }
+      ],
+      "title": "New row"
+    },
+    {
+      "collapse": false,
+      "editable": true,
+      "height": "250px",
+      "panels": [
+        {
+          "title": "Structures under repair",
+          "error": false,
+          "span": 12,
+          "editable": true,
+          "type": "graph",
+          "id": 9,
+          "datasource": null,
+          "renderer": "flot",
+          "x-axis": true,
+          "y-axis": true,
+          "y_formats": [
+            "short",
+            "short"
+          ],
+          "grid": {
+            "leftLogBase": 1,
+            "leftMax": null,
+            "rightMax": null,
+            "leftMin": null,
+            "rightMin": null,
+            "rightLogBase": 1,
+            "threshold1": null,
+            "threshold2": null,
+            "threshold1Color": "rgba(216, 200, 27, 0.27)",
+            "threshold2Color": "rgba(234, 112, 112, 0.22)"
+          },
+          "lines": true,
+          "fill": 1,
+          "linewidth": 2,
+          "points": false,
+          "pointradius": 5,
+          "bars": false,
+          "stack": false,
+          "percentage": false,
+          "legend": {
+            "show": true,
+            "values": false,
+            "min": false,
+            "max": false,
+            "current": false,
+            "total": false,
+            "avg": false
+          },
+          "nullPointMode": "connected",
+          "steppedLine": false,
+          "tooltip": {
+            "value_type": "cumulative",
+            "shared": true
+          },
+          "timeFrom": null,
+          "timeShift": null,
+          "targets": [
+            {
+              "target": "aliasByNode(stats.gauges.room.*.reservedCount, 3)"
+            }
+          ],
+          "aliasColors": {},
+          "seriesOverrides": [],
           "links": []
         }
       ],
@@ -504,6 +754,6 @@
   },
   "refresh": "1m",
   "schemaVersion": 6,
-  "version": 12,
+  "version": 20,
   "links": []
 }
