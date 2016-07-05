@@ -37,6 +37,20 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-screeps');
 
     grunt.initConfig({
+        blanket: {
+            coverage1: {
+                src: ['room1'],
+                dest: 'lib-cov/scripts/'
+            },
+            coverage2: {
+                src: ['lib/codegen'],
+                dest: 'lib-cov/lib/codegen'
+            },
+            coverage3: {
+                src: ['extensions'],
+                dest: 'lib-cov/extensions'
+            }
+        },
         clean: {
             deploy: ['build'],
             test: ['coverage', 'lib-cov'],
@@ -75,6 +89,22 @@ module.exports = function(grunt) {
                     slow: 10
                 }
             },
+            coverage: {
+                src: 'lib-cov/test/**/*.js',
+                options: {
+                    reporter: 'mocha-lcov-reporter',
+                    quiet: false,
+                    captureFile: 'coverage/lcov.info'
+                }
+            },
+            'html-coverage': {
+                src: 'lib-cov/test/**/*.js',
+                options: {
+                    reporter: 'html-cov',
+                    quiet: true,
+                    captureFile: 'coverage/coverage.html'
+                }
+            }
         },
         screeps: {
             options: {},
@@ -82,13 +112,19 @@ module.exports = function(grunt) {
                 src: ['build/deploy/*.js']
             }
         },
+        screepsCodeGenerator: {
+            options: {
+                output: path.join(__dirname, '/build/deploy/main.js')
+            }
+        }
     });
 
     grunt.config.merge(getPrivateSettings(grunt));
 
-    grunt.task.registerTask( [
+    grunt.task.registerTask('codegen', [
         'clean:deploy',
         'copy:deploy',
+        // 'screepsCodeGenerator',
         // 'eslint-mapper'
     ]);
 
@@ -97,10 +133,12 @@ module.exports = function(grunt) {
     ]);
 
     grunt.task.registerTask('deploy', [
+        'codegen',
         'screeps'
     ]);
 
     grunt.task.registerTask('setup', [
+        // 'codegen'
     ]);
 
     grunt.task.registerTask('test', [

@@ -108,5 +108,17 @@ class Util {
         return exit;
     }
 
+    /**
+     * @typedef {Object} Roster
+     */
+    /**
+     *
+     * @param {Room} [room]
+     * @return {Roster}
+     */
+    roster(room) {
+        let creeps = (room)? room.find(FIND_MY_CREEPS):Game.creeps;
+        return _.countBy(creeps,(c) => c.memory.role);
+    }
 }
 module.exports = new Util();

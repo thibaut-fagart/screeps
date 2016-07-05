@@ -1,4 +1,5 @@
 var _ = require('lodash');
+var util = require('./util');
 /*
  * Module code goes here. Use 'module.exports' to export things:
  * module.exports.thing = 'a thing';
@@ -9,23 +10,26 @@ var _ = require('lodash');
  */
 //  Game.spawns.Spawn1.createCreep([WORK, MOVE, WORK, WORK, WORK, WORK, ], undefined, {role:'harvester'})
 module.exports = {
-    maxCreeps: 17,
+    maxCreeps: 15,
     BODY_COST :{"move":50, "work":100, "carry":50, "attack":80,"ranged_attack":150,"heal":250, "claim":600, "tough":10},
     patterns: {
                 'harvester': {body: [WORK, MOVE, WORK, WORK, WORK, WORK,], count: 1, scale:false, memory: {role: 'harvester'}},
                 'carry': {body: [CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 300 */CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 600 */
                     CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 900 */CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 1200 */], count: 2, scale:false, memory: {role: 'carry'}} ,
                 'remoteCarry': {body: [CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 300 */CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 600 */
-                    CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 900 */CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 1200 */], count: 3, scale:false, memory: {role: 'remoteCarry'}},
+                    CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 900 */CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 1200 */], count: 0, scale:false, memory: {role: 'remoteCarry'}},
                 'upgrader': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count: 2, scale:true, memory: {role: 'upgrader'}},
                 // 'remoteHarvester': {body: [CARRY, MOVE, WORK, MOVE, CARRY, MOVE, WORK, MOVE, CARRY, MOVE,WORK, MOVE, CARRY,MOVE, WORK, MOVE,MOVE,CARRY], scale:true, count: 2, memory: {role: 'remoteHarvester'}},
-                'remoteHarvester': {body: [MOVE, MOVE, WORK, WORK, WORK, WORK, WORK], scale:true, count: 1, memory: {role: 'remoteHarvester'}},
+                'remoteHarvester': {body: [MOVE, MOVE, WORK, WORK, WORK, WORK, WORK], scale:true, count: 0, memory: {role: 'remoteHarvester'}},
                 'builder': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count: 2, scale:true, memory: {role: 'builder'}},
+                'remoteBuilder': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count: 0, scale:true, memory: {role: 'remoteBuilder'}},
                 'claimer': {body: [MOVE, MOVE, CLAIM, CLAIM, ], count: 0, scale:true, memory: {role: 'claimer'}},
+                'reserver': {body: [MOVE, MOVE, CLAIM, CLAIM, ], count: 0, scale:true, memory: {role: 'reserver'}},
                 // 'repair': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count: 2, scale:true, memory: {role: 'repair'}},
                 'repair2': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count:3, scale:true, memory: {role: 'repair2'}},
-                // 'roleRemoteGuard': {body: [TOUGH,TOUGH, TOUGH,TOUGH,MOVE, MOVE,MOVE,MOVE, RANGED_ATTACK, RANGED_ATTACK,MOVE, MOVE, MOVE, HEAL], count: 0, scale:true, memory: {role: 'roleRemoteGuard'}},
-                'roleCloseGuard': {body: [TOUGH,TOUGH, TOUGH,TOUGH,MOVE, MOVE,MOVE,MOVE, ATTACK, ATTACK,ATTACK,ATTACK,MOVE, MOVE, MOVE, HEAL,HEAL,MOVE,MOVE], count: 2, scale:true, memory: {role: 'roleCloseGuard'}},
+                //'roleRemoteGuard': {body: [TOUGH,TOUGH, TOUGH,TOUGH,MOVE, MOVE,MOVE,MOVE, RANGED_ATTACK, RANGED_ATTACK,MOVE, MOVE, MOVE, HEAL], count:1, scale:true, memory: {role: 'roleRemoteGuard'}},
+                'roleCloseGuard': {body: [TOUGH,TOUGH, TOUGH,TOUGH,MOVE, MOVE,MOVE,MOVE, ATTACK, ATTACK,ATTACK,ATTACK,MOVE, MOVE, MOVE, HEAL,HEAL,MOVE,MOVE], count: 1, scale:true, memory: {role: 'roleCloseGuard'}},
+                'attacker': {body: [TOUGH,TOUGH, TOUGH,TOUGH,MOVE, MOVE,MOVE,MOVE, ATTACK, ATTACK,ATTACK,ATTACK,MOVE, MOVE, MOVE, HEAL,HEAL,MOVE,MOVE], count: 0, scale:true, memory: {role: 'attacker'}},
                 // 'attack': {body: [WORK, CARRY, MOVE, ATTACK, CARRY, MOVE,ATTACK , MOVE,WORK, CARRY, MOVE, ATTACK, CARRY, ATTACK, MOVE,MOVE], count: 1, memory: {role: 'attack'}},
     },
     //Game.spawns.Spawn1.createCreep([CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 300 */CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, CARRY, CARRY, MOVE], undefined, {role:'carry'})
@@ -81,30 +85,54 @@ module.exports = {
 
     },
     whatToBuild: function(patterns, creep){
-        var harvesters = _.filter(creep.room.find(FIND_MY_CREEPS), function(c) {return c.memory.role == 'harvester';});
+        
+        var currentSplit = util.roster();
+        console.log('roster',JSON.stringify(currentSplit ))
+/*
+        var harvesters = currentSplit.harvester || 0;
         if (harvesters < 2 || _.filter(harvesters, function(c) {return c.ticksToLive> 100}).length<2) {
             return patterns.harvester;
         }
-        var carrys = _.filter(creep.room.find(FIND_MY_CREEPS), function(c) {return c.memory.role == 'carry';});
+
+        var carrys = currentSplit.carry||0;
         if (_.filter(carrys, function(c) {return c.ticksToLive> 100}).length < 1) {
             return patterns.carry;
         }
+*/
 
         var creepCount = _.keys(Game.creeps).length;
 
-        var currentSplit = _.countBy(Game.creeps,(c) => c.memory.role);
-        if (creep.room.memory.remoteMining && Game.rooms[creep.room.memory.remoteMining].controller.owner && !Game.rooms[creep.room.memory.remoteMining].controller.my) {
+
+        if (creep.room.memory.remoteMining && (!Game.rooms[creep.room.memory.remoteMining] || Game.rooms[creep.room.memory.remoteMining].controller.owner && !Game.rooms[creep.room.memory.remoteMining].controller.my)) {
             creep.log('!remoteMining');
             patterns.remoteHarvester.count = currentSplit['remoteHarvester'] == 0 ? 1 : 0;
         }
         if (!currentSplit['claimer'] && creep.room.memory.claim) {
             console.log('adjusting for claims');
             let remoteRoom = Game.rooms[creep.room.memory.claim];
-            if (remoteRoom && !remoteRoom.controller.my) {
+            if (!remoteRoom || !remoteRoom.controller.my) {
                 patterns['claimer'].count = 1;
             }
         } else {
             console.log('claimers', !currentSplit['claimer'], 'claim', creep.room.memory.claim);
+        }
+        if (creep.room.memory.claim) {
+            let remoteRoom = Game.rooms[creep.room.memory.claim];
+            if (!remoteRoom || remoteRoom.controller.my && remoteRoom.find(FIND_MY_SPAWNS) > 1) {
+                console.log('disabling remotebuilds');
+                patterns['remoteBuilder'].count = 0;
+            }
+        }
+        if (!currentSplit['reserver'] && creep.room.memory.reserve) {
+            console.log('adjusting for reserves');
+            let remoteRoom = Game.rooms[creep.room.memory.reserve];
+            if (remoteRoom) creep.log('reserve ?', remoteRoom, JSON.stringify(remoteRoom.controller.reservation));
+            if (!remoteRoom || (!remoteRoom.controller.reservation || !creep.owner.username ==  remoteRoom.controller.reservation.username
+                || remoteRoom.controller.reservation.ticksToDowngrade < 500)) {
+                patterns['reserver'].count = 1;
+            }
+        } else {
+            console.log('reserver', !currentSplit['reserver'], 'reserve', creep.room.memory.reserver);
         }
         currentSplit = _.mapValues(currentSplit, (v)=>{return v/creepCount;});
         console.log("currentSplit " , JSON.stringify(currentSplit));
@@ -138,7 +166,15 @@ module.exports = {
         }
         
     },
+    /**
+     *
+     * @param {StructureSpawn} creep
+     */
     run: function (creep) {
+        if (creep.memory.build && !creep.spawning) {
+            creep.log('built', JSON.stringify(creep.memory.build));
+            delete creep.memory.build;
+        }
         this.updateNeeds(creep);
         this.reassignCreeps(creep);
         if (creep.spawning) return;
@@ -198,7 +234,10 @@ module.exports = {
         }
         buildSpec.body = this.shapeBody(creep, buildSpec.body);
         console.log("building ", JSON.stringify(buildSpec));
-        creep.createCreep(buildSpec.body, undefined, buildSpec.memory);
+        if (OK ===  creep.createCreep(buildSpec.body, undefined, buildSpec.memory)) {
+            creep.log('saving');
+            creep.memory.build = {start: Game.time, buildTime:buildSpec.body.length};
+        }
 
 
 /*

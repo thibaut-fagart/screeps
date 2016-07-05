@@ -1,13 +1,13 @@
 var _ = require('lodash');
 var util = require('./util');
 var RemoteAttackStrategy = require('./strategy.remote_target');
+var AttackWallStrategy = require('./strategy.attack_wall');
 var CloseAttackStrategy = require('./strategy.closeattack_target');
 var HealStrategy = require('./strategy.remote_heal');
-var AttackStructureStrategy = require('./strategy.attack.structure');
 
-class RoleRemoteRoomGuard {
+class RoleAttacker{
     constructor() {
-        this.attackStrategies = [new CloseAttackStrategy(), new RemoteAttackStrategy(), new HealStrategy(), new AttackStructureStrategy()];
+        this.attackStrategies = [/*new CloseAttackStrategy(), new RemoteAttackStrategy(), new HealStrategy(), */new AttackWallStrategy()];
     }
     
     resign(creep) {
@@ -21,7 +21,7 @@ class RoleRemoteRoomGuard {
     init (creep) {
         creep.memory.action = creep.memory.action || 'go_remote_room';
         creep.memory.homeroom = creep.memory.homeroom || creep.room.name;
-        creep.memory.remoteRoom = creep.memory.remoteRoom || creep.room.memory.remoteMining;
+        creep.memory.remoteRoom = creep.memory.remoteRoom || creep.room.memory.attack;
     }
     findHomeExit(creep) {
         return util.findExit(creep, creep.memory.remoteRoom, 'homeExit');
@@ -32,8 +32,8 @@ class RoleRemoteRoomGuard {
         if (!creep.memory.action) {
             this.init(creep)
         }
-        if (creep.memory.action == 'go_remote_room' && creep.room.name != creep.memory.homeroom) {
-            creep.memory.action = 'defend';
+        if (creep.memory.action == 'go_remote_room' && creep.room.name == creep.memory.remoteRoom) {
+            creep.memory.action = 'attack';
             creep.memory.controller = creep.room.controller.id;
             // creep.log('reached remote room',creep.memory.action)
         }
@@ -41,7 +41,7 @@ class RoleRemoteRoomGuard {
         // creep.log(creep.memory.action);
         if (creep.memory.action == 'go_remote_room' && creep.room.name == creep.memory.homeroom) {
             if (!creep.memory.remoteRoom) {
-                creep.log("no remoteMining room");
+                creep.log("no attack room");
                 this.resign(creep);
             } else {
                 var exit = this.findHomeExit(creep);
@@ -50,7 +50,8 @@ class RoleRemoteRoomGuard {
             }
         }
 
-        if (creep.memory.action == 'defend' && creep.memory.remoteRoom == creep.room.name) {
+        if (creep.memory.action == 'attack' && creep.memory.remoteRoom == creep.room.name) {
+/*
             let strategy = util.getAndExecuteCurrentStrategy(creep, this.attackStrategies); // attackStrategy,movetosource
             // creep.log('previousStrategy',util.strategyToLog(strategy));
             if (!strategy) {
@@ -61,20 +62,24 @@ class RoleRemoteRoomGuard {
                 // creep.log('strategy', strategy.constructor.name);
                 util.setCurrentStrategy(creep, strategy);
             } else {
+/!*
                 // creep.log('no attackStrategy, moving to controller');
                 let controller = util.objectFromMemory(creep.memory, 'controller');
+                if (!controller) {
+                    controller = creep.room.controller;
+                    creep.memory ['controller'] = creep.room.controller.id;
+                }
                 if (Math.abs(controller.pos.x-creep.pos.x) >1 || Math.abs(controller.pos.y-creep.pos.y)) {
-                    let moveTo = creep.moveTo(controller);
-                    if (moveTo !== OK && moveTo !== ERR_TIRED) {
-                        creep.log('moveTo?', moveTo);
-                    }
+                    creep.moveTo(controller);
                 } else {
                     // creep.log('already at controller, idling');
                 }
                 return;
+*!/
             }
+*/
         }
     }
 };
 
-module.exports = RoleRemoteRoomGuard;
+module.exports = RoleAttacker;

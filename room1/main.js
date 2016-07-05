@@ -9,10 +9,15 @@ var RoleBuilder = require('./role.builder'), roleBuilder = new RoleBuilder();
 var roleRepair = require('./role.repair');
 var RoleRepair2 = require('./role.repair2'), roleRepair2 = new RoleRepair2();
 var RoleClaim = require('./role.controller.claim'), roleClaim=new RoleClaim();
+var RoleReserve = require('./role.controller.reserve'), roleReserve=new RoleReserve();
 var RoleRemoteHarvester = require('./role.remote_harvester'), roleRemoteHarvester = new RoleRemoteHarvester();
-var RoleGuard = require('./role.soldier.roomguard'); roleRemoteGuard = new RoleGuard(), roleCloseGuard = new RoleGuard();
-var profiler = require('./screeps-profiler');
+var RoleGuard = require('./role.soldier.roomguard'), roleRemoteGuard = new RoleGuard(), roleCloseGuard = new RoleGuard();
+var RoleAttacker = require('./role.soldier.attacker'), roleAttacker = new RoleAttacker();
+var RoleRemoteBuilder = require('./role.builder.remote'), roleRemoteBuilder = new RoleRemoteBuilder();
 
+
+var profiler = require('./screeps-profiler');
+// var RoomManager = require('./manager.room'), roomManager = new RoomManager(); // todo manager
 // This line monkey patches the global prototypes.
 profiler.enable();
 Creep.prototype.log= function() {
@@ -20,6 +25,12 @@ Creep.prototype.log= function() {
 };
 Spawn.prototype.log= function() {
     console.log([this.name , this.memory.role ].concat(Array.prototype.slice.call(arguments)));
+};
+Room.prototype.log = function() {
+    console.log([this.name , this.controller.level].concat(Array.prototype.slice.call(arguments)));
+};
+Structure.prototype.log = function() {
+    console.log([this.structureType, this.id].concat(Array.prototype.slice.call(arguments)));
 };
 Structure.prototype.memory = function() {
     "use strict";
@@ -36,7 +47,7 @@ Structure.prototype.memory = function() {
 };
 // RoomObject.prototype.creeps = [];
 module.exports.loop = function () {
-    profiler.wrap(function () {
+    // profiler.wrap(function () {
         let messages = [];
         let oldSeenTick = Game.time || (Memory.counters && Memory.counters.seenTick);
         Memory.counters = {tick:Game.time, seenTick: oldSeenTick+1};
@@ -55,6 +66,7 @@ module.exports.loop = function () {
                     }
                 }
             }
+            // roomManager.run(room); // todo manager
             delete roleRepair2.needRepairs;
             delete roleRepair.needRepairs;
             delete roleRepair2.needRepairAmount;
@@ -77,8 +89,14 @@ module.exports.loop = function () {
                         roleRepair2.run(creep);
                     } else if (creep.memory.role == 'claimer') {
                         roleClaim.run(creep);
+                    } else if (creep.memory.role == 'reserver') {
+                        roleReserve.run(creep);
                     } else if (creep.memory.role == 'builder') {
                         roleBuilder.run(creep);
+                    } else if (creep.memory.role == 'remoteBuilder') {
+                        roleRemoteBuilder.run(creep);
+                    } else if (creep.memory.role == 'attacker') {
+                        roleAttacker.run(creep);
                     } else if (creep.memory.role == 'remoteHarvester') {
                         roleRemoteHarvester.run(creep);
                     } else if (creep.memory.role == 'roleRemoteGuard' || creep.memory.role == 'roleCloseGuard') {
@@ -144,5 +162,5 @@ module.exports.loop = function () {
         }
         // counting walkable tiles neer location:
         //_.filter(Game.rooms.E37S14.lookAtArea(y-1,x-1,y+1,x+1,true), function(o) {return o.type== 'terrain' &&(o.terrain =='plain' || o.terrain =='swamp')}).length
-    });
+    // });
 }

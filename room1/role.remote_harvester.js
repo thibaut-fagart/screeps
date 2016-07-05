@@ -70,7 +70,7 @@ class RoleRemoteHarvester {
         if (creep.memory.action == 'go_remote_room' && creep.room.name == creep.memory.homeroom) {
             if (!creep.room.memory.remoteMining) {
                 creep.log("no remoteMining room");
-                this.resign();
+                this.resign(creep);
             } else {
                 var exit = this.findHomeExit(creep);
                 creep.moveTo(exit.x, exit.y, {reusePath: 50});

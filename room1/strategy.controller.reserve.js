@@ -4,7 +4,7 @@ var BaseStrategy = require('./strategy.base');
 /**
  * finds a non-empty  energy source, chooses at random to spread the load
  */
-class ClaimControllerStrategy extends BaseStrategy {
+class ReserveControllerStrategy extends BaseStrategy {
     constructor() {
         super();
         this.PATH = 'target';
@@ -33,13 +33,13 @@ class ClaimControllerStrategy extends BaseStrategy {
                 }
                 // creep.log('target', target);
                 if (target) {
-                    let claim = creep.claimController(target);
-                    // creep.log('claim?', claim);
+                    let claim = creep.reserveController(target);
+                    // creep.log('transfer', claim);
                     if (claim == ERR_NOT_IN_RANGE) {
                         let moveTo = creep.moveTo(target);
-                        // creep.log('move?', moveTo);
+                        // creep.log('move', moveTo);
                     } else if (claim !== OK){
-                        creep.log('claim?', claim, target.upgradeBlocked, JSON.stringify(target.reservation), JSON.stringify(target));
+                        // creep.log('claim?', claim, target.upgradeBlocked, JSON.stringify(target.reservation), JSON.stringify(target));
                         delete creep.memory[this.PATH] ;
                         return null;
                     }
@@ -50,4 +50,4 @@ class ClaimControllerStrategy extends BaseStrategy {
     }
 }
 
-module.exports = ClaimControllerStrategy;
+module.exports = ReserveControllerStrategy;

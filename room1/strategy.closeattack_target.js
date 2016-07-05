@@ -5,7 +5,7 @@ var util = require('./util');
 class CloseAttackStrategy extends BaseStrategy {
     constructor() {
         super();
-        this.path = 'attacking_remote';
+        this.path = 'attacking';
     }
     clearMemory(creep) {
         delete creep.memory[this.path];
@@ -35,7 +35,7 @@ class CloseAttackStrategy extends BaseStrategy {
             // if(creep instanceof Creep) creep.log(target);
             target = target || creep.pos.findClosestByRange(hostiles);
             this.setRemoteTarget(creep, target);
-            creep.moveTo(target);
+            let moveTo = creep.moveTo(target);
             let attack = creep.attack(target);
             if (attack == ERR_NOT_IN_RANGE) {
                 creep.moveTo(target);

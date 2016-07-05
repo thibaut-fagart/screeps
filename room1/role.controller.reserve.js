@@ -1,27 +1,28 @@
 var _ = require('lodash');
 var util = require('./util');
-var ClaimControllerStrategy = require('./strategy.controller.claim');
+var ReserveControllerStrategy = require('./strategy.controller.reserve');
 
-class RoleClaimController {
+class RoleReserveController {
     constructor() {
-        this.loadStrategies = [new ClaimControllerStrategy()];
+        this.loadStrategies = [new ReserveControllerStrategy()];
     }
 
     /*
-     requires : remoteRoom=creep.room.claim, homeroom = creep.room.name, homeroom, remoteSource
+     requires : remoteRoom=creep.room.remoteMining, homeroom = creep.room.name, homeroom, remoteSource
      */
     resign(creep) {
         creep.log("resigning");
         delete creep.memory.role;
         delete creep.memory.action; //{go_remote_room, load, go_home, unload}
         delete creep.memory.remoteRoom;
-        delete creep.memory.homeRoom;
+        delete creep.memory.homeroom;
     }
 
     init(creep) {
         creep.memory.action = 'go_remote_room';
         creep.memory.homeroom = creep.room.name;
-        creep.memory.remoteRoom = creep.room.memory.claim;
+        creep.memory.remoteRoom = creep.memory.remoteRoom ||creep.room.memory.reserve;
+
     }
 
     findHomeExit(creep) {
@@ -44,8 +45,7 @@ class RoleClaimController {
         let roomAlreadyClaimed = remoteRoom && remoteRoom.controller  &&  remoteRoom.controller.owner
             && remoteRoom.controller.owner.username == creep.owner.username;
         // creep.log('claimed ok ? ', roomAlreadyClaimed, JSON.stringify(Game.rooms[creep.memory.remoteRoom].controller.owner));
-        if (creep.memory.action == 'go_remote_room' && creep.room.name != creep.memory.homeroom
-            && !(roomAlreadyClaimed)) {
+        if (creep.memory.action == 'go_remote_room' && creep.room.name == creep.memory.remoteRoom && !(roomAlreadyClaimed)) {
             creep.memory.action = 'load';
             // creep.log('reached remote room',creep.memory.action)
         } else if (creep.memory.action == 'load' && creep.room.name != creep.memory.homeroom && roomAlreadyClaimed) {
@@ -107,10 +107,12 @@ class RoleClaimController {
                 if (creep.pos.getRangeTo(spawn) < 5) {
                     creep.moveTo(spawn);
                 }
+            } else {
+                creep.memory.action = 'go_remote_room';
             }
         }
 
     }
 }
 
-module.exports = RoleClaimController;
+module.exports = RoleReserveController;

@@ -26,14 +26,14 @@ class RoleRepair2 {
 		}
 		if (creep.memory.action == this.ACTION_FILL) {
 			let strategy =util.getAndExecuteCurrentStrategy(creep,this.loadStrategies);
-			// creep.log('1',util.strategyToLog(strategy));
+			//creep.log('1',util.strategyToLog(strategy));
 			if (!strategy) {
 				strategy = _.find(this.loadStrategies, (strat)=> (strat.accepts(creep)));
 			}
-			// creep.log('2',util.strategyToLog(strategy));
+			//creep.log('2',util.strategyToLog(strategy));
 			if (strategy) {
 				util.setCurrentStrategy(creep, strategy);
-				// creep.log('strategy ', strategy.constructor.name);
+				//creep.log('strategy ', strategy.constructor.name);
 			} else {
 				creep.log('no loadStrategy');
 				return;

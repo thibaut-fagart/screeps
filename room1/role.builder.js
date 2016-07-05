@@ -12,6 +12,7 @@ class RoleBuilder {
 		 new LoadFromContainerStrategy(RESOURCE_ENERGY),
 		 new HarvestEnergySourceStrategy()];
 	}
+	
 	resign(creep) {
 		creep.log("resigning ");
 		delete creep.memory.role;
@@ -75,9 +76,7 @@ class RoleBuilder {
 				// creep.log('strategy ', strategy.constructor.name);
 			} else {
 				creep.log('no loadStrategy');
-				return;
 			}
-
 		}
 	}
 }
