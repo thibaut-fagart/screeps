@@ -90,12 +90,13 @@ expect(require4.end, 'insertInQueue.end =?475').to.equal(475);
 
 
 JSON.stringify(_.sum(require('./util').roster()))
+JSON.stringify(require('./util').roster('E38S14'))
 Game.spawns.Spawn1.
 var decays = {'container': (s) => 10000,'ramparts' : (s) => 3000,'road' : (s) => 'plain' === s.pos.lookFor(LOOK_TERRAIN) ? 1000 : 5000};_.sum(Game.rooms.E37S14.find(FIND_STRUCTURES, (s) => [STRUCTURE_CONTAINER, STRUCTURE_ROAD, STRUCTURE_RAMPART].indexOf(s.structureType)>=0),(s) => (decays[s.structureType])?decays[s.structureType](s):0)
 
 _.filter(Game.rooms.E38S14.find(FIND_MY_CREEPS),(c)=>c.memory.role==='roleCloseGuard').forEach((c)=>delete c.memory.fleepath)
 _.filter(Game.creeps,(c)=>c.memory.role==='roleCloseGuard').forEach((c)=>delete c.memory.fleepath)
-_.filter(Game.rooms.E38S14.find(FIND_MY_CREEPS),(c)=>c.memory.role==='builder').slice(1,2).forEach((c)=>c.memory.role='upgrader')
+_.filter(Game.rooms.E38S14.find(FIND_MY_CREEPS),(c)=>c.memory.role==='repair2').forEach((c)=>c.memory.role='builder')
 _.filter(Game.rooms.E38S14.find(FIND_MY_CREEPS),(c)=>c.memory.role==='builder').slice(1,2).forEach((c)=>c.memory.role='harvester')
 
 map(_.union([controller], creep.room.find(FIND_SOURCES), creep.room.find(FIND_STRUCTURES,

@@ -113,10 +113,11 @@ class Util {
      */
     /**
      *
-     * @param {Room} [room]
+     * @param {Room|string} [room]
      * @return {Roster}
      */
     roster(room) {
+        if(room) { room = 'string' === typeof room ? Game.rooms[room]:room; }
         let creeps = (room)? room.find(FIND_MY_CREEPS):Game.creeps;
         return _.countBy(creeps,(c) => c.memory.role);
     }
