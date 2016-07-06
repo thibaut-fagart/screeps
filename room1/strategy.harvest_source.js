@@ -28,9 +28,9 @@ class HarvestEnergySourceStrategy extends BaseStrategy {
                 source = util.objectFromMemory(creep.memory, this.PATH, (s)=> creep.carry.energy+s.energy >= creep.carryCapacity);
                 // creep.log('source', source);
                 if (!source) {
-                    source = creep.pos.findClosestByRange(FIND_SOURCES_ACTIVE);
+                    source = creep.pos.findClosestByPath(FIND_SOURCES_ACTIVE);
                 }
-                // creep.log('source', source);
+                // creep.log('source2', source);
                 if (source) {
                     creep.memory[this.PATH] = source.id;
                     let harvest = creep.harvest(source);

@@ -13,6 +13,7 @@ class RoleCarry {
         this.unloadStrategies = [
             new DropToEnergyStorageStrategy(STRUCTURE_TOWER),
             new DropToEnergyStorageStrategy(),
+            new DropToEnergyStorageStrategy(STRUCTURE_SPAWN),
             new DropToContainerStrategy(RESOURCE_ENERGY,STRUCTURE_LINK),
             new DropToContainerStrategy(RESOURCE_ENERGY, STRUCTURE_STORAGE )
         ];

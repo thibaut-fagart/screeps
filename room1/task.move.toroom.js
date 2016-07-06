@@ -9,6 +9,11 @@ class MoveToRoomTask {
     }
 
     accepts (creep) {
+        if (!creep.memory.remoteRoom && creep.room.memory.claim) {
+            creep.memory.remoteRoom = creep.room.memory.claim;
+        }
+        creep.memory.action = creep.memory.action || "go_remote_room";
+        creep.memory.homeroom=  creep.memory.homeroom || creep.room.name;
         // creep.log(creep.memory.action);
         if (creep.memory.action == 'go_remote_room' && creep.room.name == creep.memory.homeroom) {
             if (!creep.memory.remoteRoom) {
@@ -21,10 +26,10 @@ class MoveToRoomTask {
                 // console.log("moving to homeExit ", );
             }
         } else {
+            // creep.log(creep.memory.action, creep.room.name, creep.memory.homeroom);
             return false;
         }
         
     }
 }
-
 module.exports = MoveToRoomTask;

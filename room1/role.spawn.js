@@ -22,13 +22,13 @@ module.exports = {
                 // 'remoteHarvester': {body: [CARRY, MOVE, WORK, MOVE, CARRY, MOVE, WORK, MOVE, CARRY, MOVE,WORK, MOVE, CARRY,MOVE, WORK, MOVE,MOVE,CARRY], scale:true, count: 2, memory: {role: 'remoteHarvester'}},
                 'remoteHarvester': {body: [MOVE, MOVE, WORK, WORK, WORK, WORK, WORK], scale:true, count: 0, memory: {role: 'remoteHarvester'}},
                 'builder': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count: 2, scale:true, memory: {role: 'builder'}},
-                'remoteBuilder': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count: 0, scale:true, memory: {role: 'remoteBuilder'}},
+                // 'remoteBuilder': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count: 2, scale:true, memory: {role: 'remoteBuilder'}},
                 'claimer': {body: [MOVE, MOVE, CLAIM, CLAIM, ], count: 0, scale:true, memory: {role: 'claimer'}},
                 'reserver': {body: [MOVE, MOVE, CLAIM, CLAIM, ], count: 0, scale:true, memory: {role: 'reserver'}},
                 // 'repair': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count: 2, scale:true, memory: {role: 'repair'}},
                 'repair2': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count:3, scale:true, memory: {role: 'repair2'}},
                 //'roleRemoteGuard': {body: [TOUGH,TOUGH, TOUGH,TOUGH,MOVE, MOVE,MOVE,MOVE, RANGED_ATTACK, RANGED_ATTACK,MOVE, MOVE, MOVE, HEAL], count:1, scale:true, memory: {role: 'roleRemoteGuard'}},
-                'roleCloseGuard': {body: [TOUGH,TOUGH, TOUGH,TOUGH,MOVE, MOVE,MOVE,MOVE, ATTACK, ATTACK,ATTACK,ATTACK,MOVE, MOVE, MOVE, HEAL,HEAL,MOVE,MOVE], count: 1, scale:true, memory: {role: 'roleCloseGuard'}},
+                'roleCloseGuard': {body: [TOUGH,TOUGH, TOUGH,TOUGH,MOVE, MOVE,MOVE,MOVE, ATTACK, ATTACK,ATTACK,ATTACK,MOVE, MOVE, MOVE, HEAL,HEAL,MOVE,MOVE], count: 0, scale:true, memory: {role: 'roleCloseGuard'}},
                 'attacker': {body: [TOUGH,TOUGH, TOUGH,TOUGH,MOVE, MOVE,MOVE,MOVE, ATTACK, ATTACK,ATTACK,ATTACK,MOVE, MOVE, MOVE, HEAL,HEAL,MOVE,MOVE], count: 0, scale:true, memory: {role: 'attacker'}},
                 // 'attack': {body: [WORK, CARRY, MOVE, ATTACK, CARRY, MOVE,ATTACK , MOVE,WORK, CARRY, MOVE, ATTACK, CARRY, ATTACK, MOVE,MOVE], count: 1, memory: {role: 'attack'}},
     },
@@ -60,10 +60,10 @@ module.exports = {
             // console.log("NO NEED FOR BUILDERS");
             this.patterns.builder.count=0;
         }
-        if (_.size(creep.room.find(FIND_MY_STRUCTURES, {filter: function (structure)  {
+        if (_.size(creep.room.find(FIND_STRUCTURES, {filter: function (structure)  {
         				return structure.hits < structure.hitsMax;
         			}})) == 0) {
-            this.patterns.repair.count = 0;
+            this.patterns.repair2.count = 0;
             // console.log("NO NEED FOR REPAIRERS");
         }
 /*
@@ -86,7 +86,7 @@ module.exports = {
     },
     whatToBuild: function(patterns, creep){
         
-        var currentSplit = util.roster();
+        var currentSplit = util.roster(creep.room);
         console.log('roster',JSON.stringify(currentSplit ))
 /*
         var harvesters = currentSplit.harvester || 0;
@@ -100,7 +100,7 @@ module.exports = {
         }
 */
 
-        var creepCount = _.keys(Game.creeps).length;
+        var creepCount = _.sum(currentSplit);
 
 
         if (creep.room.memory.remoteMining && (!Game.rooms[creep.room.memory.remoteMining] || Game.rooms[creep.room.memory.remoteMining].controller.owner && !Game.rooms[creep.room.memory.remoteMining].controller.my)) {
@@ -118,7 +118,7 @@ module.exports = {
         }
         if (creep.room.memory.claim) {
             let remoteRoom = Game.rooms[creep.room.memory.claim];
-            if (!remoteRoom || remoteRoom.controller.my && remoteRoom.find(FIND_MY_SPAWNS) > 1) {
+            if (!remoteRoom || remoteRoom.controller.my && remoteRoom.find(FIND_MY_SPAWNS) > 0) {
                 console.log('disabling remotebuilds');
                 patterns['remoteBuilder'].count = 0;
             }
@@ -134,7 +134,7 @@ module.exports = {
         } else {
             console.log('reserver', !currentSplit['reserver'], 'reserve', creep.room.memory.reserver);
         }
-        currentSplit = _.mapValues(currentSplit, (v)=>{return v/creepCount;});
+        // currentSplit = _.mapValues(currentSplit, (v)=>{return v/creepCount;});
         console.log("currentSplit " , JSON.stringify(currentSplit));
         var required = {};
 

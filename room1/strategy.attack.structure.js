@@ -10,12 +10,28 @@ class AttackStructureStrategy extends Base {
         let targetStructure;
         // creep.log('searching structures');
         if (!(targetStructure = util.objectFromMemory(creep.memory, 'targetStructure'))) {
-            let structures = creep.room.find(FIND_STRUCTURES, (s) => {
-                return [STRUCTURE_CONTAINER, /*STRUCTURE_WALL, */STRUCTURE_RAMPART].indexOf(s.structureType) >= 0 && (!structure.owner || structure.owner.username !== creep.owner.username )
-            });
-            targetStructure = creep.pos.findClosestByPath(structures);
+            /** {Flag}**/
+            let closestFlag= creep.pos.findClosestByPath(creep.room.find(FIND_FLAGS, (f)=> f.color === COLOR_RED));
+            if (closestFlag) {
+                let lookFor = closestFlag.pos.lookFor(LOOK_STRUCTURES);
+                if (lookFor || lookFor.length) {
+                    targetStructure = lookFor.length ? lookFor[0] : lookFor;
+                }
+                if (targetStructure) {
+                    creep.memory.targetStructure = targetStructure.id
+                } else {
+                    closestFlag.remove();
+                }
+            }
+
             if (!targetStructure) {
-                creep.memory['targetStructure'] = targetStructure.id;
+                let structures = creep.room.find(FIND_STRUCTURES, (s) => {
+                    return [STRUCTURE_CONTAINER, /*STRUCTURE_WALL, */STRUCTURE_RAMPART].indexOf(s.structureType) >= 0 && (!structure.owner || structure.owner.username !== creep.owner.username )
+                });
+                targetStructure = creep.pos.findClosestByPath(structures);
+                if (!targetStructure) {
+                    creep.memory['targetStructure'] = targetStructure.id;
+                }
             }
         }
         // creep.log('found',targetStructure);

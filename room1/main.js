@@ -114,9 +114,11 @@ module.exports.loop = function () {
                 }
                 var deltaRepair = room.memory.needRepairAmount - roleRepair.needRepairAmount;
                 room.memory.needRepairAmount = roleRepair.needRepairAmount;
+/*
                 if (deltaRepair!=0) {
                     console.log('' + roleRepair.needRepairs.length + ' waiting for repairs, delta ' + deltaRepair + ',total needed ' + roleRepair.needRepairAmount);
                 }
+*/
             }
             if (!(Game.time%100)) {
                 for (let id in room.memory.reserved) {

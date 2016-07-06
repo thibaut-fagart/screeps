@@ -33,11 +33,22 @@ class ClaimControllerStrategy extends BaseStrategy {
                 }
                 // creep.log('target', target);
                 if (target) {
+                    let path;
+                    if (! (path=util.objectFromMemory(creep.memory, 'path_to'))) {
+                        path = creep.room.findPath(creep.pos, target.pos, {maxOps:5000});
+                        creep.memory['path_to'] = path;
+                    }
+
                     let claim = creep.claimController(target);
                     // creep.log('claim?', claim);
                     if (claim == ERR_NOT_IN_RANGE) {
-                        let moveTo = creep.moveTo(target);
-                        // creep.log('move?', moveTo);
+                        if (creep.fatigue == 0) {
+                            let moveTo = creep.moveByPath(path);
+                            // let moveTo = creep.moveTo(target);
+                            if (moveTo !== OK) {
+                                creep.log('move?', moveTo);
+                            }
+                        }
                     } else if (claim !== OK){
                         creep.log('claim?', claim, target.upgradeBlocked, JSON.stringify(target.reservation), JSON.stringify(target));
                         delete creep.memory[this.PATH] ;

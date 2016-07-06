@@ -7,9 +7,9 @@ var AttackStructureStrategy = require('./strategy.attack.structure');
 
 class RoleRemoteRoomGuard {
     constructor() {
-        this.attackStrategies = [new CloseAttackStrategy(), new RemoteAttackStrategy(), new HealStrategy(), new AttackStructureStrategy()];
+        this.attackStrategies = [new CloseAttackStrategy(), new RemoteAttackStrategy(), new HealStrategy() /*,new AttackStructureStrategy()*/];
     }
-    
+
     resign(creep) {
         creep.log("resigning");
         delete creep.memory.role;
@@ -18,17 +18,19 @@ class RoleRemoteRoomGuard {
         delete creep.memory.homeRoom;
         delete creep.memory.target;
     }
-    init (creep) {
+
+    init(creep) {
         creep.memory.action = creep.memory.action || 'go_remote_room';
         creep.memory.homeroom = creep.memory.homeroom || creep.room.name;
-        creep.memory.remoteRoom = creep.memory.remoteRoom || creep.room.memory.remoteMining;
+        creep.memory.remoteRoom = creep.memory.remoteRoom || creep.room.memory.remoteMining || creep.room.memory.claim;
     }
+
     findHomeExit(creep) {
         return util.findExit(creep, creep.memory.remoteRoom, 'homeExit');
     }
 
     /** @param {Creep} creep **/
-    run (creep) {
+    run(creep) {
         if (!creep.memory.action) {
             this.init(creep)
         }
@@ -42,7 +44,7 @@ class RoleRemoteRoomGuard {
         if (creep.memory.action == 'go_remote_room' && creep.room.name == creep.memory.homeroom) {
             if (!creep.memory.remoteRoom) {
                 creep.log("no remoteMining room");
-                this.resign(creep);
+                // this.resign(creep);
             } else {
                 var exit = this.findHomeExit(creep);
                 creep.moveTo(exit.x, exit.y, {reusePath: 50});
@@ -63,18 +65,37 @@ class RoleRemoteRoomGuard {
             } else {
                 // creep.log('no attackStrategy, moving to controller');
                 let controller = util.objectFromMemory(creep.memory, 'controller');
-                if (Math.abs(controller.pos.x-creep.pos.x) >1 || Math.abs(controller.pos.y-creep.pos.y)) {
-                    let moveTo = creep.moveTo(controller);
-                    if (moveTo !== OK && moveTo !== ERR_TIRED) {
-                        creep.log('moveTo?', moveTo);
+                if (controller.my && creep.pos.getRangeTo(controller.pos) < 5) {
+                    // creep.log('fleeing travelled points');
+                    let fleepath = util.objectFromMemory(creep.memory, 'fleepath');
+                    if (!fleepath) {
+                        let fleepoints = _.map(_.union([controller], creep.room.find(FIND_SOURCES), creep.room.find(FIND_STRUCTURES,
+                            (s)=>s.structureType === STRUCTURE_SPAWN || s.structureType == STRUCTURE_CONTAINER || s.structureType == STRUCTURE_EXTENSION))
+                        , (s)=> {return {range:10, pos:s.pos}});
+                        fleepath = PathFinder.search(creep.pos, fleepoints, {flee: true}).path;
+                        // creep.log('pathingto', fleepath.length,fleepath[fleepath.length-1]);
+                        fleepath = creep.room.findPath(creep.pos, fleepath[fleepath.length - 1]);
+                        // creep.log('fleepath', JSON.stringify(fleepath));
+
+                        creep.memory['fleepath'] = fleepath;
                     }
+                    creep.moveByPath(fleepath);
                 } else {
-                    // creep.log('already at controller, idling');
+                    // creep.log('not fleeing');
+                    if (Math.abs(controller.pos.x - creep.pos.x) > 1 || Math.abs(controller.pos.y - creep.pos.y)) {
+                        let moveTo = creep.moveTo(controller);
+                        if (moveTo !== OK && moveTo !== ERR_TIRED) {
+                            creep.log('moveTo?', moveTo);
+                        }
+                    } else {
+                        // creep.log('already at controller, idling');
+                    }
                 }
                 return;
             }
         }
     }
-};
+}
+;
 
 module.exports = RoleRemoteRoomGuard;
