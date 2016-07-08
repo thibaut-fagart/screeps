@@ -8,7 +8,7 @@ var DropToContainerStrategy = require('./strategy.drop_to_container');
 
 class RoleRemoteHarvester {
     constructor() {
-        this.loadStrategies = [/*new HarvestEnergySourceToContainerStrategy(),*/ new PickupStrategy(), new HarvestEnergySourceStrategy()];
+        this.loadStrategies = [new HarvestEnergySourceToContainerStrategy(), new PickupStrategy(), new HarvestEnergySourceStrategy()];
         this.unloadStrategies = [new DropToContainerStrategy(RESOURCE_ENERGY), new DropToEnergyStorage()];
     }
     /*
@@ -19,7 +19,7 @@ class RoleRemoteHarvester {
         delete creep.memory.role;
         delete creep.memory.action; //{go_remote_room, load, go_home, unload}
         delete creep.memory.remoteRoom;
-        delete creep.memory.homeRoom;
+        delete creep.memory.homeroom;
         delete creep.memory.remoteSource;
     }
     init (creep) {

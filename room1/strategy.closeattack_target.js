@@ -3,8 +3,9 @@ var BaseStrategy = require('./strategy.base');
 var util = require('./util');
 
 class CloseAttackStrategy extends BaseStrategy {
-    constructor() {
+    constructor(range) {
         super();
+        this.range = range;
         this.path = 'attacking';
     }
     clearMemory(creep) {
@@ -15,13 +16,13 @@ class CloseAttackStrategy extends BaseStrategy {
     /** @param {Creep||StructureTower} creep
      * @return {Creep|| null}**/
     accepts(creep) {
-        if (! creep instanceof StructureTower || (creep.body && creep.getActiveBodyparts(ATTACK)==0)) {
+        if (! creep instanceof StructureTower || (creep.body && creep.getActiveBodyparts(ATTACK)==0 && creep.getActiveBodyparts(MOVE)==0)) {
             return null;
         }
         // find strangers
         // order by type (heal > *)  and distance
         let target= this.getRemoteTarget(creep);
-        let hostiles = creep.room.find(FIND_HOSTILE_CREEPS);
+        let hostiles = (this.range)?creep.pos.findInRange(FIND_HOSTILE_CREEPS,this.range): creep.room.find(FIND_HOSTILE_CREEPS);
         // if(creep instanceof Creep) creep.log('hostiles', hostiles.length);
         if (hostiles.length) {
             // choose target

@@ -1,8 +1,8 @@
-var RoleBuilder = require('./role.builder');
+var RoleUpgrader = require('./role.upgrader');
 var MoveToRoomTask = require('./task.move.toroom');
 var FleeToHomeRoomStrategy = require('./strategy.flee.tohomeroom');
 
-class RoleRemoteBuilder extends RoleBuilder {
+class RoleRemoteUpgrader extends RoleUpgrader{
     constructor() {
         super();
         this.fleeStrategy = new FleeToHomeRoomStrategy();

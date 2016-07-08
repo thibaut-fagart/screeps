@@ -91,16 +91,30 @@ expect(require4.end, 'insertInQueue.end =?475').to.equal(475);
 
 JSON.stringify(_.sum(require('./util').roster()))
 JSON.stringify(require('./util').roster('E38S14'))
-Game.spawns.Spawn1.
+Game.spawns.Spawn1.createCreep([TOUGH,TOUGH, TOUGH,TOUGH,MOVE, MOVE,MOVE,MOVE, ,MOVE,MOVE,ATTACK, ATTACK,ATTACK,ATTACK,MOVE, MOVE, MOVE, HEAL,HEAL], undefined, {role:'roleCloseGuard'})
 var decays = {'container': (s) => 10000,'ramparts' : (s) => 3000,'road' : (s) => 'plain' === s.pos.lookFor(LOOK_TERRAIN) ? 1000 : 5000};_.sum(Game.rooms.E37S14.find(FIND_STRUCTURES, (s) => [STRUCTURE_CONTAINER, STRUCTURE_ROAD, STRUCTURE_RAMPART].indexOf(s.structureType)>=0),(s) => (decays[s.structureType])?decays[s.structureType](s):0)
 
 _.filter(Game.rooms.E38S14.find(FIND_MY_CREEPS),(c)=>c.memory.role==='roleCloseGuard').forEach((c)=>delete c.memory.fleepath)
 _.filter(Game.creeps,(c)=>c.memory.role==='roleCloseGuard').forEach((c)=>delete c.memory.fleepath)
 _.filter(Game.rooms.E38S14.find(FIND_MY_CREEPS),(c)=>c.memory.role==='repair2').forEach((c)=>c.memory.role='builder')
 _.filter(Game.rooms.E38S14.find(FIND_MY_CREEPS),(c)=>c.memory.role==='builder').slice(1,2).forEach((c)=>c.memory.role='harvester')
+var extension = _.sortBy(Game.rooms.E38S14.find(FIND_CONSTRUCTION_SITES, {filter: {structureType: STRUCTURE_EXTENSION}}),(cs)=>-cs.progress)[0]; _.filter(Game.rooms.E38S14.find(FIND_MY_CREEPS),(c)=>c.memory.role=='builder').forEach((c)=>c.memory.target=extension.id);
 
 map(_.union([controller], creep.room.find(FIND_SOURCES), creep.room.find(FIND_STRUCTURES,
                             (s)=>s.structureType === STRUCTURE_SPAWN || s.structureType == STRUCTURE_CONTAINER || s.structureType == STRUCTURE_EXTENSION))
                         , (s)=> {return {range:1, pos:s.pos}});
 var creep = Game.creeps.Kaitlyn; function(creep) {let fleepoints = _.map(creep.room.find(FIND_SOURCES),function(creep){return {range:5, pos:s.pos}});
 JSON.stringify(PathFinder.search(Game.rooms.E38S14.controller.pos, fleepoints, {flee: true}))
+
+Game.spawns.Spawn1.createCreep([MOVE, MOVE, WORK, WORK, WORK, WORK, WORK], undefined, {role:'remoteHarvester'})
+Game.spawns.Spawn1.createCreep([WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], undefined, {role:'remoteBuilder'})
+Game.spawns.Spawn1.createCreep([CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 300 */CARRY, CARRY, MOVE, CARRY, CARRY, MOVE], undefined, {role:'remoteCarry'})
+var creep = Game.spawns.Spawn1, Decay = require ('./util.decay'), decay = new Decay();_.sum(creep.room.find(FIND_STRUCTURES), (s)=>decay.repairNeedPer10k(s))
+var creep = Game.spawns.Spawn1, role = require('./role.spawn');role.repairRequired(creep)
+    _.filter(Game.creeps, (c)=>!c.memory.role).forEach((c)=> c.memory.role = 'upgrader');
+
+    var creep = Game.spawns.Spawn2; var route = creep.pos.findRouteTo(Game.rooms[creep.room.memory.remoteMining].find(FIND_SOURCES_ACTIVE)[0]); JSON.stringify(route)
+
+    
+    
+_.filter(_.sortBy(Game.rooms.E38S14.find(FIND_STRUCTURES,), (s) => s.hits / s.hitsMax),(s) => !util.isReserved(creep, s))

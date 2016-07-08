@@ -9,13 +9,15 @@ var DropToEnergyStorageStrategy = require('./strategy.drop_to_energyStorage');
 class RoleCarry {
     constructor() {
         this.loadStrategies = [new PickupStrategy(RESOURCE_ENERGY),
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER)];
+            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (c)=>(!c.room.memory.harvestContainers || c.room.memory.harvestContainers.indexOf(c.id)>=0))];
         this.unloadStrategies = [
             new DropToEnergyStorageStrategy(STRUCTURE_TOWER),
             new DropToEnergyStorageStrategy(),
             new DropToEnergyStorageStrategy(STRUCTURE_SPAWN),
             new DropToContainerStrategy(RESOURCE_ENERGY,STRUCTURE_LINK),
-            new DropToContainerStrategy(RESOURCE_ENERGY, STRUCTURE_STORAGE )
+            new DropToContainerStrategy(RESOURCE_ENERGY, STRUCTURE_STORAGE ),
+            new DropToContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER )
+
         ];
         this.ACTION_UNLOAD = 'unload';
         this.ACTION_FILL = 'fill';
@@ -59,9 +61,33 @@ class RoleCarry {
             if (strategy) {
                 util.setCurrentStrategy(creep, strategy);
             } else {
+                let target = util.objectFromMemory(creep.memory, 'unload_container', (c)=>_.sum(c.store) < c.storeCapacity);
+                if (!target) {
+                    let array = _.filter(creep.room.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_CONTAINER}}),
+                        (c)=> _.sum(c.store) < c.storeCapacity);
+                    creep.log('containers', array.length);
+                    if (array.length) {
+                        target = array.shift();
+                    }
+                    creep.log('target', target);
+                    if (target)  creep.memory['unload_container'] = target.id;
+                }
+                if (target) {
+                    // creep.log('unloading to', target);
+                    let transfer = creep.transfer(target, RESOURCE_ENERGY);
+                    if (ERR_NOT_IN_RANGE === transfer) {
+                        creep.log('moving to', target);
+                        creep.moveTo(target);
+                    } else if(transfer !== OK  && transfer !== ERR_TIRED){
+
+                        creep.log('transfer?',transfer);
+                    }
+                    return;
+                }
                 creep.log('no unloadStrategy');
                 return;
             }
+            delete creep.memory['unload_container'];
         }
     }
 

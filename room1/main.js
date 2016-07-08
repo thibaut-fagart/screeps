@@ -1,4 +1,5 @@
 var _ = require('lodash');
+var  util = require('./util');
 var RoleHarvester = require('./role.harvester'), roleHarvester = new RoleHarvester();
 var RoleCarry = require('./role.carry'), roleCarry = new RoleCarry();
 var RoleRemoteCarry = require('./role.remote.carry'), roleRemoteCarry = new RoleRemoteCarry();
@@ -21,10 +22,10 @@ var profiler = require('./screeps-profiler');
 // This line monkey patches the global prototypes.
 profiler.enable();
 Creep.prototype.log= function() {
-    console.log([this.name , this.memory.role ].concat(Array.prototype.slice.call(arguments)));
+    console.log([this.name , this.pos, this.memory.role ].concat(Array.prototype.slice.call(arguments)));
 };
 Spawn.prototype.log= function() {
-    console.log([this.name , this.memory.role ].concat(Array.prototype.slice.call(arguments)));
+    console.log([this.name , this.room.name ].concat(Array.prototype.slice.call(arguments)));
 };
 Room.prototype.log = function() {
     console.log([this.name , this.controller.level].concat(Array.prototype.slice.call(arguments)));
@@ -51,13 +52,31 @@ module.exports.loop = function () {
         let messages = [];
         let oldSeenTick = Game.time || (Memory.counters && Memory.counters.seenTick);
         Memory.counters = {tick:Game.time, seenTick: oldSeenTick+1};
-        for (var name in Memory.creeps) {
-            if (!Game.creeps[name]) {
-                delete Memory.creeps[name];
+    _.keys(Memory.stats).forEach((k) => {if (!/repairs2/.exec(k)) { delete Memory.stats[k]}});
+        if (0 == Game.time % 100) {
+            for (var name in Memory.creeps) {
+                if (!Game.creeps[name]) {
+                    delete Memory.creeps[name];
+                }
             }
         }
         for (var roomName in Game.rooms) {
             var room = Game.rooms[roomName];
+            if (0 == Game.time % 100) {
+                let locks = _.pairs(room.memory.reserved);
+                locks.forEach((p)=> {
+                    if (!Game.getObjectById(p[1])) delete room.memory.reserved[p[0]]
+                });
+            }
+            if (room.controller && room.controller.level >=3) {
+                let towerFilter = {filter: {structureType: STRUCTURE_TOWER}};
+                if (room.find(FIND_MY_STRUCTURES, towerFilter) ==0 && room.find(FIND_MY_CONSTRUCTION_SITES,towerFilter)) {
+                    let avoid = room.find(FIND_STRUCTURES, (s)=> [STRUCTURE_SPAWN, STRUCTURE_EXTENSION, STRUCTURE_CONTAINER]);
+                    avoid.push(room.controller);
+                    avoid=  _.map(avoid,(s) => {return {pos: s.pos, range:3}});
+                    room.createConstructionSite(avoid[avoid.length], STRUCTURE_TOWER);
+                }
+            }
             let structuresMemory = room.memory.structures;
             if (structuresMemory) {
                 for (var id in structuresMemory) {
@@ -75,6 +94,7 @@ module.exports.loop = function () {
             var creeps = room.find(FIND_MY_CREEPS);
             // room.creeps = creeps;
             creeps.forEach(function (creep) {
+                try {
                     if (creep.memory.role == 'harvester') {
                         roleHarvester.run(creep);
                     } else if (creep.memory.role == 'carry') {
@@ -102,6 +122,10 @@ module.exports.loop = function () {
                     } else if (creep.memory.role == 'roleRemoteGuard' || creep.memory.role == 'roleCloseGuard') {
                         roleRemoteGuard.run(creep);
                     }
+                } catch (e) {
+                    console.log(e.stack);
+                    Game.notify(e.stack);
+                }
             });
 
             room.find(FIND_MY_STRUCTURES, {filter: (s) => s instanceof StructureTower}).forEach((tower)=>{ roleTower.run(tower);});

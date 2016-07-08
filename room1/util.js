@@ -1,7 +1,9 @@
 var _ = require('lodash');
 class Util {
+
     constructor() {
         this.CURRENT_STRATEGY = 'strategy';
+        this.currentid = Memory.id|| 0;
     }
 
     /**
@@ -27,13 +29,13 @@ class Util {
     }
 
     /**
-     * 
+     *
      * @param creep
-     * @param object 
+     * @param object
      * @returns {boolean} true if object is not already reserved
      */
     reserve(creep, object) {
-        if (object && !this.isReserved(creep,object)) {
+        if (object && !this.isReserved(creep, object)) {
             creep.room.memory.reserved[object.id] = creep.id;
             // creep.log('reserved',object.id)
             return true;
@@ -41,6 +43,7 @@ class Util {
             return false;
         }
     }
+
     isReserved(creep, object) {
         if (!object) return false;
         let reserved = creep.room.memory.reserved || {};
@@ -53,13 +56,14 @@ class Util {
         return old;
     }
 
-    release (creep, object) {
+    release(creep, object) {
         // creep.log('releasing ?', object);
         if (!object) return;
         let reserved = creep.room.memory.reserved || {};
-        delete  reserved[(typeof object === 'string'  )? object: object.id];
+        delete  reserved[(typeof object === 'string'  ) ? object : object.id];
         // creep.log('released',object.id)
     }
+
     /**
      *
      * @param {Creep} creep
@@ -68,7 +72,7 @@ class Util {
      */
     getAndExecuteCurrentStrategy(creep, candidates) {
         let s = creep.memory[this.CURRENT_STRATEGY];
-        let stratAndParams= {};
+        let stratAndParams = {};
         if ('string' == typeof s || 'undefined' == typeof s) {
             stratAndParams.name = s;
         } else {
@@ -88,15 +92,19 @@ class Util {
      * @param strategy
      */
     setCurrentStrategy(creep, strategy) {
-        if (strategy) creep.memory[this.CURRENT_STRATEGY] = {name: strategy.constructor.name, state: strategy.saveState()};
+        if (strategy) creep.memory[this.CURRENT_STRATEGY] = {
+            name: strategy.constructor.name,
+            state: strategy.saveState()
+        };
         else delete creep.memory[this.CURRENT_STRATEGY];
     }
+
     strategyToLog(strategy) {
         return (strategy ? strategy.constructor.name : 'none');
     }
-    
+
     findExit(creep, room, memoryName) {
-        var exit ;
+        var exit;
         if (!creep.memory[memoryName]) { // todo refresh  exit every once in a while ? 
             creep.log("finding exit to", room);
             var exitDir = creep.room.findExitTo(room);
@@ -117,9 +125,25 @@ class Util {
      * @return {Roster}
      */
     roster(room) {
-        if(room) { room = 'string' === typeof room ? Game.rooms[room]:room; }
-        let creeps = (room)? room.find(FIND_MY_CREEPS):Game.creeps;
-        return _.countBy(creeps,(c) => c.memory.role);
+        if (room) {
+            // console.log(typeof room);
+            room = 'string' === typeof room ? Game.rooms[room] : room;
+        }
+        // console.log('room name', (room?room.name:'null'));
+        let creeps = (room) ? room.find(FIND_MY_CREEPS) : Game.creeps;
+        return _.countBy(creeps, (c) => c.memory.role);
+    }
+
+    /**
+     *
+     * @param {string} [id]
+     */
+    uuid(id) {
+        if(id) {
+            return id + '.' + this.currentid++;
+        } else {
+            return this.currentid++;
+        }
     }
 }
 module.exports = new Util();

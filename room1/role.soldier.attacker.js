@@ -15,7 +15,7 @@ class RoleAttacker{
         delete creep.memory.role;
         delete creep.memory.action; //{go_remote_room, load, go_home, unload}
         delete creep.memory.remoteRoom;
-        delete creep.memory.homeRoom;
+        delete creep.memory.homeroom;
         delete creep.memory.target;
     }
     init (creep) {

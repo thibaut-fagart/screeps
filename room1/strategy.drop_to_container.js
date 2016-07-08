@@ -37,12 +37,15 @@ class DropToContainerStrategy extends BaseStrategy{
     /** @param {Creep} creep
      * @return {boolean}**/
     accepts(creep) {
-        let target = util.objectFromMemory(creep.memory, this.PATH, (c)=>_.sum(c.store) < c.storeCapacity);
+        let excludedContainers = this.getExcludedContainers(creep);
+        let target = util.objectFromMemory(creep.memory, this.PATH, (c)=>_.sum(c.store) < c.storeCapacity && this.getExcludedContainers(creep).indexOf(c.id)<0);
         if (!target) {
             // find a new target
-            var allContainers = creep.room.find(FIND_STRUCTURES,
-                {filter: (s) =>(!this.structure||(s.structureType == this.structure))
-                                && (s.store &&_.sum(s.store)<s.storeCapacity)});
+            var allContainers =
+                _.filter(creep.room.find(FIND_STRUCTURES, {filter: (s) =>(!this.structure||(s.structureType == this.structure)) && excludedContainers.indexOf(s.id) <0})// all containers
+                    ,(s)=> (s.store &&_.sum(s.store)<s.storeCapacity) // !full
+                            && !this.isHarvestContainer(s)
+                );
 
             var emptyEnoughContainers = _.filter(allContainers, (s) => s.storeCapacity >(_.sum(s.store) +creep.carry[this.resource]));
             if (this.structureType ==STRUCTURE_LINK || !this.structure) {
@@ -87,6 +90,18 @@ class DropToContainerStrategy extends BaseStrategy{
         }
         // creep.log('source', null == source);
         return (target?this:null);
+    }
+
+    getExcludedContainers(creep) {
+        let excludedContainers = [];
+        let sourceContainerId = creep.memory['containerSource'];
+        if (sourceContainerId) excludedContainers.push(sourceContainerId);
+        if (creep.room.memory.harvestContainers) excludedContainers = excludedContainers.concat(creep.room.memory.harvestContainers);
+        return excludedContainers;
+    }
+
+    isHarvestContainer(container) {
+        return container.room && container.room.harvestContainers && (container.room.harvestContainers.indexOf(container.id) >= 0);
     }
 }
 

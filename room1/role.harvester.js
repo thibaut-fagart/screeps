@@ -26,7 +26,7 @@ class RoleHarvester {
 				util.setCurrentStrategy(creep, strategy);
 				// creep.log('strategy ', strategy.constructor.name);
 			} else {
-				creep.log('no harvestStrategy');
+				// creep.log('no harvestStrategy');
 				return;
 			}
         } else {
@@ -40,7 +40,7 @@ class RoleHarvester {
 				util.setCurrentStrategy(creep, strategy);
 				// creep.log('strategy ', strategy.constructor.name);
 			} else {
-				creep.log('no harvestStrategy');
+				// creep.log('no harvestStrategy');
 				return;
 			}
         }

@@ -1,5 +1,5 @@
 var _ = require('lodash');
-var DECAY_CONSTANTS_OWNED = {}
+var DECAY_CONSTANTS_OWNED = {};
 DECAY_CONSTANTS_OWNED[STRUCTURE_CONTAINER] =  {decay: function(pos) {return 5000;}, delay:function(pos) {return 500;}};
 DECAY_CONSTANTS_OWNED[STRUCTURE_RAMPART] =  {decay: function(pos) {return 300;}, delay:function(pos) {return 100;}};
 DECAY_CONSTANTS_OWNED[STRUCTURE_ROAD] =  {
@@ -39,6 +39,15 @@ class DecayComputer {
 
     }
 
+    /**
+     * 
+     * @param {Structure} structure
+     */
+    repairNeedPer10k(structure) {
+        let data = DECAY_CONSTANTS_OWNED[structure.structureType];
+        if (!data)return 0;
+        return data.decay(structure.pos) * 10000 / data.delay(structure.pos);
+    }
     isOwned(roomName) {
         let room = Game.rooms[roomName];
         return room.controller.my;
