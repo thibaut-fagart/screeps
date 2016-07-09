@@ -1,15 +1,4 @@
 var _ = require('lodash');
-var RoleHarvester = require('./role.harvester');
-var RoleCarry = require('./role.carry');
-var RoleUpgrader = require('./role.upgrader');
-var roleSpawn = require('./role.spawn');
-var RoleTower = require('./role.tower');
-var RoleBuilder = require('./role.builder');
-var roleRepair = require('./role.repair');
-var RoleRepair2 = require('./role.repair2');
-var RoleClaim = require('./role.controller.claim');
-var RoleRemoteHarvester = require('./role.remote_harvester');
-var RoleGuard = require('./role.soldier.roomguard'); roleRemoteGuard = new RoleGuard();
 
 let usedOnStart = 0;
 let enabled = false;
@@ -94,9 +83,26 @@ function hookUpPrototypes() {
 }
 
 function profileObjectFunctions(object, label) {
-  const objectToWrap = object.prototype ? object.prototype : object;
+  let objectToWrap = object.prototype ? object.prototype :object;
 
-  Object.keys(objectToWrap).forEach(functionName => {
+    let keys = Object.keys(objectToWrap);
+  if (!keys.length) {
+    if (!object.prototype) objectToWrap = object.constructor;
+    keys = Object.keys(objectToWrap);
+    if (!keys.length) {
+
+      keys = Object.getOwnPropertyNames(Object.getPrototypeOf(object));
+      if (keys[0] === 'constructor') keys = keys.splice(1);
+      else {
+        keys = Reflect.ownKeys(object.prototype);
+        if (keys[0] === 'constructor') keys = keys.splice(1);
+        else {
+          console.log(`profiler unable to find methods ${label}`);
+        }
+      }
+    }
+  }
+  keys.forEach(functionName => {
     const extendedLabel = `${label}.${functionName}`;
     try {
       if (typeof objectToWrap[functionName] === 'function' && functionName !== 'getUsed') {
@@ -105,7 +111,6 @@ function profileObjectFunctions(object, label) {
       }
     } catch (e) { } /* eslint no-empty:0 */
   });
-
   return objectToWrap;
 }
 
@@ -165,6 +170,7 @@ const Profiler = {
     return lines;
   },
 
+
   prototypes: [
     { name: 'Game', val: Game },
     { name: 'Room', val: Room },
@@ -174,16 +180,23 @@ const Profiler = {
     { name: 'RoomPosition', val: RoomPosition },
     { name: 'Source', val: Source },
     { name: 'Flag', val: Flag },
-    { name: 'RoleUpgrader', val: RoleUpgrader },
-    { name: 'RoleRemoteCarry', val: RoleCarry },
-    { name: 'RoleBuilder', val: RoleBuilder },
-    { name: 'RoleHarvester', val: RoleHarvester },
-    { name: 'RoleUpgrader', val: RoleUpgrader },
-    { name: 'RoleTower', val: RoleTower },
-    { name: 'RoleRepair2', val: RoleRepair2 },
-    { name: 'RoleClaim', val: RoleClaim },
-    { name: 'RoleRemoteHarvester', val: RoleRemoteHarvester },
-    { name: 'RoleGuard', val: RoleGuard },
+{name:'RoleBuilder',val:require('./role.builder')},
+{name:'RoleBuilderRemote',val:require('./role.builder.remote')},
+{name:'RoleCarry',val:require('./role.carry')},
+{name:'RoleControllerClaim',val:require('./role.controller.claim')},
+{name:'RoleControllerReserve',val:require('./role.controller.reserve')},
+{name:'RoleHarvester',val:require('./role.harvester')},
+{name:'RoleRemoteCarry',val:require('./role.remote.carry')},
+// {name:'RoleRemoteUpgrader',val:require('./role.remote.upgrader')},
+{name:'RoleRemoteHarvester',val:require('./role.remote_harvester')},
+{name:'RoleRepair2',val:require('./role.repair2')},
+{name:'RoleSoldierAttacker',val:require('./role.soldier.attacker')},
+{name:'RoleSoldierRoomguard',val:require('./role.soldier.roomguard')},
+{name:'spawn',val:require('./role.spawn')},
+{name:'RoleTower',val:require('./role.tower')},
+{name:'RoleUpgrader',val:require('./role.upgrader')},
+  {name:'Util',val:require('./util')},
+      
   ],
 
   record(functionName, time) {

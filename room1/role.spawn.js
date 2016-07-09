@@ -12,29 +12,29 @@ var Decay = require('./util.decay'), decay = new Decay();
 //  Game.spawns.Spawn1.createCreep([WORK, MOVE, WORK, WORK, WORK, WORK, ], undefined, {role:'harvester'})
 module.exports = {
     maxCreeps: 15,
-    BODY_COST :{"move":50, "work":100, "carry":50, "attack":80,"ranged_attack":150,"heal":250, "claim":600, "tough":10},
+    BODY_COST :{'move':50, 'work':100, 'carry':50, 'attack':80,'ranged_attack':150,'heal':250, 'claim':600, 'tough':10},
     patterns: {
-                'harvester': {body: [MOVE, WORK, WORK, WORK, WORK, WORK,], count: 2, scale:false, memory: {role: 'harvester'}},
-                'carry': {body: [CARRY, MOVE, CARRY, CARRY, CARRY, MOVE, /* 300 */CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 600 */
-                    CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 900 */CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 1200 */], count: 2, scale:false, memory: {role: 'carry'}} ,
-                'remoteCarry': {body: [CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 300 */CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 600 */
-                    CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 900 */CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 1200 */], count: 0, scale:false, memory: {role: 'remoteCarry'}},
-                'upgrader': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count: 2, scale:true, memory: {role: 'upgrader'}},
-                'remoteUpgrader': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count: 0, scale:true, memory: {role: 'remoteUpgrader'}},
-                // 'remoteHarvester': {body: [CARRY, MOVE, WORK, MOVE, CARRY, MOVE, WORK, MOVE, CARRY, MOVE,WORK, MOVE, CARRY,MOVE, WORK, MOVE,MOVE,CARRY], scale:true, count: 2, memory: {role: 'remoteHarvester'}},
-                'remoteHarvester': {body: [MOVE, MOVE, WORK, WORK, WORK, WORK, WORK], scale:true, count: 2, memory: {role: 'remoteHarvester'}},
-                'builder': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count: 2, scale:true, memory: {role: 'builder'}},
-                'remoteBuilder': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count: 0, scale:true, memory: {role: 'remoteBuilder'}},
-                'claimer': {body: [MOVE, MOVE, CLAIM, CLAIM, ], count: 0, scale:true, memory: {role: 'claimer'}},
-                'reserver': {body: [MOVE, MOVE, CLAIM, CLAIM, ], count: 0, scale:true, memory: {role: 'reserver'}},
-                // 'repair': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count: 2, scale:true, memory: {role: 'repair'}},
-                'repair2': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count:2, scale:true, memory: {role: 'repair2'}},
-                //'roleRemoteGuard': {body: [TOUGH,TOUGH, TOUGH,TOUGH,MOVE, MOVE,MOVE,MOVE, RANGED_ATTACK, RANGED_ATTACK,MOVE, MOVE, MOVE, HEAL], count:1, scale:true, memory: {role: 'roleRemoteGuard'}},
-                'roleCloseGuard': {body: [TOUGH,TOUGH, TOUGH,TOUGH,MOVE, MOVE,MOVE,MOVE, ATTACK, ATTACK,ATTACK,ATTACK,MOVE, MOVE, MOVE, HEAL,HEAL,MOVE,MOVE,TOUGH,MOVE,MOVE, HEAL, ATTACK], count: 4, scale:true, memory: {role: 'roleCloseGuard'}},
-                'attacker': {body: [TOUGH,TOUGH, TOUGH,TOUGH,MOVE, MOVE,MOVE,MOVE, ATTACK, ATTACK,ATTACK,ATTACK,MOVE, MOVE, MOVE, HEAL,HEAL,MOVE,MOVE], count: 0, scale:true, memory: {role: 'attacker'}},
-                // 'attack': {body: [WORK, CARRY, MOVE, ATTACK, CARRY, MOVE,ATTACK , MOVE,WORK, CARRY, MOVE, ATTACK, CARRY, ATTACK, MOVE,MOVE], count: 1, memory: {role: 'attack'}},
+        'harvester': {body: [MOVE, WORK, WORK, WORK, WORK, WORK,], count: 2, scale:false, memory: {role: 'harvester'}},
+        'carry': {body: [CARRY, MOVE, CARRY, CARRY, CARRY, MOVE, /* 300 */CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 600 */
+            /*CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /!* 900 *!/CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /!* 1200 *!/*/], count: 1, scale:false, memory: {role: 'carry'}} ,
+        'remoteCarry': {body: [CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 300 */CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 600 *//*
+            CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /!* 900 *!/CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /!* 1200 *!/*/], count: 0, scale:false, memory: {role: 'remoteCarry'}},
+        'upgrader': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count: 2, scale:true, memory: {role: 'upgrader'}},
+        'remoteUpgrader': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count: 0, scale:true, memory: {role: 'remoteUpgrader'}},
+        // 'remoteHarvester': {body: [CARRY, MOVE, WORK, MOVE, CARRY, MOVE, WORK, MOVE, CARRY, MOVE,WORK, MOVE, CARRY,MOVE, WORK, MOVE,MOVE,CARRY], scale:true, count: 2, memory: {role: 'remoteHarvester'}},
+        'remoteHarvester': {body: [MOVE, MOVE, CARRY, WORK, WORK, WORK, WORK, WORK], scale:true, count: 2, memory: {role: 'remoteHarvester'}},
+        'builder': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count: 1, scale:true, memory: {role: 'builder'}},
+        'remoteBuilder': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count: 0, scale:true, memory: {role: 'remoteBuilder'}},
+        'claimer': {body: [MOVE, MOVE, CLAIM, CLAIM, ], count: 0, scale:true, memory: {role: 'claimer'}},
+        'reserver': {body: [MOVE, MOVE, CLAIM,CLAIM, ], count: 0, scale:true, memory: {role: 'reserver'}},
+        // 'repair': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count: 2, scale:true, memory: {role: 'repair'}},
+        'repair2': {body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE,WORK, CARRY, MOVE, CARRY, WORK, MOVE,MOVE], count:2, scale:true, memory: {role: 'repair2'}},
+        'roleRemoteGuard': {body: [TOUGH,TOUGH, TOUGH,TOUGH,MOVE, MOVE,MOVE,MOVE, RANGED_ATTACK, RANGED_ATTACK,MOVE, MOVE, MOVE, HEAL, HEAL, HEAL, RANGED_ATTACK, RANGED_ATTACK,], count:0, scale:true, memory: {role: 'roleSoldier'}},
+        'roleCloseGuard': {body: [TOUGH,TOUGH, TOUGH,TOUGH,MOVE, MOVE,MOVE,MOVE, ATTACK, ATTACK,ATTACK,ATTACK,MOVE, MOVE, MOVE, HEAL,HEAL,MOVE,MOVE,TOUGH,MOVE,MOVE, HEAL, ATTACK], count: 0, scale:true, memory: {role: 'roleSoldier'}},
+        'attacker': {body: [TOUGH,TOUGH, TOUGH,TOUGH,MOVE, MOVE,MOVE,MOVE, ATTACK, ATTACK,ATTACK,ATTACK,MOVE, MOVE, MOVE, HEAL,HEAL,MOVE,MOVE], count: 0, scale:true, memory: {role: 'attacker'}},
+        // 'attack': {body: [WORK, CARRY, MOVE, ATTACK, CARRY, MOVE,ATTACK , MOVE,WORK, CARRY, MOVE, ATTACK, CARRY, ATTACK, MOVE,MOVE], count: 1, memory: {role: 'attack'}},
     },
-    BODY_ORDER: [TOUGH, WORK, CARRY, MOVE, ATTACK, HEAL],
+    BODY_ORDER: [TOUGH, WORK, CARRY, MOVE, ATTACK, HEAL, RANGED_ATTACK, CLAIM],
     //Game.spawns.Spawn1.createCreep([CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 300 */CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, CARRY, CARRY, MOVE], undefined, {role:'carry'})
     shapeBody: function(spawn, perfectBody) {
 
@@ -117,19 +117,16 @@ module.exports = {
         }
 */
 
-        var creepCount = _.sum(currentSplit);
-
-
         if (creep.room.memory.remoteMining) {
             let remoteRoom = Game.rooms[creep.room.memory.remoteMining];
             if (remoteRoom && remoteRoom.find(FIND_HOSTILE_CREEPS).length ===0) {
                 // creep.log('remoteMining');
                 let remoteRoster = util.roster(remoteRoom);
                 patterns['remoteHarvester'].count = Math.max(0,remoteRoom.find(FIND_SOURCES).length - ((remoteRoster['remoteHarvester']||0)+(remoteRoster['harvester']||0)));
-                creep.log('remoteroster', JSON.stringify(remoteRoster));
-                let myAwayRemoteCarries = remoteRoster['remoteCarry'];
-                patterns['remoteCarry'].count = 2*(remoteRoster['remoteHarvester']||0)-myAwayRemoteCarries;
-                creep.log('remoteCarry?', patterns['remoteCarry'].count);
+                // creep.log('remoteroster', JSON.stringify(remoteRoster));
+                let myAwayRemoteCarries = remoteRoster['remoteCarry']||0;
+                patterns['remoteCarry'].count = 5*(remoteRoster['remoteHarvester']||0)-myAwayRemoteCarries;
+                // creep.log('remoteCarry?', patterns['remoteCarry'].count);
 
             } else {
                 patterns['remoteHarvester'].count = 1; // ENABLE when it works 
@@ -152,8 +149,15 @@ module.exports = {
         }
         if (creep.room.memory.remotebuild) {
             let remoteRoom = Game.rooms[creep.room.memory.remotebuild];
-            if (!remoteRoom || (remoteRoom.controller && !remoteRoom.controller.my)) {
+            if (!remoteRoom) {
                 patterns['remoteBuilder'].count = Math.max(1, patterns['remoteBuilder'].count);
+            } else if (remoteRoom.controller && !remoteRoom.controller.my) {
+                if (remoteRoom.find(FIND_CONSTRUCTION_SITES).length>0){
+                    patterns['remoteBuilder'].count = Math.max(1, patterns['remoteBuilder'].count);
+                } else {
+                    patterns['remoteBuilder'].count = 0;
+                }
+
             } else if (remoteRoom.find(FIND_MY_SPAWNS) == 0) {
                 patterns['remoteBuilder'].count = 3;
             } else if (remoteRoom.find(FIND_MY_SPAWNS) > 0) {
@@ -166,10 +170,10 @@ module.exports = {
         }
         if (creep.room.memory.remotebuild) {
             let remoteRoom = Game.rooms[creep.room.memory.attack];
-            if (remoteRoom && util.roster(remoteRoom)['roleCloseGuard']>= patterns['roleCloseGuard'].count
+            if (remoteRoom && util.roster(remoteRoom)['roleSoldier']>= (patterns['roleRemoteGuard'].count+patterns['roleCloseGuard'])
                     ||  (remoteRoom && remoteRoom.find(FIND_MY_STRUCTURES, {filter:{structureType: STRUCTURE_TOWER}}).length >0)) {
                 // console.log('disabling remote defenders');
-                patterns['roleCloseGuard'].count = 0;
+                patterns['roleRemoteGuard'].count = 0;
             }
             if (creep.room.controller.level > 5) {
                 if (!remoteRoom) {
@@ -185,16 +189,36 @@ module.exports = {
         if (creep.room.find(FIND_CONSTRUCTION_SITES, {filter:(c)=> STRUCTURE_EXTENSION === c.structureType}).length >0) {
             patterns['upgrader'].count = 0;
         }
+        if (patterns['roleCloseGuard'].count &&creep.room.memory.attack) {
+            let remoteRoster = util.roster(creep.room.memory.attack);
+            creep.log('decreasing roleCloseGuard', (remoteRoster['roleRemoteGuard']||0)+(remoteRoster['roleCloseGuard'] ||0));
+            patterns['roleCloseGuard'].count -= (remoteRoster['roleRemoteGuard']||0)+(remoteRoster['roleCloseGuard'] ||0);
+        }
+        if (patterns['roleRemoteGuard'].count &&creep.room.memory.attack) {
+            let remoteRoster = util.roster(creep.room.memory.attack);
+            creep.log('decreasing roleRemoteGuard', (remoteRoster['roleRemoteGuard']||0)+(remoteRoster['roleCloseGuard'] ||0));
+            patterns['roleRemoteGuard'].count -= (remoteRoster['roleRemoteGuard']||0)+(remoteRoster['roleCloseGuard'] ||0);
+        }
         if (creep.room.memory.nomilitary) {
             patterns['roleCloseGuard'].count = 0;
+            patterns['roleRemoteGuard'].count = 0;
         }
+        let notDyingRoster = util.roster(creep.room, (c)=>c.ticksToLive > 50);
+        // creep.log('correct harvester to ? ',  notDyingRoster['harvester']);
+        // creep.log('correct carry to ? ',  notDyingRoster['carry']);
+        currentSplit['harvester'] = notDyingRoster['harvester'];
+        currentSplit['carry'] = notDyingRoster['carry'];
         if (!currentSplit['reserver'] && creep.room.memory.reserve) {
             // creep.log('adjusting for reserves');
             let remoteRoom = Game.rooms[creep.room.memory.reserve];
-            if (remoteRoom) creep.log('reserve ?', remoteRoom, JSON.stringify(remoteRoom.controller.reservation));
-            if (!remoteRoom || (!remoteRoom.controller.reservation || !creep.owner.username ==  remoteRoom.controller.reservation.username
-                || remoteRoom.controller.reservation.ticksToDowngrade < 500)) {
-                patterns['reserver'].count = 1;
+            if (remoteRoom) {
+                let spawnReserve = ( !remoteRoom.controller || !remoteRoom.controller.reservation || creep.owner.username !== remoteRoom.controller.reservation.username)
+                                    || (remoteRoom.controller && remoteRoom.controller.reservation.ticksToEnd < 500);
+                // creep.log('current reservation  ?', remoteRoom.name, JSON.stringify(remoteRoom.controller.reservation));
+                // spawn reserver if  the room is not reserved, or due to expire soon
+                if (spawnReserve) {
+                    patterns['reserver'].count = 1;
+                }
             }
         } else {
             // creep.log('reserver', !currentSplit['reserver'], 'reserve', creep.room.memory.reserver);
@@ -205,10 +229,9 @@ module.exports = {
         var required = {};
 
 
-        var targetCount = _.sum(patterns, (p)=> p.count);
         // creep.log('targetCount', targetCount);
-        var targetSplit = _.mapValues( patterns,(spec)=>{return spec.count /*/ targetCount*/}); /* {role: target%}*/
-        creep.log("targetSplit ", JSON.stringify(targetSplit));
+        var targetSplit = _.mapValues( patterns,(spec)=>spec.count);
+        // creep.log("targetSplit ", JSON.stringify(targetSplit));
         /* required : {role : need filled%}*/
         _.keys(targetSplit).forEach((role)=> {
             targetSplit[role] -= (currentSplit[role] || 0)
@@ -265,7 +288,7 @@ module.exports = {
         }
         let creep2 = creep.createCreep(buildSpec.body, undefined, buildSpec.memory);
         if ('number' !== typeof creep2) {
-            creep.log("building ", JSON.stringify(buildSpec));
+            creep.log("building ", creep.room.energyAvailable, creep.room.energyCapacityAvailable,JSON.stringify(buildSpec));
             creep.memory.build = {start: Game.time, buildTime: buildSpec.body.length};
         } else {
             creep.log('create?', creep2);

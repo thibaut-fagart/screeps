@@ -8,7 +8,7 @@ var DropToContainerStrategy = require('./strategy.drop_to_container');
 
 class RoleRemoteHarvester {
     constructor() {
-        this.loadStrategies = [new HarvestEnergySourceToContainerStrategy(), new PickupStrategy(), new HarvestEnergySourceStrategy()];
+        this.loadStrategies = [new HarvestEnergySourceToContainerStrategy(), new PickupStrategy(RESOURCE_ENERGY), new HarvestEnergySourceStrategy()];
         this.unloadStrategies = [new DropToContainerStrategy(RESOURCE_ENERGY), new DropToEnergyStorage()];
     }
     /*
@@ -48,12 +48,14 @@ class RoleRemoteHarvester {
             delete creep.memory.remotesource;
         }
         if (!creep.memory.action) {
-            this.init(creep)
+            this.init(creep);
         }
         if (creep.memory.action == 'go_remote_room' && creep.room.name == creep.memory.remoteRoom) {
             creep.memory.action = 'load';
             // creep.log('reached remote room',creep.memory.action)
-        } else if (creep.memory.action == 'load' && creep.carry.energy == creep.carryCapacity && creep.carryCapacity>0) {
+        } else if (creep.memory.action == 'load' && creep.carry.energy == creep.carryCapacity && creep.carryCapacity>0
+                && _.find(creep.pos.lookFor(LOOK_STRUCTURES), (s)=>s.structureType === STRUCTURE_CONTAINER).length ==0) {
+
             creep.memory.action = 'go_home_room';
             // creep.log('full', creep.memory.action);
         } else if (creep.memory.action == 'go_home_room' && creep.room.name == creep.memory.homeroom) {

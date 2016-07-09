@@ -9,11 +9,11 @@ var AttackStructureStrategy = require('./strategy.attack.structure');
 
 class RoleRemoteRoomGuard {
     constructor() {
-        this.attackStrategies = [new CloseAttackStrategy(5), new SquadAttackStrategy(), new RemoteAttackStrategy(), new HealStrategy() ,new CloseAttackStrategy(), new RegroupStrategy(COLOR_BLUE)/*,new AttackStructureStrategy()*/];
+        this.attackStrategies = [new HealStrategy(3) ,new CloseAttackStrategy(5), new SquadAttackStrategy(), new RemoteAttackStrategy(), new HealStrategy(),new CloseAttackStrategy(), new RegroupStrategy(COLOR_BLUE)/*,new AttackStructureStrategy()*/];
     }
 
     resign(creep) {
-        creep.log("resigning");
+        creep.log('resigning');
         delete creep.memory.role;
         delete creep.memory.action; //{go_remote_room, load, go_home, unload}
         delete creep.memory.remoteRoom;
@@ -34,15 +34,15 @@ class RoleRemoteRoomGuard {
     /** @param {Creep} creep **/
     run(creep) {
         if (!creep.memory.action) {
-            this.init(creep)
+            this.init(creep);
         }
         if (creep.memory.action === 'wait') {
             let remoteRoom = Game.rooms[creep.memory.remoteRoom];
             if (remoteRoom && remoteRoom.find(FIND_HOSTILE_CREEPS) == 0) {
                 creep.memory.action = 'go_remote_room';
             } else {
-                let brothers = this.findBrothers(creep);
-                if (!creep.room.memory.attack_min || (creep.room.memory.attack_min <= (brothers?0:brothers.length))) {
+                let brotherCount = this.findBrothers(creep);
+                if (!creep.room.memory.attack_min || (creep.room.memory.attack_min <= (brotherCount))) {
                     creep.memory.action = 'go_remote_room';
                 } else {
                     this.regroup(creep);
@@ -51,14 +51,15 @@ class RoleRemoteRoomGuard {
         }
         if (creep.memory.action == 'go_remote_room' && creep.room.name != creep.memory.homeroom) {
             creep.memory.action = 'defend';
-            creep.memory.controller = creep.room.controller.id;
+            creep.memory.controller = (creep.room.controller? creep.room.controller.id:'none');
             // creep.log('reached remote room',creep.memory.action)
         }
 
         // creep.log(creep.memory.action);
         if (creep.memory.action == 'go_remote_room' && creep.room.name == creep.memory.homeroom) {
             if (!creep.memory.remoteRoom) {
-                creep.log("no remoteMining room");
+                creep.memory.remoteRoom = creep.memory.remoteRoom || creep.room.memory.remoteMining || creep.room.memory.claim;
+                creep.log('no remoteMining room');
                 // this.resign(creep);
             } else {
 
@@ -69,14 +70,15 @@ class RoleRemoteRoomGuard {
         }
 
         if (creep.memory.action == 'defend' && creep.memory.remoteRoom == creep.room.name) {
-            let strategy = util.getAndExecuteCurrentStrategy(creep, this.attackStrategies); // attackStrategy,movetosource
+            let strategy = null;
+                // util.getAndExecuteCurrentStrategy(creep, this.attackStrategies); // attackStrategy,movetosource
             // creep.log('previousStrategy',util.strategyToLog(strategy));
             if (!strategy) {
                 strategy = _.find(this.attackStrategies, (strat)=>strat.accepts(creep));
-                // creep.log('newStrategy',util.strategyToLog(strategy));
+                creep.log('newStrategy',util.strategyToLog(strategy));
             }
             if (strategy) {
-                // creep.log('strategy', strategy.constructor.name);
+                creep.log('strategy', strategy.constructor.name);
                 util.setCurrentStrategy(creep, strategy);
                 delete creep.memory['fleepath'];
             } else {
@@ -136,7 +138,9 @@ class RoleRemoteRoomGuard {
     }
 
     findBrothers(creep) {
-        return creep.pos.findInRange(FIND_MY_CREEPS, 5, {filter: (c) => c.memory.role == creep.memory.role})
+        let inRange = creep.pos.findInRange(FIND_MY_CREEPS, 5, {filter: (c) => c.memory.role == creep.memory.role}).length;
+        // creep.log('brothers?', inRange);
+        return inRange;
     }
 }
 

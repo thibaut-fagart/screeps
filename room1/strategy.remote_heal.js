@@ -2,10 +2,13 @@ var _ = require('lodash');
 var BaseStrategy = require('./strategy.base');
 
 class RemoteHealStrategy extends BaseStrategy {
-    constructor() {
+    constructor(range) {
         super();
     }
-
+    saveState() {
+        return {range: this.range};
+    }
+    
     /** @param {Creep||StructureTower} creep
      * @return {Creep|| null}**/
     accepts(creep) {
@@ -14,7 +17,10 @@ class RemoteHealStrategy extends BaseStrategy {
         }
         // find my damaged creeps, heal closest if time
         // order by type (heal > *)  and distance
-        let damaged = creep.pos.findClosestByRange(FIND_MY_CREEPS, {filter: (c) => (c.hits < c.hitsMax)});
+
+        let damageds = (this.range) ? creep.pos.findInRange(FIND_MY_CREEPS, this.range, {filter: (c) => (c.hits < c.hitsMax)}) : creep.room.find(FIND_MY_CREEPS, {filter: (c) => (c.hits < c.hitsMax)});
+        damageds = _.sortBy(damageds, (c)=>c.hits);
+        let damaged = (damageds.length ? damageds[0] : null);
         if (damaged) {
             if (creep instanceof StructureTower) {
                 creep.heal(damaged);
@@ -26,7 +32,9 @@ class RemoteHealStrategy extends BaseStrategy {
 
             }
         }
-        return this.setRemoteTarget(creep, damaged);
+        let remoteTarget = this.setRemoteTarget(creep, damaged);
+        // creep.log('remoteTarget', remoteTarget);
+        return remoteTarget;
     }
 
     /** @param {Creep||StructureTower} creep

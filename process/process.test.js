@@ -14,7 +14,7 @@ describe('process', function () {
         it('should load the process as they were saved', function () {
             "use strict";
             let root = new Process();
-            let child = new ProcessRoom(root);
+            let child = new ProcessRoom(root, {roomName:'room1'});
             let child2 = new ProcessHarvest(root, 1);
             root.type = root.constructor.name;
             child.type = child.constructor.name;
@@ -25,8 +25,20 @@ describe('process', function () {
             expect(JSON.parse(rootString), 'root save').to.deep.equal(root);
             expect(JSON.parse(childString), 'root save').to.deep.equal(child);
 
-        })
-    })
+        });
+        it('should be able to find parent process', function () {
+            "use strict";
+            let processTable = new (require('./process.table'))();
+            let root = processTable.register(new Process());
+
+            let child = processTable.register(new ProcessRoom(root,{roomName:'room1'}));
+            Process.lookup = function (id) {
+                return  processTable[id];
+            };
+            expect(child.lookup(child.parentid)).to.be.equal(root);
+
+        });
+    });
 });
 /*
  let ProcessTable = require('./process.table'), processTable = new  ProcessTable();

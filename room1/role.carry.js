@@ -8,7 +8,8 @@ var DropToEnergyStorageStrategy = require('./strategy.drop_to_energyStorage');
 
 class RoleCarry {
     constructor() {
-        this.loadStrategies = [new PickupStrategy(RESOURCE_ENERGY),
+        this.pickupStrategy = new PickupStrategy();
+        this.loadStrategies = [
             new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (c)=>(!c.room.memory.harvestContainers || c.room.memory.harvestContainers.indexOf(c.id)>=0))];
         this.unloadStrategies = [
             new DropToEnergyStorageStrategy(STRUCTURE_TOWER),
@@ -26,6 +27,7 @@ class RoleCarry {
 
     /** @param {Creep} creep **/
     run(creep) {
+        let strategy;
         if (creep.carry.energy == 0) {
             creep.memory.action = this.ACTION_FILL;
             delete creep.memory.source;
@@ -42,9 +44,13 @@ class RoleCarry {
             util.setCurrentStrategy(creep, null);
         }
         if (creep.memory.action == this.ACTION_FILL) {
-            let strategy = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);
-            if (!strategy) {
-                strategy = _.find(this.loadStrategies, (strat)=>!(null == strat.accepts(creep)));
+            if (!this.pickupStrategy.accepts(creep)) {
+                strategy = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);
+                if (!strategy) {
+                    strategy = _.find(this.loadStrategies, (strat)=>!(null == strat.accepts(creep)));
+                }
+            } else {
+                strategy = this.pickupStrategy;
             }
             if (strategy) {
                 util.setCurrentStrategy(creep, strategy);
@@ -65,18 +71,18 @@ class RoleCarry {
                 if (!target) {
                     let array = _.filter(creep.room.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_CONTAINER}}),
                         (c)=> _.sum(c.store) < c.storeCapacity);
-                    creep.log('containers', array.length);
+                    // creep.log('containers', array.length);
                     if (array.length) {
                         target = array.shift();
                     }
-                    creep.log('target', target);
+                    // creep.log('target', target);
                     if (target)  creep.memory['unload_container'] = target.id;
                 }
                 if (target) {
                     // creep.log('unloading to', target);
                     let transfer = creep.transfer(target, RESOURCE_ENERGY);
                     if (ERR_NOT_IN_RANGE === transfer) {
-                        creep.log('moving to', target);
+                        // creep.log('moving to', target);
                         creep.moveTo(target);
                     } else if(transfer !== OK  && transfer !== ERR_TIRED){
 

@@ -1,23 +1,36 @@
+var _ = require('lodash');
 var util = require('./util');
+var BaseStrategy = require('./strategy.base');
 
-class MoveToRoomTask {
-    constructor() {
-        
+
+class MoveToRoomTask extends BaseStrategy {
+    /**
+     * 
+     * @param {string} [roomMemory]
+     * @param {string} [memoryfrom]
+     * @param {string} [memoryto]
+     */
+    constructor(roomMemory, memoryfrom, memoryto) {
+        super();
+        this.ROOM_REMOTE_PATH = roomMemory ? roomMemory : 'claim';
+        this.CREEP_REMOTE_PATH = memoryto ? memoryto : 'remoteRoom';
+        this.CREEP_HOME_PATH = memoryfrom ? memoryto : 'homeroom';
     }
+    
     findHomeExit(creep) {
-        return util.findExit(creep, creep.memory.remoteRoom, 'homeExit');
+        return util.findExit(creep, creep.memory[this.CREEP_REMOTE_PATH], 'homeExit');
     }
 
     accepts (creep) {
-        if (!creep.memory.remoteRoom && creep.room.memory.claim) {
-            creep.memory.remoteRoom = creep.room.memory.claim;
+        if (!creep.memory[this.CREEP_REMOTE_PATH] && creep.room.memory[this.ROOM_REMOTE_PATH]) {
+            creep.memory[this.CREEP_REMOTE_PATH] = creep.room.memory[this.ROOM_REMOTE_PATH];
         }
-        creep.memory.action = creep.memory.action || "go_remote_room";
-        creep.memory.homeroom=  creep.memory.homeroom || creep.room.name;
+        creep.memory.action = creep.memory.action || 'go_remote_room';
+        creep.memory[this.CREEP_HOME_PATH]=  creep.memory[this.CREEP_HOME_PATH] || creep.room.name;
         // creep.log(creep.memory.action);
-        if (creep.memory.action == 'go_remote_room' && creep.room.name == creep.memory.homeroom) {
-            if (!creep.memory.remoteRoom) {
-                creep.log("no remoteMining room");
+        if (creep.memory.action == 'go_remote_room' && creep.room.name == creep.memory[this.CREEP_HOME_PATH]) {
+            if (!creep.memory[this.CREEP_REMOTE_PATH]) {
+                creep.log('no remoteMining room');
                 return false;
             } else {
                 var exit = this.findHomeExit(creep);

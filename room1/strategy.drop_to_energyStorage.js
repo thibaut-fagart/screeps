@@ -12,22 +12,6 @@ class DropToEnergyStorageStrategy extends BaseStrategy {
         this.structureType = structureType;
         this.PATH = 'energyStoreTarget';
     }
-    /**
-     *
-     * @param {Object}state
-     * @return {true|false}
-     */
-    acceptsState(state) {
-        return super.acceptsState(state)
-            && state.structureType == this.structureType
-            && state.resource == this.resource;
-    }
-    saveState() {
-        let s = super.saveState();
-        s.structureType = this.structureType;
-        s.resource = this.resource;
-        return s;
-    }
     
     clearMemory(creep) {
         delete creep.memory[this.PATH];

@@ -3,6 +3,7 @@ var util = require('./util');
 var LoadFromContainerStrategy = require('./strategy.load_from_container');
 var HarvestEnergySourceStrategy = require('./strategy.harvest_source');
 var PickupStrategy = require('./strategy.pickup');
+var BuildStrategy = require('./strategy.build');
 
 
 class RoleBuilder {
@@ -12,14 +13,16 @@ class RoleBuilder {
             new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_STORAGE),
             new LoadFromContainerStrategy(RESOURCE_ENERGY),
             new HarvestEnergySourceStrategy()];
+        this.buildStrategy = new BuildStrategy();
         this.BUILD_TARGET = 'buildtarget';
     }
 
     resign(creep) {
-        creep.log("resigning ");
+        creep.log('resigning ');
         creep.memory.role = 'upgrader';
     }
 
+/*
     findTarget(creep) {
         var target = util.objectFromMemory(this.BUILD_TARGET);
         if (!target) {
@@ -33,6 +36,7 @@ class RoleBuilder {
         }
         return target;
     }
+*/
 
     /** @param {Creep} creep **/
     run(creep) {
@@ -45,10 +49,13 @@ class RoleBuilder {
         }
 
         if (creep.memory.building) {
-            var target = this.findTarget(creep);
+            if (!this.buildStrategy.accepts(creep)) {
+                this.resign(creep);
+            }
+/*            var target = this.findTarget(creep);
             // creep.log('building',target);
             if (!target) {
-                creep.log("target null");
+                creep.log('target null');
                 delete creep.memory[this.BUILD_TARGET];
                 this.resign(creep);
             } else {
@@ -64,10 +71,10 @@ class RoleBuilder {
                     creep.log('build?', build);
                 }
                 if (target.progress == target.progressTotal) {
-                    creep.log("build complete", target.name);
+                    creep.log('build complete', target.name);
                     delete creep.memory[this.BUILD_TARGET];
                 }
-            }
+            }*/
         }
         else {
             let strategy = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);

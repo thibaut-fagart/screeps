@@ -1,833 +1,67 @@
 {
-  "id": 3,
-  "title": "Screeps",
-  "originalTitle": "Screeps",
+  "id": null,
+  "title": "Home",
+  "originalTitle": "Home",
   "tags": [],
   "style": "dark",
   "timezone": "browser",
-  "editable": true,
-  "hideControls": false,
+  "editable": false,
+  "hideControls": true,
   "sharedCrosshair": false,
   "rows": [
     {
       "collapse": false,
       "editable": true,
-      "height": "250px",
+      "height": "100px",
       "panels": [
         {
-          "aliasColors": {},
-          "bars": false,
-          "datasource": null,
+          "content": "<div class=\"text-center\" style=\"padding: 10px 0 20px 0\">\n<img src=\"img/logo_transparent_200x.png\" width=\"170px\"> \n</div>",
           "editable": true,
-          "error": false,
-          "fill": 1,
-          "grid": {
-            "leftLogBase": 1,
-            "leftMax": null,
-            "leftMin": null,
-            "rightLogBase": 1,
-            "rightMax": null,
-            "rightMin": null,
-            "threshold1": null,
-            "threshold1Color": "rgba(216, 200, 27, 0.27)",
-            "threshold2": null,
-            "threshold2Color": "rgba(234, 112, 112, 0.22)",
-            "thresholdLine": false
-          },
           "id": 1,
-          "legend": {
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "rightSide": false,
-            "show": true,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 2,
-          "links": [
-            {
-              "type": "dashboard"
-            }
-          ],
-          "nullPointMode": "connected",
-          "percentage": false,
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [
-            {
-              "alias": "E37S14.energyInStructures",
-              "yaxis": 2
-            }
-          ],
+          "mode": "html",
           "span": 12,
-          "stack": false,
-          "steppedLine": false,
-          "targets": [
-            {
-              "target": "aliasByNode(stats.gauges.room.E37S14.energyCapacityAvailable, 3, 4)"
-            },
-            {
-              "target": "aliasByNode(stats.gauges.room.E37S14.energyAvailable, 3, 4)"
-            },
-            {
-              "target": "aliasByNode(stats.gauges.room.E37S14.energyInSources, 3, 4)"
-            },
-            {
-              "target": "aliasByNode(stats.gauges.room.E37S14.energyDropped, 3, 4)"
-            },
-            {
-              "target": "aliasByNode(stats.gauges.room.E37S14.energyInStructures, 3, 4)"
-            }
-          ],
-          "timeFrom": null,
-          "timeShift": null,
-          "title": "E37S14 Energy",
-          "tooltip": {
-            "shared": true,
-            "value_type": "cumulative"
-          },
-          "type": "graph",
-          "x-axis": true,
-          "y-axis": true,
-          "y_formats": [
-            "short",
-            "short"
-          ]
+          "style": {},
+          "title": "",
+          "type": "text"
         }
       ],
-      "title": "Row"
+      "title": "New row"
     },
     {
-      "collapse": false,
-      "editable": true,
-      "height": "250px",
+      "height": "610px",
       "panels": [
         {
-          "aliasColors": {},
-          "bars": false,
-          "datasource": null,
-          "editable": true,
-          "error": false,
-          "fill": 1,
-          "grid": {
-            "leftLogBase": 1,
-            "leftMax": null,
-            "leftMin": null,
-            "rightLogBase": 1,
-            "rightMax": null,
-            "rightMin": null,
-            "threshold1": null,
-            "threshold1Color": "rgba(216, 200, 27, 0.27)",
-            "threshold2": null,
-            "threshold2Color": "rgba(234, 112, 112, 0.22)"
-          },
           "id": 2,
-          "legend": {
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "show": true,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 2,
-          "links": [],
-          "nullPointMode": "connected",
-          "percentage": false,
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "span": 12,
-          "stack": false,
-          "steppedLine": false,
-          "targets": [
-            {
-              "target": "stats.gauges.room.E37S13.energyInSources"
-            }
-          ],
-          "timeFrom": null,
-          "timeShift": null,
-          "title": "RemoteMining",
-          "tooltip": {
-            "shared": true,
-            "value_type": "cumulative"
-          },
-          "type": "graph",
-          "x-axis": true,
-          "y-axis": true,
-          "y_formats": [
-            "short",
-            "short"
-          ]
-        }
-      ],
-      "title": "New row"
-    },
-    {
-      "collapse": false,
-      "editable": true,
-      "height": "250px",
-      "panels": [
+          "mode": "starred",
+          "span": 6,
+          "title": "Starred dashboards",
+          "type": "dashlist",
+          "query": "",
+          "limit": 10,
+          "tags": []
+        },
         {
-          "aliasColors": {},
-          "bars": false,
-          "datasource": null,
-          "editable": true,
-          "error": false,
-          "fill": 1,
-          "grid": {
-            "leftLogBase": 1,
-            "leftMax": null,
-            "leftMin": null,
-            "rightLogBase": 1,
-            "rightMax": null,
-            "rightMin": null,
-            "threshold1": null,
-            "threshold1Color": "rgba(216, 200, 27, 0.27)",
-            "threshold2": null,
-            "threshold2Color": "rgba(234, 112, 112, 0.22)"
-          },
           "id": 3,
-          "legend": {
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "show": true,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 2,
-          "links": [],
-          "nullPointMode": "connected",
-          "percentage": false,
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [
-            {
-              "alias": "/derivative.*/",
-              "yaxis": 1
-            },
-            {
-              "alias": "/.*speed/",
-              "yaxis": 1
-            },
-            {
-              "alias": "/.*Ratio/",
-              "yaxis": 2
-            }
-          ],
-          "span": 12,
-          "stack": false,
-          "steppedLine": false,
-          "targets": [
-            {
-              "hide": true,
-              "target": "aliasByNode(stats.gauges.room.*.controller.progress, 3)"
-            },
-            {
-              "hide": true,
-              "target": "aliasSub(aliasByNode(derivative(stats.gauges.room.*.controller.progress), 3), '(.*)', '\\1.speed')"
-            },
-            {
-              "target": "aliasByNode(stats.gauges.room.*.controller.ProgressRatio, 3, 5)"
-            },
-            {
-              "hide": false,
-              "target": "aliasByNode(removeAbovePercentile(derivative(aliasSub(stats.gauges.room.*.controller.ProgressRatio, '(.*)', '\\1.speed')), 95), 3)"
-            }
-          ],
-          "timeFrom": null,
-          "timeShift": null,
-          "title": "Controllers",
-          "tooltip": {
-            "shared": true,
-            "value_type": "cumulative"
-          },
-          "type": "graph",
-          "x-axis": true,
-          "y-axis": true,
-          "y_formats": [
-            "short",
-            "short"
-          ]
-        }
-      ],
-      "title": "New row"
-    },
-    {
-      "collapse": false,
-      "editable": true,
-      "height": "250px",
-      "panels": [
-        {
-          "aliasColors": {},
-          "bars": false,
-          "datasource": null,
-          "decimals": 0,
-          "editable": true,
-          "error": false,
-          "fill": 0,
-          "grid": {
-            "leftLogBase": 1,
-            "leftMax": null,
-            "leftMin": null,
-            "rightLogBase": 1,
-            "rightMax": null,
-            "rightMin": null,
-            "threshold1": null,
-            "threshold1Color": "rgba(216, 200, 27, 0.27)",
-            "threshold2": null,
-            "threshold2Color": "rgba(234, 112, 112, 0.22)",
-            "thresholdLine": false
-          },
-          "id": 4,
-          "legend": {
-            "avg": false,
-            "current": false,
-            "hideEmpty": true,
-            "max": false,
-            "min": false,
-            "show": true,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 1,
-          "links": [],
-          "nullPointMode": "null as zero",
-          "percentage": false,
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [
-            {}
-          ],
-          "span": 12,
-          "stack": true,
-          "steppedLine": false,
-          "targets": [
-            {
-              "hide": false,
-              "target": "aliasByNode(stats.gauges.room.E37S14.creeps.*, 5)",
-              "textEditor": false
-            }
-          ],
-          "timeFrom": null,
-          "timeShift": null,
-          "title": "Whole Roster",
-          "tooltip": {
-            "shared": true,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "x-axis": true,
-          "y-axis": true,
-          "y_formats": [
-            "short",
-            "short"
-          ]
-        }
-      ],
-      "title": "New row"
-    },
-    {
-      "collapse": false,
-      "editable": true,
-      "height": "250px",
-      "panels": [
-        {
-          "aliasColors": {},
-          "bars": false,
-          "datasource": null,
-          "decimals": 0,
-          "editable": true,
-          "error": false,
-          "fill": 1,
-          "grid": {
-            "leftLogBase": 1,
-            "leftMax": null,
-            "leftMin": null,
-            "rightLogBase": 1,
-            "rightMax": null,
-            "rightMin": null,
-            "threshold1": null,
-            "threshold1Color": "rgba(216, 200, 27, 0.27)",
-            "threshold2": null,
-            "threshold2Color": "rgba(234, 112, 112, 0.22)"
-          },
-          "id": 5,
-          "legend": {
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "show": true,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 1,
-          "links": [],
-          "nullPointMode": "connected",
-          "percentage": false,
-          "pointradius": 1,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "span": 4,
-          "stack": true,
-          "steppedLine": false,
-          "targets": [
-            {
-              "hide": false,
-              "target": "aliasByNode(stats.gauges.room.E38S14.strangers, 3, 4)",
-              "textEditor": false
-            },
-            {
-              "hide": false,
-              "target": "aliasByNode(stats.gauges.room.E38S14.hostiles, 3, 4)",
-              "textEditor": false
-            }
-          ],
-          "timeFrom": null,
-          "timeShift": null,
-          "title": "HOME strangers",
-          "tooltip": {
-            "shared": true,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "x-axis": true,
-          "y-axis": true,
-          "y_formats": [
-            "short",
-            "short"
-          ]
-        },
-        {
-          "aliasColors": {},
-          "bars": false,
-          "datasource": null,
-          "decimals": 0,
-          "editable": true,
-          "error": false,
-          "fill": 1,
-          "grid": {
-            "leftLogBase": 1,
-            "leftMax": null,
-            "leftMin": null,
-            "rightLogBase": 1,
-            "rightMax": null,
-            "rightMin": null,
-            "threshold1": null,
-            "threshold1Color": "rgba(216, 200, 27, 0.27)",
-            "threshold2": null,
-            "threshold2Color": "rgba(234, 112, 112, 0.22)"
-          },
-          "id": 8,
-          "legend": {
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "show": true,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 2,
-          "links": [],
-          "nullPointMode": "connected",
-          "percentage": false,
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "span": 4,
-          "stack": true,
-          "steppedLine": false,
-          "targets": [
-            {
-              "hide": true,
-              "target": "aliasByNode(stats.gauges.room.E37S14.creeps.*, 3, 5)",
-              "textEditor": true
-            },
-            {
-              "hide": false,
-              "target": "aliasByNode(stats.gauges.room.*.hostiles, 3, 4)",
-              "textEditor": true
-            },
-            {
-              "hide": false,
-              "target": "aliasByNode(stats.gauges.room.E37S13.strangers, 3, 4)",
-              "textEditor": false
-            }
-          ],
-          "timeFrom": null,
-          "timeShift": null,
-          "title": "E37S13 (RemoteMining)",
-          "tooltip": {
-            "shared": true,
-            "value_type": "cumulative"
-          },
-          "type": "graph",
-          "x-axis": true,
-          "y-axis": true,
-          "y_formats": [
-            "short",
-            "short"
-          ]
-        },
-        {
-          "aliasColors": {},
-          "bars": false,
-          "datasource": null,
-          "editable": true,
-          "error": false,
-          "fill": 1,
-          "grid": {
-            "leftLogBase": 1,
-            "leftMax": null,
-            "leftMin": null,
-            "rightLogBase": 1,
-            "rightMax": null,
-            "rightMin": null,
-            "threshold1": null,
-            "threshold1Color": "rgba(216, 200, 27, 0.27)",
-            "threshold2": null,
-            "threshold2Color": "rgba(234, 112, 112, 0.22)"
-          },
-          "id": 6,
-          "legend": {
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "show": true,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 2,
-          "links": [],
-          "nullPointMode": "connected",
-          "percentage": false,
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "span": 4,
-          "stack": false,
-          "steppedLine": false,
-          "targets": [
-            {
-              "target": "stats.gauges.cpu"
-            }
-          ],
-          "timeFrom": null,
-          "timeShift": null,
-          "title": "CPU",
-          "tooltip": {
-            "shared": true,
-            "value_type": "cumulative"
-          },
-          "type": "graph",
-          "x-axis": true,
-          "y-axis": true,
-          "y_formats": [
-            "short",
-            "short"
-          ]
-        }
-      ],
-      "title": "New row"
-    },
-    {
-      "collapse": false,
-      "editable": true,
-      "height": "250px",
-      "panels": [
-        {
-          "aliasColors": {},
-          "bars": false,
-          "datasource": null,
-          "editable": true,
-          "error": false,
-          "fill": 1,
-          "grid": {
-            "leftLogBase": 1,
-            "leftMax": null,
-            "leftMin": null,
-            "rightLogBase": 1,
-            "rightMax": null,
-            "rightMin": null,
-            "threshold1": null,
-            "threshold1Color": "rgba(216, 200, 27, 0.27)",
-            "threshold2": null,
-            "threshold2Color": "rgba(234, 112, 112, 0.22)"
-          },
-          "id": 10,
-          "legend": {
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "show": true,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 2,
-          "links": [],
-          "nullPointMode": "null",
-          "percentage": false,
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [
-            {
-              "alias": "/.*rampartK/",
-              "stack": false,
-              "yaxis": 2
-            },
-            {
-              "alias": "/.*constructedWallK/",
-              "stack": false,
-              "yaxis": 2
-            }
-          ],
+          "mode": "search",
           "span": 6,
-          "stack": true,
-          "steppedLine": false,
-          "targets": [
-            {
-              "target": "aliasByNode(stats.gauges.room.*.repairs2.containerK, 3, 5)"
-            },
-            {
-              "target": "aliasByNode(stats.gauges.room.*.repairs2.controllerK, 3, 5)"
-            },
-            {
-              "target": "aliasByNode(stats.gauges.room.*.repairs2.extensionK, 3, 5)"
-            },
-            {
-              "target": "aliasByNode(stats.gauges.room.*.repairs2.linkK, 3, 5)"
-            },
-            {
-              "target": "aliasByNode(stats.gauges.room.*.repairs2.roadK, 3, 5)"
-            },
-            {
-              "target": "aliasByNode(stats.gauges.room.*.repairs2.spawnK, 3, 5)"
-            },
-            {
-              "target": "aliasByNode(stats.gauges.room.*.repairs2.storageK, 3, 5)"
-            },
-            {
-              "target": "aliasByNode(stats.gauges.room.*.repairs2.towerK, 3, 5)"
-            },
-            {
-              "target": "aliasByNode(stats.gauges.room.*.repairs2.constructedWallK, 3, 5)"
-            },
-            {
-              "target": "aliasByNode(stats.gauges.room.*.repairs2.rampartK, 3, 5)"
-            }
-          ],
-          "timeFrom": null,
-          "timeShift": null,
-          "title": "Repairs needed",
-          "tooltip": {
-            "shared": true,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "x-axis": true,
-          "y-axis": true,
-          "y_formats": [
-            "short",
-            "short"
-          ]
-        },
-        {
-          "aliasColors": {},
-          "bars": false,
-          "datasource": null,
-          "editable": true,
-          "error": false,
-          "fill": 1,
-          "grid": {
-            "leftLogBase": 1,
-            "leftMax": null,
-            "leftMin": null,
-            "rightLogBase": 1,
-            "rightMax": null,
-            "rightMin": null,
-            "threshold1": null,
-            "threshold1Color": "rgba(216, 200, 27, 0.27)",
-            "threshold2": null,
-            "threshold2Color": "rgba(234, 112, 112, 0.22)"
-          },
-          "id": 12,
-          "legend": {
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "show": true,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 2,
-          "links": [],
-          "nullPointMode": "null",
-          "percentage": false,
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [
-            {
-              "alias": "/.*rampartK/",
-              "stack": false,
-              "yaxis": 2
-            },
-            {
-              "alias": "/.*constructedWallK/",
-              "stack": false,
-              "yaxis": 2
-            },
-            {
-              "alias": "E37S14",
-              "yaxis": 2
-            }
-          ],
-          "span": 6,
-          "stack": true,
-          "steppedLine": false,
-          "targets": [
-            {
-              "hide": true,
-              "target": "aliasByNode(smartSummarize(derivative(sumSeries(stats.gauges.room.E37S14.repairs2.*, *)), '2min', 'sum'), 3)"
-            },
-            {
-              "hide": false,
-              "target": "aliasByNode(smartSummarize(derivative(stats.gauges.room.*.repairs2.*), '2min', 'sum'), 3, 5)"
-            }
-          ],
-          "timeFrom": null,
-          "timeShift": null,
-          "title": "Repairs speed",
-          "tooltip": {
-            "shared": true,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "x-axis": true,
-          "y-axis": true,
-          "y_formats": [
-            "short",
-            "short"
-          ]
+          "title": "Dashboards",
+          "type": "dashlist",
+          "query": "",
+          "limit": 10,
+          "tags": []
         }
       ],
-      "title": "New row"
-    },
-    {
+      "title": "Row",
       "collapse": false,
-      "editable": true,
-      "height": "250px",
-      "panels": [
-        {
-          "aliasColors": {},
-          "bars": false,
-          "datasource": null,
-          "editable": true,
-          "error": false,
-          "fill": 1,
-          "grid": {
-            "leftLogBase": 1,
-            "leftMax": null,
-            "leftMin": null,
-            "rightLogBase": 1,
-            "rightMax": null,
-            "rightMin": null,
-            "threshold1": null,
-            "threshold1Color": "rgba(216, 200, 27, 0.27)",
-            "threshold2": null,
-            "threshold2Color": "rgba(234, 112, 112, 0.22)"
-          },
-          "id": 9,
-          "legend": {
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "show": true,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 2,
-          "links": [],
-          "nullPointMode": "connected",
-          "percentage": false,
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "span": 12,
-          "stack": false,
-          "steppedLine": false,
-          "targets": [
-            {
-              "target": "aliasByNode(stats.gauges.room.*.reservedCount, 3)"
-            }
-          ],
-          "timeFrom": null,
-          "timeShift": null,
-          "title": "Structures under repair",
-          "tooltip": {
-            "shared": true,
-            "value_type": "cumulative"
-          },
-          "type": "graph",
-          "x-axis": true,
-          "y-axis": true,
-          "y_formats": [
-            "short",
-            "short"
-          ]
-        }
-      ],
-      "title": "New row"
+      "editable": true
     }
   ],
   "nav": [
     {
+      "enable": false,
+      "type": "timepicker",
       "collapse": false,
-      "enable": true,
       "notice": false,
-      "now": true,
-      "refresh_intervals": [
-        "5s",
-        "10s",
-        "30s",
-        "1m",
-        "5m",
-        "15m",
-        "30m",
-        "1h",
-        "2h",
-        "1d"
-      ],
       "status": "Stable",
       "time_options": [
         "5m",
@@ -840,12 +74,23 @@
         "7d",
         "30d"
       ],
-      "type": "timepicker"
+      "refresh_intervals": [
+        "5s",
+        "10s",
+        "30s",
+        "1m",
+        "5m",
+        "15m",
+        "30m",
+        "1h",
+        "2h",
+        "1d"
+      ],
+      "now": true
     }
   ],
   "time": {
     "from": "now-6h",
-    "now": false,
     "to": "now"
   },
   "templating": {
@@ -854,8 +99,7 @@
   "annotations": {
     "list": []
   },
-  "refresh": "1m",
   "schemaVersion": 6,
-  "version": 31,
+  "version": 5,
   "links": []
 }

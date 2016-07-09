@@ -22,7 +22,7 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
         // creep.log('HarvestEnergySourceToContainerStrategy');
         // creep.log('source', this.constructor.name);
         let source = util.objectFromMemory(creep.memory, this.SOURCE_PATH, (s)=> s instanceof Source);
-        let container = util.objectFromMemory(creep.memory, this.CONTAINER_PATH, (s) => s instanceof StructureContainer && !util.isReserved(creep, s));
+        let container = util.objectFromMemory(creep.memory, this.CONTAINER_PATH, (s) => s instanceof StructureContainer && !util.isReserved(creep, s, 'harvest'));
         // creep.log('source', source);
         if (!source || !container) {
             // find a source, with a free container near it, and reserve it
@@ -33,23 +33,27 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
             // creep.log('containersWithSources', _.size(containersWithSources));
             // let creepsInRange = _.map(containersWithSources, (c)=>c.pos.findInRange(FIND_CREEPS, 0));
             // creep.log('creepsInRang',creepsInRange);
+/*
             let freeContainers = _.filter(containersWithSources, (c)=>{return c.pos.findInRange(FIND_CREEPS, 0,
                             {filter:(c)=> ['harvester','remoteHarvester'].indexOf(c.memory.role)<0 || (c.name && creep.name)}).length == 0}) ;
+*/
+            let freeContainers = _.filter(containersWithSources, (c)=> !util.isReserved(creep,c, 'harvest')) ; // TODO
             // creep.log('freeContainers', freeContainers);
             if (freeContainers.length) {
                 container = creep.pos.findClosestByPath(freeContainers);
                 source = container.pos.findInRange(FIND_SOURCES, 1)[0];
-                creep.log('container', container);
+                // creep.log('container', container);
             } else if (creep.getActiveBodyparts(CARRY)==0){
                 let freeSources = creep.room.find(FIND_SOURCES, {filter: (s) => _.isEmpty(s.pos.findInRange(FIND_STRUCTURES, 1, {filter:{structureType:STRUCTURE_CONTAINER}}))});
-                source  = freeSources[0]
+                source = freeSources[0];
 
             }
             if (source) {
                 creep.memory[this.SOURCE_PATH] = source.id;
             }
-            if (container) {
+            if (container && util.reserve(creep, container, 'harvest')) {
                 // creep.log('source && container');
+
                 creep.memory[this.CONTAINER_PATH] = container.id;
                 if (creep.room.memory.harvestContainers && creep.room.memory.harvestContainers.indexOf(container.id) <0) {
                     creep.room.memory.harvestContainers.push(container.id);
@@ -61,11 +65,15 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
         if (source && container) {
             if (creep.pos.getRangeTo(container.pos)==0) {
                 // creep.log('on container');
-                if (container.hits < 0.5 * container.hitsMax && source.energy < 0.8 * source.energyCapacity) {
-                    creep.repair(container);
+                if (creep.carryCapacity && creep.carry.energy
+                    && (container.hits < 0.1 * container.hitsMax ||source.energy ===0)) {
+                    let repair = creep.repair(container);
+                    creep.log('repairing container?', repair);
+                    if (repair === OK) return true;
                 }
                 let freeCapacity = container.storeCapacity - _.sum(container.store);
                 let harvestBeforeRegen = source.ticksToRegeneration * 2 * creep.getActiveBodyparts(WORK);
+                // creep.log(source.energy == source.energyCapacity, freeCapacity, harvestBeforeRegen);
                 if (source.energy == source.energyCapacity || freeCapacity >0 // no overflow
                     || harvestBeforeRegen <= source.energy) {// will we deplete energy before regen ?
                     let ret = creep.harvest(source);

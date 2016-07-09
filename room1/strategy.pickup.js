@@ -7,27 +7,11 @@ var BaseStrategy = require('./strategy.base');
 class PickupStrategy extends BaseStrategy {
     constructor(resource) {
         super();
-        if (!resource) resource = RESOURCE_ENERGY;
+        if (!resource) resource = null;
         this.resource = resource;
         this.PATH = 'pickupSource';
     }
-
-    /**
-     *
-     * @param {Object}state
-     * @return {true|false}
-     */
-    acceptsState(state) {
-        return super.acceptsState(state)
-            && state.resource == this.resource;
-    }
-
-    saveState() {
-        let s = super.saveState();
-        s.resource = this.resource;
-        return s;
-    }
-
+    
     clearMemory(creep) {
         delete creep.memory[this.PATH];
     }
@@ -109,11 +93,11 @@ class PickupStrategy extends BaseStrategy {
     /** @param {Creep} creep
      * @return {boolean}**/
     accepts(creep) {
-        if (!creep.carryCapacity) return false;
+        if (!creep.carryCapacity || _.sum(creep.carry)==creep.carryCapacity) return false;
         /** @type Resource */
-        let source = util.objectFromMemory(creep.memory, this.PATH, (r)=>(r.resourceType == this.resource) && r.amount > 0);
+        let source = util.objectFromMemory(creep.memory, this.PATH, (r)=>r.amount > 0);
         if (!source) {
-            let drops = creep.room.find(FIND_DROPPED_ENERGY, {filter: (e)=>e.amount > 50});
+            let drops = creep.room.find(FIND_DROPPED_RESOURCES, {filter: (e)=> (!this.resource || this.resource==e.resourceType) && e.amount > 50});
             let sortedDrops = drops.sort((d) => -d.amount / creep.pos.getRangeTo(d));
             // creep.log('sortedDrops', sortedDrops.length);
             let plannedPickups = this.roomPlannedPickups(creep);
@@ -135,7 +119,6 @@ class PickupStrategy extends BaseStrategy {
         }
         if (source) {
             // try transfering/moving
-            let oldEnergy = creep.carry.energy;
 
             let ret = creep.pickup(source);
             if (ret == ERR_NOT_IN_RANGE) {

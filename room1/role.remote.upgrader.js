@@ -6,7 +6,7 @@ class RoleRemoteUpgrader extends RoleUpgrader{
     constructor() {
         super();
         this.fleeStrategy = new FleeToHomeRoomStrategy();
-        this.moveTask = new MoveToRoomTask();
+        this.moveTask = new MoveToRoomTask('remoteupgrade');
     }
     resign(creep) {
         
@@ -24,4 +24,4 @@ class RoleRemoteUpgrader extends RoleUpgrader{
         }
     }
 }
-module.exports = RoleRemoteBuilder;
+module.exports = RoleRemoteUpgrader;

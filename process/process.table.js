@@ -23,6 +23,10 @@ class ProcessTable {
     register(process) {
         this.processes.push(process);
         this.processes = this.processes.sort((p)=> p.priority);
+        if (process.parentid) {
+            this.processes.find((p)=>p.id === process.parentid).children.push(process);
+        }
+        return process;
     }
     /**
      *

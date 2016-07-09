@@ -14,22 +14,6 @@ class DropToContainerStrategy extends BaseStrategy{
         this.PATH = 'containerTarget';
     }
 
-    /**
-     *
-     * @param {Object}state
-     * @return {true|false}
-     */
-    acceptsState(state) {
-        return super.acceptsState(state)
-            && state.structure == this.structure
-            && state.resource == this.resource;
-    }
-    saveState() {
-        let s = super.saveState();
-        s.structure = this.structure;
-        s.resource = this.resource;
-        return s;
-    }
     clearMemory(creep) {
         delete creep.memory[this.PATH];
     }

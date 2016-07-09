@@ -16,9 +16,10 @@ module.exports = class Kernel {
     /**
      **/
     constructor() {
-        super('kernel');
+        super(Kernel.TYPE);
     }
+
     run() {
     }
 };
-
+Kernel.TYPE = 'kernel';

@@ -5,6 +5,8 @@ var _ = require('lodash');
  *
  * @type {string}
  */
+_.merge(global,{STATUS_NEW: 'NEW', STATUS_READY : 'READY', STATUS_WAITING : 'WAITING', STATUS_RUNNING :'RUNNING', STATUS_TERMINATED :'TERMINATED'});
+
 
 /**
  * @property {string} id
@@ -17,7 +19,6 @@ module.exports = class Process {
     /**
      * @typed {NEW|READY|WAITING|RUNNING|TERMINATED} Status
      */
-    const NEW = 'NEW ', READY = 'READY', WAITING = 'WAITING', RUNNING = 'RUNNING', TERMINATED = 'TERMINATED';
     /**
      *
      * @param type
@@ -31,11 +32,16 @@ module.exports = class Process {
         this.priority = parent ? (parent.priority + (subpriority ? '.' + subpriority : '')) : '0';
         this.creeps = [];
         this.locks = [];
-        this.status = NEW;
+        this.status = STATUS_NEW;
         this.type = type;
-
+        this.children=[];
     }
 
+    /**
+     * replaced by a lookup in the process table
+     * @param id
+     */
+    lookup(id) {}
     load(state) {
         
         _.keys(state).forEach((k)=> this[k] = state[k]);
@@ -54,10 +60,11 @@ module.exports = class Process {
     }
 
     /**
-     * @return Status
+     * 
+     * @param {ProcessTable}processTable
      */
-    run() {
-
+    run(processTable) {
+        
     }
 };
 

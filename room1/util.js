@@ -3,7 +3,7 @@ class Util {
 
     constructor() {
         this.CURRENT_STRATEGY = 'strategy';
-        this.currentid = Memory.id|| 0;
+        this.currentid = Memory.uuid|| 0;
     }
 
     /**
@@ -32,11 +32,13 @@ class Util {
      *
      * @param creep
      * @param object
-     * @returns {boolean} true if object is not already reserved
+     * @param reason
+ * @returns {boolean} true if object is not already reserved
      */
-    reserve(creep, object) {
-        if (object && !this.isReserved(creep, object)) {
-            creep.room.memory.reserved[object.id] = creep.id;
+    reserve(creep, object, reason) {
+        if (object && !this.isReserved(creep, object, reason)) {
+            let reserved = this.reservations(creep, reason);
+            reserved[object.id] = creep.id;
             // creep.log('reserved',object.id)
             return true;
         } else {
@@ -44,22 +46,39 @@ class Util {
         }
     }
 
-    isReserved(creep, object) {
-        if (!object) return false;
-        let reserved = creep.room.memory.reserved || {};
-        creep.room.memory.reserved = reserved;
-        let old = reserved[object.id];
-        if (old && !Game.getObjectById(old)) {
-            delete reserved[object.id];
-            old = null;
+    reservations(creep, reason) {
+        let reserved = creep.room.memory.reserved = creep.room.memory.reserved || {};
+        if (reason) {
+            reserved[reason] = reserved[reason] || {};
+            reserved = reserved[reason];
         }
-        return old;
+        return reserved;
+
+    }
+    /**
+     * true if object is already reserved by some other creep
+     * @param creep
+     * @param object
+     * @param reason
+     * @returns {boolean}
+     */
+    isReserved(creep, object, reason) {
+        if (!object) return false;
+
+        let reserved = this.reservations(creep, reason);
+        let owner = reserved[object.id];
+        if (owner && !Game.getObjectById(owner)) {
+            delete reserved[object.id];
+            owner = null;
+        }
+        // if (owner) creep.log('testing lock', object, owner);
+        return (owner && owner !== creep.id)?true:false;
     }
 
-    release(creep, object) {
+    release(creep, object, reason) {
         // creep.log('releasing ?', object);
         if (!object) return;
-        let reserved = creep.room.memory.reserved || {};
+        let reserved = this.reservations(creep, reason);
         delete  reserved[(typeof object === 'string'  ) ? object : object.id];
         // creep.log('released',object.id)
     }
@@ -78,7 +97,7 @@ class Util {
         } else {
             stratAndParams = s;
         }
-        var strategy = _.find(candidates, (strat)=> strat.acceptsState(stratAndParams));
+        var strategy = _.find(candidates, (strat)=> strat.constructor.name === stratAndParams.name && strat.acceptsState(stratAndParams.state));
         if (strategy && strategy.accepts(creep)) {
             return strategy;
         } else {
@@ -105,13 +124,13 @@ class Util {
 
     findExit(creep, room, memoryName) {
         var exit;
-        if (!creep.memory[memoryName]) { // todo refresh  exit every once in a while ? 
+        if (!creep.room.memory[memoryName]) { // todo refresh  exit every once in a while ?
             creep.log("finding exit to", room);
             var exitDir = creep.room.findExitTo(room);
             exit = creep.pos.findClosestByPath(exitDir); // TODO cache
-            creep.memory[memoryName] = JSON.stringify(exit);
+            creep.room.memory[memoryName] = JSON.stringify(exit);
         } else {
-            exit = JSON.parse(creep.memory[memoryName]);
+            exit = JSON.parse(creep.room.memory[memoryName]);
         }
         return exit;
     }
@@ -122,15 +141,23 @@ class Util {
     /**
      *
      * @param {Room|string} [room]
+     * @param {Function} predicate
      * @return {Roster}
      */
-    roster(room) {
+    roster(room, predicate) {
         if (room) {
             // console.log(typeof room);
-            room = 'string' === typeof room ? Game.rooms[room] : room;
+            if ('string' === typeof room) {
+                room = Game.rooms[room];
+                if (!room) return {};
+            }
         }
         // console.log('room name', (room?room.name:'null'));
-        let creeps = (room) ? room.find(FIND_MY_CREEPS) : Game.creeps;
+
+        let creeps = (room || predicate) ? 
+            (predicate?
+                room.find(FIND_MY_CREEPS, {filter:predicate})
+                :room.find(FIND_MY_CREEPS)) : Game.creeps;
         return _.countBy(creeps, (c) => c.memory.role);
     }
 

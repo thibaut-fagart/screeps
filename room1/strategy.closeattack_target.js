@@ -8,21 +8,21 @@ class CloseAttackStrategy extends BaseStrategy {
         this.range = range;
         this.path = 'attacking';
     }
+
     clearMemory(creep) {
         delete creep.memory[this.path];
     }
-
-
+    
     /** @param {Creep||StructureTower} creep
      * @return {Creep|| null}**/
     accepts(creep) {
-        if (! creep instanceof StructureTower || (creep.body && creep.getActiveBodyparts(ATTACK)==0 && creep.getActiveBodyparts(MOVE)==0)) {
+        if (!creep instanceof StructureTower || (creep.body && creep.getActiveBodyparts(ATTACK) == 0 && creep.getActiveBodyparts(MOVE) == 0)) {
             return null;
         }
         // find strangers
         // order by type (heal > *)  and distance
-        let target= this.getRemoteTarget(creep);
-        let hostiles = (this.range)?creep.pos.findInRange(FIND_HOSTILE_CREEPS,this.range): creep.room.find(FIND_HOSTILE_CREEPS);
+        let target = this.getRemoteTarget(creep);
+        let hostiles = (this.range) ? creep.pos.findInRange(FIND_HOSTILE_CREEPS, this.range) : creep.room.find(FIND_HOSTILE_CREEPS);
         // if(creep instanceof Creep) creep.log('hostiles', hostiles.length);
         if (hostiles.length) {
             // choose target
@@ -41,9 +41,9 @@ class CloseAttackStrategy extends BaseStrategy {
             if (attack == ERR_NOT_IN_RANGE) {
                 creep.moveTo(target);
             } else if (attack !== OK) {
-                creep.log('attack?',attack);
+                creep.log('attack?', attack);
             }
-            creep.moveTo(target); 
+            creep.moveTo(target);
         }
         return target;
     }
@@ -56,6 +56,7 @@ class CloseAttackStrategy extends BaseStrategy {
         mymem[this.path] = hostile.id;
 
     }
+
     /** @param {Creep||StructureTower} creep
      * @return {Creep} hostile
      * **/
