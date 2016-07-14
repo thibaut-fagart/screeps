@@ -27,13 +27,12 @@ class DropToEnergyStorageStrategy extends BaseStrategy {
     /** @param {Creep} creep
      * @return {boolean}**/
     accepts(creep) {
-        let target = util.objectFromMemory(creep.memory, this.PATH, (c)=>_.sum(c.store) < c.storeCapacity);
+        if (creep.carry.energy === 0) return null;
+        let target = util.objectFromMemory(creep.memory, this.PATH, this.isContainerFullPredicate());
         if (!target) {
-
             var targets = creep.room.find(FIND_STRUCTURES, {
-                filter: (structure) =>
-                    ((!(this.structure && structure.energy && structure.energyCapacity) 
-                    || (structure.structureType == this.structureType))) && structure.energy < structure.energyCapacity
+                filter: (structure) => ((this.structureType && this.structureType === structure.structureType) || (!this.structureType))
+                    && this.isContainerFullPredicate()(structure)
             });
 
             if (targets.length >0 ) {
@@ -43,16 +42,22 @@ class DropToEnergyStorageStrategy extends BaseStrategy {
         if (target) {
             // try transfering/moving
             let ret = creep.transfer(target, this.resource);
-            if (ret == ERR_NOT_IN_RANGE) {
+            if (ret == ERR_NOT_IN_RANGE && creep.fatigue ==0) {
                 ret = creep.moveTo(target);
-                if (ret == ERR_NO_PATH) {
+                    if (ret == ERR_NO_PATH) {
                     creep.log("no path to target");
                     delete creep.memory[this.PATH];
+                    target = null;
                 }
             }
+
         }
         // creep.log('source', null == source);
         return (target?this:null);
+    }
+
+    isContainerFullPredicate() {
+        return (c)=> (c.energy < c.energyCapacity) ;
     }
 }
 

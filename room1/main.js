@@ -1,7 +1,11 @@
 var _ = require('lodash');
 var util = require('./util');
 var RoleHarvester = require('./role.harvester'), roleHarvester = new RoleHarvester();
+var RoleMineralHarvester = require('./role.harvester.mineral'), roleMineralHarvester = new RoleMineralHarvester();
 var RoleCarry = require('./role.carry'), roleCarry = new RoleCarry();
+var RoleEnergyFiller = require('./role.energyfiller'), roleEnergyFiller = new RoleEnergyFiller();
+var RoleEnergyGatherer = require('./role.energygatherer'), roleEnergyGatherer = new RoleEnergyGatherer();
+var RoleMineralGatherer = require('./role.mineralgatherer'), roleMineralGatherer = new RoleMineralGatherer();
 var RoleRemoteCarry = require('./role.remote.carry'), roleRemoteCarry = new RoleRemoteCarry();
 var RoleUpgrader = require('./role.upgrader'), roleUpgrader = new RoleUpgrader();
 var roleSpawn = require('./role.spawn');
@@ -13,14 +17,19 @@ var RoleClaim = require('./role.controller.claim'), roleClaim = new RoleClaim();
 var RoleReserve = require('./role.controller.reserve'), roleReserve = new RoleReserve();
 var RoleRemoteHarvester = require('./role.remote_harvester'), roleRemoteHarvester = new RoleRemoteHarvester();
 var RoleGuard = require('./role.soldier.roomguard'), roleRemoteGuard = new RoleGuard(), roleCloseGuard = new RoleGuard();
+var RoleScout = require('./role.scout'), roleScout = new RoleScout();
 var RoleAttacker = require('./role.soldier.attacker'), roleAttacker = new RoleAttacker();
 var RoleRemoteBuilder = require('./role.builder.remote'), roleRemoteBuilder = new RoleRemoteBuilder();
+var RoleRecycle = require('./role.recycle'), roleRecycle = new RoleRecycle();
+var RoleRemoteHarvesterKeeper = require('./role.remote_harvester.keeper'), roleKeeperHarvester = new RoleRemoteHarvesterKeeper();
+var RoleKeeperGuard = require('./role.soldier.keeperguard'), roleKeeperGuard = new RoleKeeperGuard();
+var RoleRemoteCarryKeeper = require('./role.remote.carrykeeper'), roleRemoteCarryKeeper = new RoleRemoteCarryKeeper();
 
 
 var profiler = require('./screeps-profiler');
 // var RoomManager = require('./manager.room'), roomManager = new RoomManager(); // todo manager
 // This line monkey patches the global prototypes.
-profiler.enable();
+// profiler.enable();
 Creep.prototype.log = function () {
     console.log([this.name, this.pos, this.memory.role].concat(Array.prototype.slice.call(arguments)));
 };
@@ -30,8 +39,27 @@ Spawn.prototype.log = function () {
 Room.prototype.log = function () {
     console.log([this.name, this.controller.level].concat(Array.prototype.slice.call(arguments)));
 };
+/*
+Room.prototype._find = Room.prototype.find;
+Room.prototype.find = function (type, opts) {
+    "use strict";
+    if (opts) {
+        return this._find(type, opts);
+    } else {
+        this.cache = (this.cache && this.cache.time === Game.time)? this.cache: {time:Game.time};
+        if (this.cache[type]) {
+            return this.cache[type];
+        } else {
+            let find = this._find(type, opts);
+            this.cache[type] = find;
+            return find;
+        }
+        
+    }
+};
+*/
 Structure.prototype.log = function () {
-    console.log([this.structureType, this.id].concat(Array.prototype.slice.call(arguments)));
+    console.log([this.structureType, this.room.name, this.id].concat(Array.prototype.slice.call(arguments)));
 };
 Structure.prototype.memory = function () {
     "use strict";
@@ -46,9 +74,7 @@ Structure.prototype.memory = function () {
     }
 
 };
-// RoomObject.prototype.creeps = [];
-module.exports.loop = function () {
-    profiler.wrap(function () {
+function innerLoop() {
     let messages = [];
     let oldSeenTick = Game.time || (Memory.counters && Memory.counters.seenTick);
     Memory.counters = {tick: Game.time, seenTick: oldSeenTick + 1};
@@ -67,7 +93,17 @@ module.exports.loop = function () {
         if (0 == Game.time % 100) {
             let locks = _.pairs(room.memory.reserved);
             locks.forEach((p)=> {
-                if (!Game.getObjectById(p[1])) delete room.memory.reserved[p[0]]
+                if (!_.isString(p[1])) {
+                    _.pairs(p[1]).forEach((q)=> {
+                        "use strict";
+                        if (!Game.getObjectById(q[1])) {
+                            delete room.memory.reserved[q[0]]
+                        }
+
+                    });
+                } else if (!Game.getObjectById(p[1])) {
+                    delete room.memory.reserved[p[0]]
+                }
             });
         }
         if (room.controller && room.controller.level >= 3) {
@@ -99,10 +135,28 @@ module.exports.loop = function () {
         // room.creeps = creeps;
         creeps.forEach(function (creep) {
             try {
-                if (creep.memory.role == 'harvester') {
+                if (creep.spawning) {
+
+                } else if (creep.memory.role == 'harvester') {
                     roleHarvester.run(creep);
+                } else if (creep.memory.role == 'mineralHarvester') {
+                    roleMineralHarvester.run(creep);
+                } else if (creep.memory.role == 'keeperHarvester') {
+                    roleKeeperHarvester.run(creep);
+                } else if (creep.memory.role == 'keeperGuard') {
+                    roleKeeperGuard.run(creep);
+                } else if (creep.memory.role == 'remoteCarryKeeper') {
+                    roleRemoteCarryKeeper.run(creep);
+                } else if (creep.memory.role == 'recycle') {
+                    roleRecycle.run(creep);
                 } else if (creep.memory.role == 'carry') {
                     roleCarry.run(creep);
+                } else if (creep.memory.role == 'energyFiller') {
+                    roleEnergyFiller.run(creep);
+                } else if (creep.memory.role == 'energyGatherer') {
+                    roleEnergyGatherer.run(creep);
+                } else if (creep.memory.role == 'mineralGatherer') {
+                    roleMineralGatherer.run(creep);
                 } else if (creep.memory.role == 'remoteCarry') {
                     roleRemoteCarry.run(creep);
                 } else if (creep.memory.role == 'upgrader') {
@@ -117,13 +171,15 @@ module.exports.loop = function () {
                     roleReserve.run(creep);
                 } else if (creep.memory.role == 'builder') {
                     roleBuilder.run(creep);
+                } else if (creep.memory.role == 'scout') {
+                    roleScout.run(creep);
                 } else if (creep.memory.role == 'remoteBuilder') {
                     roleRemoteBuilder.run(creep);
                 } else if (creep.memory.role == 'attacker') {
                     roleAttacker.run(creep);
                 } else if (creep.memory.role == 'remoteHarvester') {
                     roleRemoteHarvester.run(creep);
-                } else if (['roleRemoteGuard','roleCloseGuard', 'roleSoldier'].indexOf(creep.memory.role )>=0 ) {
+                } else if (['roleRemoteGuard', 'roleCloseGuard', 'roleSoldier'].indexOf(creep.memory.role) >= 0) {
                     roleRemoteGuard.run(creep);
                 }
             } catch (e) {
@@ -140,7 +196,7 @@ module.exports.loop = function () {
         });
         if (roleRepair.underRepair) {
             if (!room.memory.needRepairAmount) {
-                room.memory.needRepairAmount = 0
+                room.memory.needRepairAmount = 0;
             }
             var deltaRepair = room.memory.needRepairAmount - roleRepair.needRepairAmount;
             room.memory.needRepairAmount = roleRepair.needRepairAmount;
@@ -150,15 +206,15 @@ module.exports.loop = function () {
              }
              */
         }
-/*
-        if (!(Game.time % 100)) {
-            for (let id in room.memory.reserved) {
-                if (!Game.getObjectById(id)) {
-                    delete room.memory.reserved[id];
-                }
-            }
-        }
-*/
+        /*
+         if (!(Game.time % 100)) {
+         for (let id in room.memory.reserved) {
+         if (!Game.getObjectById(id)) {
+         delete room.memory.reserved[id];
+         }
+         }
+         }
+         */
         if (!(Game.time % 10)) {
             Memory.stats = {};
             let repairsNeededByStrcutureArray = _.map(_.pairs(_.groupBy(room.find(FIND_STRUCTURES), (s)=>s.structureType)), (array)=>[array[0], _.sum(array[1], (s)=>s.hitsMax - s.hits)])
@@ -175,7 +231,7 @@ module.exports.loop = function () {
 
         let strangers = room.find(FIND_HOSTILE_CREEPS);
         let hostiles = _.filter(strangers, (c)=>_.sum(c.body, (p)=>p == ATTACK || p == RANGED_ATTACK) > 0);
-//            {"pos":{"x":11,"y":28,"roomName":"E37S14"},"body":[{"type":"work","hits":100},{"type":"carry","hits":100},{"type":"move","hits":100},{"type":"carry","hits":100},{"type":"work","hits":100},{"type":"move","hits":100},{"type":"move","hits":100},{"type":"work","hits":100},{"type":"carry","hits":100},{"type":"move","hits":100},{"type":"carry","hits":100},{"type":"work","hits":100},{"type":"move","hits":100},{"type":"move","hits":100}],"owner":{"username":"Finndibaen"}"hits":1400,"hitsMax":1400}
+        //            {"pos":{"x":11,"y":28,"roomName":"E37S14"},"body":[{"type":"work","hits":100},{"type":"carry","hits":100},{"type":"move","hits":100},{"type":"carry","hits":100},{"type":"work","hits":100},{"type":"move","hits":100},{"type":"move","hits":100},{"type":"work","hits":100},{"type":"carry","hits":100},{"type":"move","hits":100},{"type":"carry","hits":100},{"type":"work","hits":100},{"type":"move","hits":100},{"type":"move","hits":100}],"owner":{"username":"Finndibaen"}"hits":1400,"hitsMax":1400}
 
         if (hostiles.length > 0) {
             messages.push(' strangers ' + JSON.stringify(_.map(hostiles, (h) => {
@@ -197,13 +253,18 @@ module.exports.loop = function () {
         });
     }
     Memory.stats["cpu"] = Game.cpu.getUsed();
-    Memory.stats["counter.cpu.cumul"] = (Memory.stats["counter.cpu.cumul"]||0) +Game.cpu.getUsed();
+    Memory.stats["counter.cpu.cumul"] = (Memory.stats["counter.cpu.cumul"] || 0) + Game.cpu.getUsed();
     Memory.stats["counter.time"] = Game.time;
-    Memory.stats["cpu.bucket"] = Game.cpu.bucket;
+    Memory.stats["cpu_bucket"] = Game.cpu.bucket;
     if (messages.length > 0) {
         Game.notify(messages);
     }
     // counting walkable tiles neer location:
     //_.filter(Game.rooms.E37S14.lookAtArea(y-1,x-1,y+1,x+1,true), function(o) {return o.type== 'terrain' &&(o.terrain =='plain' || o.terrain =='swamp')}).length
-    });
 }
+
+// RoomObject.prototype.creeps = [];
+module.exports.loop = function () {
+    innerLoop();
+    // profiler.wrap(innerLoop);
+};

@@ -14,18 +14,21 @@ class RoleTower {
 
         let remoteTarget = this.remoteAttackStrategy.accepts(tower);
         if (remoteTarget) {
-            console.log("tower attacking");
+            tower.log('tower attacking', JSON.stringify(remoteTarget.owner));
+            try {Game.notify([tower.structureType, tower.room.name, tower.id].concat(['tower attacking', JSON.stringify(remoteTarget.owner)]));} catch(e) {
+                tower.log('notification failed');
+            }
             // tower.attack(remoteTarget);
-            let s = "room." + tower.room.name + ".attacks";
+            let s = `room.${tower.room.name}.attacks`;
             let stat = Memory.stats[s];
             Memory.stats[s] = (stat ? 1 : stat + 1);
         } else {
             let remoteHeal = this.remoteHealStrategy.accepts(tower);
             if (remoteHeal) {
-                console.log("tower healing ");
+                tower.log('tower healing ');
                 // let ret = tower.heal(remoteHeal);
                 // if (!ret) console.log("heal ret", ret);
-                let s = "room." + tower.room.name + ".heals";
+                let s = `room.${tower.room.name}.heals`;
                 let stat = Memory.stats[s];
                 Memory.stats[s] = (stat ? 1 : stat + 1);
 

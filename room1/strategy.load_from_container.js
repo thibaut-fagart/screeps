@@ -10,12 +10,12 @@ class LoadFromContainerStrategy extends BaseStrategy {
         super();
         if (!resource) resource = RESOURCE_ENERGY;
         // if (!structure) structure = STRUCTURE_CONTAINER;
-        this.structure = structure;
         this.resource = resource;
+        this.structure = structure;
         this.predicate = predicate;
         this.PATH = 'containerSource';
     }
-    
+
     clearMemory(creep) {
         delete creep.memory[this.PATH];
     }
@@ -24,7 +24,7 @@ class LoadFromContainerStrategy extends BaseStrategy {
      * @return {boolean}**/
     accepts(creep) {
         let neededCarry = creep.carryCapacity - _.sum(creep.carry);
-        let source = util.objectFromMemory(creep.memory, this.PATH, (c)=>c.store && (c.store[this.resource] > neededCarry));
+        let source = util.objectFromMemory(creep.memory, this.PATH, (c)=>this.containerQty(creep,c) > neededCarry);
         if (!source) {
             source = this.findSource(creep, neededCarry, source);
         }
@@ -60,11 +60,33 @@ class LoadFromContainerStrategy extends BaseStrategy {
     }
 
     transferFromSource(source, creep, neededCarry) {
-        let qty = Math.min(neededCarry, source.transferEnergy ? source.energy : source.store.energy);
-        let ret = (source.transferEnergy ? source.transferEnergy(creep, qty) : source.transfer(creep, this.resource, qty));
+        let ret;
+/*
+        if (this.resource === LoadFromContainerStrategy.ANY) {
+            creep.log('transfer from ', source.structureType, JSON.stringify(source.store));
+        }
+*/
+        switch (this.resource) {
+            case RESOURCE_ENERGY: {
+                ret = source.transferEnergy ? source.transferEnergy(creep) : source.transfer(creep, this.resource);
+                break;
+            }
+            case LoadFromContainerStrategy.ANY : {
+                let resource = _.keys(source.store).find((r)=> RESOURCE_ENERGY !== r && source.store[r]>0);
+                ret = source.transfer(creep, resource);
+                break;
+
+            }
+            default: {
+                ret = source.transfer(creep, this.resource);
+            }
+        }
+
+        // let qty = Math.min(neededCarry, source.transferEnergy ? source.energy : source.store.energy);
+        // let ret = (source.transferEnergy ? source.transferEnergy(creep, qty) : source.transfer(creep, this.resource, qty));
         // creep.log('LoadFromContainerStrategy', 'transfer ?', ret);
         if (ret == ERR_NOT_ENOUGH_RESOURCES || ret === ERR_NOT_ENOUGH_ENERGY) {
-            let ret = (source.transferEnergy ? source.transferEnergy(creep, qty) : source.transfer(creep, this.resource, qty));
+            creep.log('transfer?', ret);
             delete creep.memory[this.PATH];
         } else if (ret === ERR_NOT_IN_RANGE) {
             ret = creep.moveTo(source);
@@ -85,19 +107,18 @@ class LoadFromContainerStrategy extends BaseStrategy {
             {
                 filter: (s) =>
                 (this.structure ? (s.structureType == this.structure ) : true)
-                && (!this.predicate ||this.predicate(s))
-                && (s.store && (s.store[this.resource] > 0))
+                && (!this.predicate || this.predicate(s))
+                && (this.containerQty(creep,s))
             });
-        /*
-         if (!allSources.length) {
-         creep.log('no sources');
-         }
-         */
-        // creep.log('LoadFromContainerStrategy', 'finding source', 'allSources',allSources.length);
+/*
+        if (this.resource === LoadFromContainerStrategy.ANY) {
+            creep.log('LoadFromContainerStrategy', this.structure, 'finding source', 'allSources',allSources.length);
+        }
+*/
         // creep.log(this.constructor.name, 'storage ? ',_.find(allSources,(s)=>s.structureType ==STRUCTURE_STORAGE));
 
-        var fullEnoughSources = _.filter(allSources, (s) => s.store[this.resource] >= neededCarry);
-        var fullSources = _.filter(fullEnoughSources, (s) => _.sum(s.store) == s.storeCapacity);
+        var fullEnoughSources = _.filter(allSources, (s) => this.containerQty(creep,s) >= neededCarry);
+        var fullSources = _.filter(fullEnoughSources, (s) => this.containerQty(creep,s) == s.storeCapacity);
         // creep.log('full', fullEnoughSources.length, fullSources.length);
 
         if (this.structureType == STRUCTURE_LINK || !this.structure) {
@@ -113,9 +134,10 @@ class LoadFromContainerStrategy extends BaseStrategy {
         } else if (fullEnoughSources.length > 0) {
             source = creep.pos.findClosestByRange(fullEnoughSources);
         } else {
-            source = _.sortBy(allSources, (s)=>-1* s.store[this.resource])[0];
+            source = _.sortBy(allSources, (s)=>-1 * this.containerQty(creep,s))[0];
         }
-        // creep.log('LoadFromContainerStrategy', 'finding source', 'fullEnoughSources',allSources.length);
+        // creep.log('LoadFromContainerStrategy', this.structure, 'fullEnoughSources',allSources.length);
+        // creep.log('LoadFromContainerStrategy', this.structure, 'source',source);
         // var sources = fullEnoughSources.length > 0 ? fullEnoughSources : allSources;
         // source = creep.pos.findClosestByRange(sources);
         if (source) {
@@ -127,6 +149,33 @@ class LoadFromContainerStrategy extends BaseStrategy {
         }
         return source;
     }
+
+    containerQty(creep,s) {
+        try {
+            let ret =0;
+            switch (this.resource) {
+                case  RESOURCE_ENERGY :
+                    ret = s.store ? s.store.energy : s.energy; break;
+
+                case LoadFromContainerStrategy.ANY :
+                    ret = s.store ? _.sum(s.store)- s.store.energy  : 0; break;
+                default:
+                    ret = s.store[this.resource];
+                    break;
+            }
+/*
+            if (creep.room.name ==='E37S14' && this.resource === RESOURCE_ENERGY) {
+                creep.log('qty?', s.structureType, this.resource, JSON.stringify(s.store), ret);
+            }
+*/
+            return ret;
+        } catch (e) {
+            console.log(this.constructor.name, this.resource, s.structureType);
+            console.log(e.stack);
+            throw e;
+        }
+    }
 }
+LoadFromContainerStrategy.ANY = 'any';
 
 module.exports = LoadFromContainerStrategy;

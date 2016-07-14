@@ -3,24 +3,30 @@ class Util {
 
     constructor() {
         this.CURRENT_STRATEGY = 'strategy';
-        this.currentid = Memory.uuid|| 0;
+        this.currentid = Memory.uuid || 0;
     }
 
     /**
      * @param {Object} memoryRoot
      * @param {string} path
-     * @param {Function} memory is cleared if this doest not validate
-     *  @return {Object}
+     * @param {Function} validator memory is cleared if this doest not validate
+     * @return {Object}
      */
-    objectFromMemory(memoryRoot, path, validator) {
+    objectFromMemory(memoryRoot, path, validator, releaseLambda) {
         if (!memoryRoot || !path) {
             return null;
         }
         let id = memoryRoot[path];
         if (id) {
             let o = Game.getObjectById(id);
-            if (o && (!validator || validator(o))) {
-                return o;
+            if (o) {
+                if ((!validator || validator(o))) {
+                    return o;
+                } else {
+                    // remote reservation
+                    if (releaseLambda) releaseLambda(o);
+                    delete memoryRoot[path];
+                }
             } else {
                 delete memoryRoot[path];
             }
@@ -30,22 +36,45 @@ class Util {
 
     /**
      *
-     * @param creep
-     * @param object
-     * @param reason
- * @returns {boolean} true if object is not already reserved
+     * @param {Creep}creep
+     * @param {Structure} object
+     * @param {string} reason
+     * @returns {boolean} true if object is not already reserved
      */
     reserve(creep, object, reason) {
-        if (object && !this.isReserved(creep, object, reason)) {
+        if (object) {
             let reserved = this.reservations(creep, reason);
-            reserved[object.id] = creep.id;
-            // creep.log('reserved',object.id)
-            return true;
-        } else {
-            return false;
+            let owner = reserved[object.id];
+            if (owner && !Game.getObjectById(owner)) {
+                delete reserved[object.id];
+                owner = null;
+            }
+
+            if (!owner) {
+                reserved[object.id] = creep.id;
+                creep.memory.locks = (creep.memory.locks || []);
+                if (creep.memory.locks.indexOf(object.id) < 0) {
+                    creep.memory.locks.push(object.id);
+                }
+                creep.log('reserved', object.id, reason);
+                return true;
+            } else if (owner !== creep.id) {
+                creep.log(object.id, 'is already reserved');
+                return false;
+            } else if (owner === creep.id) {
+                return true;
+            }
         }
+        return false;
+
     }
 
+    /**
+     *
+     * @param {Creep} creep
+     * @param {string} reason
+     * @returns {{string:string}|{}}
+     */
     reservations(creep, reason) {
         let reserved = creep.room.memory.reserved = creep.room.memory.reserved || {};
         if (reason) {
@@ -55,30 +84,42 @@ class Util {
         return reserved;
 
     }
+
     /**
      * true if object is already reserved by some other creep
-     * @param creep
-     * @param object
-     * @param reason
+     * @param {Creep} creep
+     * @param {Structure} object
+     * @param {string} reason
      * @returns {boolean}
      */
     isReserved(creep, object, reason) {
         if (!object) return false;
 
         let reserved = this.reservations(creep, reason);
-        let owner = reserved[object.id];
-        if (owner && !Game.getObjectById(owner)) {
+        let ownerid = reserved[object.id];
+        if (ownerid && !Game.getObjectById(ownerid)) {
             delete reserved[object.id];
-            owner = null;
+            ownerid = null;
         }
-        // if (owner) creep.log('testing lock', object, owner);
-        return (owner && owner !== creep.id)?true:false;
+        // if (ownerid) creep.log('testing lock', object, ownerid);
+        return (ownerid && ownerid !== creep.id);
     }
 
+    /**
+     *
+     * @param {Creep} creep
+     * @param {string|Structure} object
+     * @param {string} reason
+     */
     release(creep, object, reason) {
         // creep.log('releasing ?', object);
         if (!object) return;
         let reserved = this.reservations(creep, reason);
+        let creepLocks = (creep.memory.locks || []);
+        let idx = creepLocks.indexOf(object);
+        if (idx) {
+            creepLocks.splice(idx, 1);
+        }
         delete  reserved[(typeof object === 'string'  ) ? object : object.id];
         // creep.log('released',object.id)
     }
@@ -111,11 +152,14 @@ class Util {
      * @param strategy
      */
     setCurrentStrategy(creep, strategy) {
-        if (strategy) creep.memory[this.CURRENT_STRATEGY] = {
-            name: strategy.constructor.name,
-            state: strategy.saveState()
-        };
-        else delete creep.memory[this.CURRENT_STRATEGY];
+        if (strategy) {
+            creep.memory[this.CURRENT_STRATEGY] = {
+                name: strategy.constructor.name,
+                state: strategy.saveState()
+            };
+        } else {
+            delete creep.memory[this.CURRENT_STRATEGY];
+        }
     }
 
     strategyToLog(strategy) {
@@ -154,10 +198,10 @@ class Util {
         }
         // console.log('room name', (room?room.name:'null'));
 
-        let creeps = (room || predicate) ? 
-            (predicate?
-                room.find(FIND_MY_CREEPS, {filter:predicate})
-                :room.find(FIND_MY_CREEPS)) : Game.creeps;
+        let creeps = (room || predicate) ?
+            (predicate ?
+                room.find(FIND_MY_CREEPS, {filter: predicate})
+                : room.find(FIND_MY_CREEPS)) : Game.creeps;
         return _.countBy(creeps, (c) => c.memory.role);
     }
 
@@ -166,11 +210,59 @@ class Util {
      * @param {string} [id]
      */
     uuid(id) {
-        if(id) {
+        if (id) {
             return id + '.' + this.currentid++;
         } else {
             return this.currentid++;
         }
     }
+
+    findSafeSources(remoteRoom, allowMinerals) {
+        if (!remoteRoom) return [];
+        let hostiles = remoteRoom.find(FIND_HOSTILE_CREEPS);
+        let mineralsAreHarvestable = allowMinerals && remoteRoom.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_EXTRACTOR}}).length;
+        if (!hostiles.length) {
+            return remoteRoom.find(FIND_SOURCES).concat((mineralsAreHarvestable) ? remoteRoom.find(FIND_MINERALS) : []);
+        }
+        let keeperName = 'Source Keeper';
+        let keepers = _.filter(hostiles, (h)=>h.owner && keeperName === h.owner.username);
+        if (keepers.length === hostiles.length) {
+            let safeFilter = (s)=>
+            _.filter(
+                s.pos.findInRange(FIND_HOSTILE_CREEPS, 4),
+                (keeper)=> {
+                    let activeParts = _.filter(keeper.body, (part)=> part.hits > 0);
+                    return activeParts.length > 1;
+                } // non disabled keepers
+            ).length == 0;
+            let safeSources = remoteRoom.find(FIND_SOURCES, {filter: safeFilter});
+            if (mineralsAreHarvestable) {
+                safeSources = safeSources.concat(remoteRoom.find(FIND_MINERALS, {filter: safeFilter}));
+            }
+            return safeSources;
+        } else {
+            return [];
+        }
+    }
+
+    /**
+     *
+     * @param creep
+     * @returns {false |LEFT|TOP|RIGHT|BOTTOM}
+     */
+    isAtDoor(creep) {
+        let pos = creep.pos;
+        if (pos.x < 2) {
+            return LEFT;
+        } else if (pos.x > 47) {
+            return RIGHT;
+        } else if (pos.y < 2) {
+            return TOP;
+        } else if (pos.y > 47) {
+            return BOTTOM;
+        }
+        return false;
+    }
+
 }
 module.exports = new Util();

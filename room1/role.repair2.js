@@ -9,7 +9,7 @@ class RoleRepair2 {
         this.loadStrategies = [
             new PickupStrategy(RESOURCE_ENERGY),
             new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_STORAGE),
-            new LoadFromContainerStrategy(RESOURCE_ENERGY),
+            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER),
             new HarvestEnergySourceStrategy()
         ];
         this.ACTION_FILL = 'fill';
@@ -23,7 +23,6 @@ class RoleRepair2 {
             delete creep.memory.source;
         } else if (creep.carry.energy == creep.carryCapacity) {
             delete creep.memory.action;
-
         }
         if (creep.memory.action == this.ACTION_FILL) {
             let strategy = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);
@@ -91,9 +90,10 @@ class RoleRepair2 {
     }
 
     findTarget(creep) {
+
         var target = util.objectFromMemory(creep.memory, 'targetid');
         if (target && target.hits == target.hitsMax) {
-            this.clearTarget(creep);
+            delete creep.memory.targetid;
             target = null;
         }
         if (!target) {
@@ -124,7 +124,10 @@ class RoleRepair2 {
                 target = creep.pos.findClosestByRange(myDamagedStructures);
             }
             //creep.log("repairing", target.structureType, JSON.stringify(target.pos), '' + target.hits + '/' + target.hitsMax, 'damagedStructures', JSON.stringify(_.countBy(myDamagedStructures, (s)=>s.structureType)));
-            if (target && util.reserve(creep, target)) creep.memory.targetid = target.id;
+            // todo clear previous locks ?
+            (creep.memory.locks || []).forEach((id)=>util.release(creep, id, 'repair'));
+
+            if (target && util.reserve(creep, target, 'repair')) creep.memory.targetid = target.id;
             return target;
         } else {
             return target;

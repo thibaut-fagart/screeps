@@ -196,6 +196,16 @@ const Profiler = {
 {name:'RoleTower',val:require('./role.tower')},
 {name:'RoleUpgrader',val:require('./role.upgrader')},
   {name:'Util',val:require('./util')},
+  {name:'roleRepair', val: require('./role.repair')},
+{name:'RoleScout' , val:require('./role.scout')},
+  {name:'RoleRemoteBuilder', val: require('./role.builder.remote')},
+  {name:'RoleRecycle', val: require('./role.recycle')},
+  {name:'RoleRemoteHarvesterKeeper', val: require('./role.remote_harvester.keeper')},
+  {name:'RoleKeeperGuard', val: require('./role.soldier.keeperguard')},
+  {name:'RoleMineralHarvester', val: require('./role.harvester.mineral')},
+  {name:'RoleEnergyFiller', val: require('./role.energyfiller')},
+  {name:'RoleEnergyGatherer', val: require('./role.energygatherer')},
+  {name:'RoleMineralGatherer', val: require('./role.mineralgatherer')},
       
   ],
 

@@ -25,6 +25,7 @@ class MoveToRoomTask extends BaseStrategy {
         if (!creep.memory[this.CREEP_REMOTE_PATH] && creep.room.memory[this.ROOM_REMOTE_PATH]) {
             creep.memory[this.CREEP_REMOTE_PATH] = creep.room.memory[this.ROOM_REMOTE_PATH];
         }
+
         creep.memory.action = creep.memory.action || 'go_remote_room';
         creep.memory[this.CREEP_HOME_PATH]=  creep.memory[this.CREEP_HOME_PATH] || creep.room.name;
         // creep.log(creep.memory.action);

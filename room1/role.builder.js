@@ -11,7 +11,7 @@ class RoleBuilder {
         this.loadStrategies = [
             new PickupStrategy(RESOURCE_ENERGY),
             new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_STORAGE),
-            new LoadFromContainerStrategy(RESOURCE_ENERGY),
+            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER),
             new HarvestEnergySourceStrategy()];
         this.buildStrategy = new BuildStrategy();
         this.BUILD_TARGET = 'buildtarget';

@@ -6,7 +6,7 @@ var DropToEnergyStorage = require('./strategy.drop_to_energyStorage');
 var DropToContainerStrategy = require('./strategy.drop_to_container');
 class RoleHarvester {
     constructor() {
-        this.loadStrategies = [new HarvestEnergySourceToContainerStrategy(), new HarvestEnergySourceStrategy()];
+        this.loadStrategies = [new HarvestEnergySourceToContainerStrategy(RESOURCE_ENERGY), new HarvestEnergySourceStrategy(RESOURCE_ENERGY)];
         this.unloadStrategies = [new DropToEnergyStorage(STRUCTURE_EXTENSION), new DropToEnergyStorage(STRUCTURE_SPAWN),
             new DropToContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER), new DropToContainerStrategy(RESOURCE_ENERGY, STRUCTURE_STORAGE)];
 

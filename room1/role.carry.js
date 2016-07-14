@@ -13,10 +13,11 @@ class RoleCarry {
             new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (c)=>(!c.room.memory.harvestContainers || c.room.memory.harvestContainers.indexOf(c.id)>=0))];
         this.unloadStrategies = [
             new DropToEnergyStorageStrategy(STRUCTURE_TOWER),
-            new DropToEnergyStorageStrategy(),
+            new DropToEnergyStorageStrategy(STRUCTURE_EXTENSION),
             new DropToEnergyStorageStrategy(STRUCTURE_SPAWN),
-            new DropToContainerStrategy(RESOURCE_ENERGY,STRUCTURE_LINK),
-            new DropToContainerStrategy(RESOURCE_ENERGY, STRUCTURE_STORAGE ),
+            new DropToContainerStrategy(RESOURCE_ENERGY, STRUCTURE_LINK ),
+            new DropToContainerStrategy(null,STRUCTURE_STORAGE ),
+            // new DropToContainerStrategy(RESOURCE_ENERGY,STRUCTURE_LINK),
             new DropToContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER )
 
         ];
@@ -28,14 +29,14 @@ class RoleCarry {
     /** @param {Creep} creep **/
     run(creep) {
         let strategy;
-        if (creep.carry.energy == 0) {
+        if (_.sum(creep.carry) == 0) {
             creep.memory.action = this.ACTION_FILL;
             delete creep.memory.source;
             delete creep.memory.currentStrategy;
             let s = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);
             if (s) {s.clearMemory(creep);}
             util.setCurrentStrategy(creep, null);
-        } else if (creep.carry.energy == creep.carryCapacity) {
+        } else if (_.sum(creep.carry) == creep.carryCapacity) {
             creep.memory.action = this.ACTION_UNLOAD;
             delete creep.memory.action;
             delete creep.memory.currentStrategy;
@@ -55,7 +56,7 @@ class RoleCarry {
             if (strategy) {
                 util.setCurrentStrategy(creep, strategy);
             } else {
-                creep.log('no loadStrategy');
+                // creep.log('no loadStrategy');
                 return;
             }
         }
@@ -64,6 +65,7 @@ class RoleCarry {
             if (!strategy) {
                 strategy = _.find(this.unloadStrategies, (strat)=>!(null == strat.accepts(creep)));
             }
+            // creep.log(util.strategyToLog(strategy));
             if (strategy) {
                 util.setCurrentStrategy(creep, strategy);
             } else {
@@ -80,13 +82,18 @@ class RoleCarry {
                 }
                 if (target) {
                     // creep.log('unloading to', target);
-                    let transfer = creep.transfer(target, RESOURCE_ENERGY);
+                    let transfer
+                    if (this.resource) {
+                        transfer = creep.transfer(target, this.resource);
+                    } else {
+                        _.keys(creep.carry).forEach((k)=> transfer= creep.transfer(target, k));
+                    }
+
                     if (ERR_NOT_IN_RANGE === transfer) {
                         // creep.log('moving to', target);
                         creep.moveTo(target);
                     } else if(transfer !== OK  && transfer !== ERR_TIRED){
-
-                        creep.log('transfer?',transfer);
+                        creep.log('transfer?',target,JSON.stringify(creep.carry), transfer);
                     }
                     return;
                 }

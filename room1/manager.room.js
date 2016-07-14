@@ -1,6 +1,6 @@
 var _ = require('lodash');
 var util = require('./util');
-var SpawnManager = require('./manager.spawn');
+var SpawnManager = require('./../process/manager.spawn.js');
 class RoomManager {
 
     constructor(spawnManager) {

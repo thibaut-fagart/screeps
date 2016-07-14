@@ -16,7 +16,7 @@ class CloseAttackStrategy extends BaseStrategy {
     /** @param {Creep||StructureTower} creep
      * @return {Creep|| null}**/
     accepts(creep) {
-        if (!creep instanceof StructureTower || (creep.body && creep.getActiveBodyparts(ATTACK) == 0 && creep.getActiveBodyparts(MOVE) == 0)) {
+        if (creep instanceof StructureTower || (creep.body && creep.getActiveBodyparts(ATTACK) == 0)) {
             return null;
         }
         // find strangers
@@ -44,6 +44,7 @@ class CloseAttackStrategy extends BaseStrategy {
                 creep.log('attack?', attack);
             }
             creep.moveTo(target);
+            creep.log(this.constructor.name,this.range, 'attacking');
         }
         return target;
     }

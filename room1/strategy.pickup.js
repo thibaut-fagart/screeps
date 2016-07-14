@@ -29,7 +29,7 @@ class PickupStrategy extends BaseStrategy {
         // let beforeCount = _.size(dropids);
         // remove old drops
         _.filter(dropids, (id)=> !Game.getObjectById(id)).forEach((id)=> {
-            delete plannedPickups[id]
+            delete plannedPickups[id];
         });
         // let afterCount = _.size(_.keys(this.plannedPickups));
         // creep.log('validating reserves','before', beforeCount, afterCount);
@@ -97,7 +97,8 @@ class PickupStrategy extends BaseStrategy {
         /** @type Resource */
         let source = util.objectFromMemory(creep.memory, this.PATH, (r)=>r.amount > 0);
         if (!source) {
-            let drops = creep.room.find(FIND_DROPPED_RESOURCES, {filter: (e)=> (!this.resource || this.resource==e.resourceType) && e.amount > 50});
+            let drops = creep.room.find(FIND_DROPPED_RESOURCES, {filter: (e)=> (!this.resource || this.resource==e.resourceType) && e.amount > creep.pos.getRangeTo(e.pos)});
+            // if (creep.room.name ==='E38S14') creep.log('drops', drops.length);
             let sortedDrops = drops.sort((d) => -d.amount / creep.pos.getRangeTo(d));
             // creep.log('sortedDrops', sortedDrops.length);
             let plannedPickups = this.roomPlannedPickups(creep);
