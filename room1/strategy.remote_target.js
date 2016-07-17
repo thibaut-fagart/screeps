@@ -43,7 +43,7 @@ class RemoteTargetStrategy extends BaseStrategy {
 
                 // if(creep instanceof Creep) creep.log('attacking',target);
                 let rangedAttack = this.performAttack(creep, target);
-                creep.log('rangedAttack?', rangedAttack); // TODO removed predicate
+                // creep.log('rangedAttack?', rangedAttack); // TODO removed predicate
                 if (rangedAttack === ERR_NOT_IN_RANGE) {
                     creep.moveTo(target);
                     // if(creep instanceof Creep) creep.log('not in range, moving');

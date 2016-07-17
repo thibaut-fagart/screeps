@@ -93,9 +93,15 @@ class DropToContainerStrategy extends BaseStrategy {
                             // creep.log('transfer?', target, JSON.stringify(creep.carry), ret);
                         }
                     });
-                } else {
+                } else if (target.energy < target.energyCapacity) {
                     creep.log('transfer energy');
                     ret = creep.transfer(target, RESOURCE_ENERGY);
+                    if ([OK, ERR_NOT_IN_RANGE].indexOf(ret) < 0 && creep.room.name === 'E37S14') {
+                        // creep.log('transfer?', target, JSON.stringify(creep.carry), ret);
+                    }
+                } else if (target.mineralAmount < target.mineralCapacity)  {
+                    creep.log('transfering minerals');
+                    _.keys(creep.carry).forEach((r)=> {if (r !== RESOURCE_ENERGY) ret = creep.transfer(target, RESOURCE_ENERGY);});
                     if ([OK, ERR_NOT_IN_RANGE].indexOf(ret) < 0 && creep.room.name === 'E37S14') {
                         // creep.log('transfer?', target, JSON.stringify(creep.carry), ret);
                     }
@@ -149,6 +155,7 @@ class DropToContainerStrategy extends BaseStrategy {
                 return container.energyCapacity - container.energy;
             }
         } else if (container.energyCapacity) {
+            if (creep.memory.role ==='mineralGatherer') creep.log('freeSpace?', container.energyCapacity - container.energy);
             return container.energyCapacity - container.energy;
         } else {
             creep.log('ERROR unknown container type', container);

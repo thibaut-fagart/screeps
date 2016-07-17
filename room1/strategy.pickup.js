@@ -107,7 +107,7 @@ class PickupStrategy extends BaseStrategy {
     accepts(creep) {
         if (!creep.carryCapacity || _.sum(creep.carry) == creep.carryCapacity) return false;
         /** @type Resource */
-        let source = util.objectFromMemory(creep.memory, this.PATH, (r)=>r.amount > 0);
+        let source = util.objectFromMemory(creep.memory, this.PATH, (r)=>(r.amount > 0 && this.predicate(creep)(r)));
         if (!source) {
             source = this.findSource(creep);
             // source = creep.pos.findClosestByRange(FIND_DROPPED_ENERGY);

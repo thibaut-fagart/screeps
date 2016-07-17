@@ -6,7 +6,9 @@ var PickupStrategy = require('./strategy.pickup');
  */
 class KeeperPickupStrategy extends PickupStrategy {
     constructor(resource) {
-        super();
+        super(resource, function(creep){
+            return ((drop) => drop.pos.findInRange(FIND_HOSTILE_CREEPS).length === 0);
+        });
         this.PATH_TO_SOURCE_PATH = 'pickupPath';
     }
 
@@ -30,8 +32,8 @@ class KeeperPickupStrategy extends PickupStrategy {
             delete creep.memory[this.PATH_TO_SOURCE_PATH];
             return OK;
         }
-        if (!path) {
-            creep.log('finding path to ', JSON.stringify(source.pos));
+        if (!path || !(path.length)  || creep.pos.getRangeTo(path[0].x,path[0].y)>1) {
+            // creep.log('finding path to ', JSON.stringify(source.pos));
             path = util.safeMoveTo(creep, source.pos);
 /*
 
@@ -45,14 +47,14 @@ class KeeperPickupStrategy extends PickupStrategy {
             creep.memory[this.PATH_TO_SOURCE_PATH][source.id] = path;
         }
         if (path.length) {
-            creep.log('at, next',JSON.stringify(creep.pos),JSON.stringify(path[0]));
+            // creep.log('at, next',JSON.stringify(creep.pos),JSON.stringify(path[0]));
 
             if (path[0].x == creep.pos.x && path[0].y == creep.pos.y) {
-                creep.log('next step');
+                // creep.log('next step');
                 path = path.slice(1);
                 creep.memory[this.PATH_TO_SOURCE_PATH][source.id] = path;
             }
-            creep.log('moving',JSON.stringify(creep.pos),JSON.stringify(path[0]));
+            // creep.log('moving',JSON.stringify(creep.pos),JSON.stringify(path[0]));
             let moveTo = creep.move(creep.pos.getDirectionTo(path[0].x,path[0].y));
             if (moveTo !== OK && moveTo !== ERR_TIRED) {
                 creep.log('moving?', moveTo);
