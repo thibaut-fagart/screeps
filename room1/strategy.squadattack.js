@@ -56,8 +56,9 @@ class SquadAttackStrategy extends Base {
         if (squad.length < Game.rooms[creep.memory.homeroom].memory.attack_min) {
             // let the leader lead the way, safely
             if (isLeader) {
-                let exitToHome = this.findRemoteExit(creep);
-                let exitDist = creep.pos.getRangeTo(exitToHome);
+                let exitToHome = util.findExit(creep, creep.memory.homeroom,'exitToHome');
+                creep.log('exitToHome', JSON.stringify(exitToHome));
+                let exitDist = creep.pos.getRangeTo(exitToHome.x, exitToHome.y);
                 creep.log('exit at?', exitDist);
                 if (creep.pos.getRangeTo(exitToHome) > 5) {
                     util.safeMoveTo(exitToHome);
@@ -66,6 +67,16 @@ class SquadAttackStrategy extends Base {
                     creep.log('hostiles near regroup point, fighting');
                     return false;
                 } else {
+                    let pathToExit;
+                    if (!creep.memory.pathToExit || !creep.memory.pathToExit.length || creep.pos.getRangeTo(creep.memory.pathToExit[0].x, creep.memory.pathToExit[0].y)>1) {
+                        pathToExit  = creep.memory.pathToExit = util.safeMoveTo(creep, exitToHome);
+                    } else {
+                        pathToExit  = creep.memory.pathToExit;
+                        if (creep.pos.getRangeTo(pathToExit[0].x, pathToExit[0].y) ==0) {
+                            creep.memory.pathToExit = pathToExit = pathToExit.slice(1);
+                        }
+                    }
+                    creep.moveTo(pathToExit[0]);
                     creep.log('waiting for reinforcements');
                     return true;
                 }
@@ -110,7 +121,7 @@ class SquadAttackStrategy extends Base {
             }
             // creep.log('leader',maxDistanceToLeader,squad.length);
             // move forwards if everyone is nearby, otherwise go back
-            if (maxDistanceToLeader < squad.length) {
+            if (maxDistanceToLeader < squad.length+1) {
                 if (myRange <= 4) {
                     delete creep.memory.path[closestEnemy.id];
                     return false;

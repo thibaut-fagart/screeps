@@ -62,14 +62,14 @@ class MoveToSpawningKeeperLair extends BaseStrategy {
             // creep.log('first lair ? ', sorted.length);
             if (sorted.length) {
                 let target = sorted[0];
-                creep.log('lair at', JSON.stringify(target.pos.getRangeTo(creep)));
+                // creep.log('lair at', target.pos, JSON.stringify(target.pos.getRangeTo(creep)), creep.pos.getRangeTo(target));
                 let rangeTo = creep.pos.getRangeTo(target);
                 let hostiles = creep.room.find(FIND_HOSTILE_CREEPS);
-                if (rangeTo > 10) {
+                if (rangeTo > 7) {
                     let path = PathFinder.search(creep.pos, {pos: target.pos, range: 5}, {
                         roomCallback: util.avoidCostMatrix(creep,hostiles,4)}).path;
                     let to = creep.moveTo(path[0]);
-                    creep.log('monving', JSON.stringify(path[0]));
+                    // creep.log('moving', JSON.stringify(path[0]));
                     if (OK !== to && ERR_TIRED !== to) {
                         creep.log('moving?', to);
                     } else if (OK === to) {
