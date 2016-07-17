@@ -273,8 +273,8 @@ class Util {
         return false;
     }
 
-    safeMoveTo(creep, destitnation) {
-        let path = PathFinder.search(creep.pos, destitnation, {
+    safeMoveTo(creep, destination) {
+        let path = PathFinder.search(creep.pos, destination, {
             roomCallback: this.avoidCostMatrix(creep, creep.room.find(FIND_HOSTILE_CREEPS), 3)
         }).path;
         creep.moveTo(path[0]);
@@ -292,7 +292,7 @@ class Util {
             if (roomName == creep.room.name) {
                 let matrix = new PathFinder.CostMatrix();
                 hostiles.forEach((c)=> {
-                    new PathFinder.CostMatrix()
+                    new PathFinder.CostMatrix();
                     matrix.set(c.pos.x, c.pos.y, 255);
                     for (let r = 1; r <= range; r++) {
                         matrix.set(c.pos.x - r, c.pos.y - r, 10);
@@ -304,6 +304,9 @@ class Util {
                         matrix.set(c.pos.x + r, c.pos.y, 10);
                         matrix.set(c.pos.x + r, c.pos.y + r, 10);
                     }
+                });
+                creep.room.find(FIND_MY_CREEPS).forEach((c)=> {
+                    matrix.set(c.pos.x, c.pos.y, 255);
                 });
                 return matrix;
             } else {

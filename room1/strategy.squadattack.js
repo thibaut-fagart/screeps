@@ -116,8 +116,21 @@ class SquadAttackStrategy extends Base {
                     return false;
                 } else {
                     // creep.log('computing safe path');
-                    let path = creep.memory.path[closestEnemy.id] || util.safeMoveTo(creep, closestEnemy.pos);
-                    creep.memory.path[closestEnemy.id] = path;
+                    let lastPos = creep.memory.lastPos || creep.pos;
+                    let stoppedCounter = creep.memory.ticksAtLastPos||0;
+                    if (this.samePos(lastPos, creep.pos)) {
+                        creep.memory.ticksAtLastPos =stoppedCounter ++;
+                    } else {
+                        creep.memory.ticksAtLastPos =0;
+                        creep.memory.lastPos = creep.pos;
+                    }
+                    let path;
+                    if (stoppedCounter< 3) {
+                        path = creep.memory.path[closestEnemy.id] || util.safeMoveTo(creep, closestEnemy.pos);
+                        creep.memory.path[closestEnemy.id] = path;
+                    } else {
+                        path = creep.memory.path[closestEnemy.id] = util.safeMoveTo(creep, closestEnemy.pos);
+                    }
                     creep.moveByPath(path);
                     return true;
                 }
@@ -135,27 +148,6 @@ class SquadAttackStrategy extends Base {
                 return true;
             }
         }
-        /*        if (maxDistanceToLeader < squad.length - 1 && myRange <= 4) {
-         // in range, BANZAI !
-         return false;
-         } else if (myDistanceToLeader > squad.length - 1) {
-         if (myDistanceToLeader < 5) {
-         creep.moveTo(leader);
-         } else {
-         util.safeMoveTo(creep, leader.pos);
-         }
-         return true;
-         } else if (isLeader && maxDistanceToLeader >= squad.length) {
-         creep.log('moving to lost member', JSON.stringify(brotherFurthestToLeader.pos));
-         util.safeMoveTo(creep, brotherFurthestToLeader.pos);
-         return true;
-         } else if (isLeader) {
-         // move to ennemy
-         creep.log('moving to ennemy', JSON.stringify(closestEnemy.pos));
-
-         creep.moveTo(closestEnemy);
-         return true;
-         } */
     }
 
     findLeaderTarget(leader, hostiles) {
@@ -163,5 +155,8 @@ class SquadAttackStrategy extends Base {
         return leader.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
     }
 
+    samePos(lastPos, pos) {
+        return lastPos.x === pos.x && lastPos.y === pos.y && lastPos.roomName === pos.roomName;
+    }
 }
 module.exports = SquadAttackStrategy;
