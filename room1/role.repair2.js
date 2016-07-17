@@ -7,8 +7,8 @@ var PickupStrategy = require('./strategy.pickup');
 class RoleRepair2 {
     constructor() {
         this.loadStrategies = [
-            new PickupStrategy(RESOURCE_ENERGY),
             new LoadFromContainerStrategy(RESOURCE_ENERGY ,undefined, (s)=>(s.structureType !== STRUCTURE_TOWER )),
+            new PickupStrategy(RESOURCE_ENERGY),
             new HarvestEnergySourceStrategy()
         ];
         this.ACTION_FILL = 'fill';
@@ -105,7 +105,7 @@ class RoleRepair2 {
                 let damagedContainers = _.filter(myDamagedStructures, (s)=>s.structureType == STRUCTURE_CONTAINER);
                 let sortedContainers = _.sortBy(damagedContainers, (s) => s.hits / s.hitsMax);
                 let mostDamagedContainer2 = _.find(sortedContainers, (s) => !util.isReserved(creep, s, 'repair'));
-                if (mostDamagedContainer2 && mostDamagedContainer2.hits < 10000) {
+                if (mostDamagedContainer2 && mostDamagedContainer2.hits < 100000) {
                     target = mostDamagedContainer2;
                 } else {
                     target = _.find(_.sortBy(myDamagedStructures, (s) => s.hits ), (s) => !util.isReserved(creep, s, 'repair'));
