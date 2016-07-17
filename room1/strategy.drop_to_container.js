@@ -65,9 +65,8 @@ class DropToContainerStrategy extends BaseStrategy {
                 creep.memory.strategy[this.PATH] = target.id;
             }
         }
-        // creep.log('target', target);
         if (target) {
-            // creep.log(target.structureType);
+            // creep.log('target', JSON.stringify(target.pos), target.structureType);
             // try transfering/moving
             if (target.structureType == STRUCTURE_LINK && (target.energyCapacity - target.energy) < creep.carry.energy && target.cooldown === 0) {
                 let otherLinks = creep.room.find(FIND_STRUCTURES, {filter: (s)=> s.structureType == STRUCTURE_LINK && s.id != target.id});
@@ -86,14 +85,23 @@ class DropToContainerStrategy extends BaseStrategy {
                 // creep.log('transfer', this.resource);
                 ret = creep.transfer(target, this.resource);
             } else {
-                // creep.log('transfer all');
-                _.keys(creep.carry).forEach((k)=> {
-                    ret = creep.transfer(target, k);
+                if (target.store) {
+                    // creep.log('transfer all');
+                    _.keys(creep.carry).forEach((k)=> {
+                        ret = creep.transfer(target, k);
+                        if ([OK, ERR_NOT_IN_RANGE].indexOf(ret) < 0 && creep.room.name === 'E37S14') {
+                            // creep.log('transfer?', target, JSON.stringify(creep.carry), ret);
+                        }
+                    });
+                } else {
+                    creep.log('transfer energy');
+                    ret = creep.transfer(target, RESOURCE_ENERGY);
                     if ([OK, ERR_NOT_IN_RANGE].indexOf(ret) < 0 && creep.room.name === 'E37S14') {
-                        // creep.log('transfer?',target,JSON.stringify(creep.carry), ret);
+                        // creep.log('transfer?', target, JSON.stringify(creep.carry), ret);
                     }
-                });
+                }
             }
+            // creep.log('transfer?', ret);
             if (ret == ERR_NOT_IN_RANGE) {
                 ret = creep.moveTo(target);
                 if (ret == ERR_NO_PATH) {
@@ -140,7 +148,7 @@ class DropToContainerStrategy extends BaseStrategy {
             } else {
                 return container.energyCapacity - container.energy;
             }
-        } else if (container.energyCapacity ) {
+        } else if (container.energyCapacity) {
             return container.energyCapacity - container.energy;
         } else {
             creep.log('ERROR unknown container type', container);
