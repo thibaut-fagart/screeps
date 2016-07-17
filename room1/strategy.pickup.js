@@ -140,14 +140,14 @@ class PickupStrategy extends BaseStrategy {
     findSource(creep) {
         let source;
         let drops = this.findDrops(creep);
-        let countBefore = drops.length;
         drops = drops.filter(this.predicate(creep));
-        creep.log('filtered drops', countBefore, drops.length);
-        // if (creep.room.name ==='E37S14') creep.log('drops', drops.length);
-        let sortedDrops = drops.sort((d) => -d.amount - 5 * creep.pos.getRangeTo(d));
-        // creep.log('sortedDrops', sortedDrops.length);
-        while (sortedDrops.length) {
+        // creep.log('filtered drops', countBefore, drops.length);
+        // if (creep.room.name ==='E36S14') creep.log('drops', drops.length);
+        let sortedDrops = drops.sort((d) => (d.amount - 5 * creep.pos.getRangeTo(d))*-1);
+        // creep.log('sortedDrops', sortedDrops.length, (sortedDrops.reduce(((str,drop)=> str + drop.amount+','),'')));
+        if (sortedDrops.length) {
             let drop = sortedDrops.shift();
+            // creep.log('choosing drop', drop.amount, JSON.stringify(drop.pos));
             let myAmount = this.nonReservedAmount(creep, drop);
             // creep.log('myAmount', drop.id, drop.amount, myAmount);
             if (myAmount > 0) {

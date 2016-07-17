@@ -12,9 +12,9 @@ class RoleRemoteCarryKeeper extends RoleRemoteCarry {
 
     constructor() {
         super();
-        this.pickupStrategy = new PickupStrategy(undefined,function(creep){
+        this.pickupStrategy = new KeeperPickupStrategy(undefined,function(creep){
             return ((drop)=>  {
-                return (drop.pos.findInRange(FIND_HOSTILE_CREEPS).length === 0);
+                return (drop.pos.findInRange(FIND_HOSTILE_CREEPS, 2).length === 0);
             });
         });
         this.fleeStrategy = new AvoidRespawnStrategy(1);
