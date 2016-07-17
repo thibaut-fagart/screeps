@@ -53,7 +53,7 @@ class RemoteHealStrategy extends BaseStrategy {
                     return false;
                 } else if (hasRangedAttack) {
                     this.moveToAndHeal(creep, damaged);
-                    return true;
+                    return false;
                 } else  {
                     if (range ===1) heal = creep.heal(damaged);
                     else heal = creep.rangedHeal(damaged);
@@ -62,18 +62,18 @@ class RemoteHealStrategy extends BaseStrategy {
                 }
 
             } else {
-                // creep.log('hasRangedAttack',hasRangedAttack,'!hasAttack',!hasAttack);
+                creep.log('hasRangedAttack',hasRangedAttack,'!hasAttack',!hasAttack);
                 if (hasRangedAttack || !hasAttack) {
                     // if (!creep.pos.findInRange(FIND_HOSTILE_CREEPS, 5).length) {
                     //     creep.log('no threat, self healing');
-                    // creep.log('being hurt, self healing');
+                    creep.log('being hurt, self healing');
                     let ret =creep.heal(creep);
                     if (OK !== ret) {
                         creep.log('heal?', ret);
                     }
                     // }
                     // creep.log('being hurt, pressing on');
-                    return true;
+                    return creep.pos.findInRange(FIND_HOSTILE_CREEPS, 5).length ==0;
                 }
             }
 

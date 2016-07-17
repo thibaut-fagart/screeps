@@ -41,85 +41,12 @@ class RemoteHealKeeperGuardStrategy extends RemoteHealStrategy {
                     creep.rangedHeal(damaged);
                 }
             }
-/*
-            let matrix = new PathFinder.CostMatrix();
-            let hostiles = creep.pos.findInRange(FIND_HOSTILE_CREEPS, 3);
-            let range = (p, x, y) => (Math.abs(p.x - x) + Math.abs(p.y - y));
-
-            for (let x = 0; x < 50; x++) {
-                for (let y = 0; y < 50; y++) {
-                    hostiles.forEach((h)=> {
-                        if (range(h.pos, x, y) > 3) {
-                            matrix.set(x, y, 10);
-                        }
-                    });
-                }
-            }
-            let path = PathFinder.search(creep.pos, {pos: damaged.pos, range: 1}, {
-                roomCallback: (roomName) => {
-                    return (roomName == creep.room.name) ? matrix : false;
-                }
-            }).path;
-            if (path.length) {
-                creep.moveTo(path[0]);
-                creep.rangedHeal(damaged);
-            } else {
-                creep.log('path failed');
-                return super.moveToAndHeal(creep, damaged);
-            }
-*/
         } else {
             creep.heal(damaged);
         }
 
     }
-
-    /*
-     moveToAndHeal(creep, damaged) {
-     // try not to get OUT OF RANGE (eg, move closer rather than further from hostile)
-     if (creep.pos.getRangeTo(damaged)>1) {
-     if (!this.matrix) {
-     let matrix = new PathFinder.CostMatrix();
-     let hostiles = creep.pos.findInRange(FIND_HOSTILE_CREEPS, 3);
-     let range = (p, x, y) => (Math.abs(p.x - x) + Math.abs(p.y - y));
-     for (let x = 0; x < 50; x++) {
-     for (let y = 0; y < 50; y++) {
-     matrix.set(x, y, 10);
-     }
-     }
-     // best place is as far as possible, but still in range
-     hostiles.forEach((h)=> {
-     for (let r = 3; r>0; r--) {
-     for (let x = h.pos.x-r; x < h.pos.x+r; x++) {
-     for (let y = h.pos.y-r; x < h.pos.y+r; y++) {
-     matrix.set(x, y, 9/r);
-     }
-     }
-     }
-     matrix.set(h.pos.x, h.pos.y, 255);
-     });
-
-     this.matrix =matrix
-     }
-     let path = PathFinder.search(creep.pos, {pos: damaged.pos, range: 1}, {
-     roomCallback: (roomName) => {
-     return (roomName == creep.room.name) ? this.matrix: false;
-     }
-     }).path;
-     if (path.length) {
-     creep.moveTo(path[0]);
-     creep.rangedHeal(damaged);
-     } else {
-     creep.log('path failed');
-     return super.moveToAndHeal(creep, damaged);
-     }
-     }
-     creep.heal(damaged);
-
-
-     }
-     */
-
+    
     accepts(creep) {
         // creep.log('sub');
         super.accepts(creep);
