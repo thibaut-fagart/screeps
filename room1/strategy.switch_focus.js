@@ -18,20 +18,20 @@ class SwitchFocusStrategy extends Base {
             creep.body.forEach((p)=> {
                 if (p.type === MOVE) {
                     moveParts++;
-                    if (p.hits ===0) {
+                    if (p.hits <100) {
                         disabledMoveParts++;
                     }
                 }
             });
-            creep.log('disabled , out of', disabledMoveParts, moveParts);
-            if (2*disabledMoveParts< moveParts) {
+            // creep.log('disabled , out of', disabledMoveParts, moveParts);
+            if (2*disabledMoveParts> moveParts) {
                 // move out of reach
                 let closest = creep.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
                 if (!closest || closest.pos.getRangeTo(creep)>3) return false;
                 let path = PathFinder.search(creep.pos, {pos: closest.pos, range: 4}, {flee: true}).path;
                 creep.moveByPath(path);
-                creep.log('moving out');
-                return true;
+                // creep.log('moving out');
+                return false;
             }
         }
         return false;

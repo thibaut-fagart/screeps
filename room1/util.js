@@ -261,13 +261,13 @@ class Util {
      */
     isAtDoor(creep) {
         let pos = creep.pos;
-        if (pos.x < 1) {
+        if (pos.x <= 1) {
             return LEFT;
-        } else if (pos.x > 48) {
+        } else if (pos.x >= 48) {
             return RIGHT;
-        } else if (pos.y < 1) {
+        } else if (pos.y <= 1) {
             return TOP;
-        } else if (pos.y > 48) {
+        } else if (pos.y >= 48) {
             return BOTTOM;
         }
         return false;
@@ -292,17 +292,20 @@ class Util {
             if (roomName == creep.room.name) {
                 let matrix = new PathFinder.CostMatrix();
                 hostiles.forEach((c)=> {
-                    new PathFinder.CostMatrix();
+                    let cost = (c.hits >100)?255:60;
+                        
+                    
                     matrix.set(c.pos.x, c.pos.y, 255);
                     for (let r = 1; r <= range; r++) {
-                        matrix.set(c.pos.x - r, c.pos.y - r, 10);
-                        matrix.set(c.pos.x - r, c.pos.y, 10);
-                        matrix.set(c.pos.x - r, c.pos.y + r, 10);
-                        matrix.set(c.pos.x, c.pos.y - r, 10);
-                        matrix.set(c.pos.x, c.pos.y + r, 10);
-                        matrix.set(c.pos.x + r, c.pos.y - r, 10);
-                        matrix.set(c.pos.x + r, c.pos.y, 10);
-                        matrix.set(c.pos.x + r, c.pos.y + r, 10);
+                        let rcost = cost * (range-r+1)/range;
+                        matrix.set(c.pos.x - r, c.pos.y - r, rcost);
+                        matrix.set(c.pos.x - r, c.pos.y, rcost);
+                        matrix.set(c.pos.x - r, c.pos.y + r, rcost);
+                        matrix.set(c.pos.x, c.pos.y - r, rcost);
+                        matrix.set(c.pos.x, c.pos.y + r, rcost);
+                        matrix.set(c.pos.x + r, c.pos.y - r, rcost);
+                        matrix.set(c.pos.x + r, c.pos.y, rcost);
+                        matrix.set(c.pos.x + r, c.pos.y + r, rcost);
                     }
                 });
                 creep.room.find(FIND_MY_CREEPS).forEach((c)=> {

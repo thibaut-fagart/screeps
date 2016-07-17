@@ -14,7 +14,7 @@ var StopStrategy = require('./strategy.stop');
 class RoleKeeperGuard extends RoleRemoteRoomGuard {
     constructor() {
         super();
-        this.attackStrategies = [/*new RegroupStrategy(COLOR_WHITE), *//*new SwitchFocusStrategy(), */new RemoteHealKeeperGuardStrategy(5), new SquadAttackStrategy(),new RemoteAttackStrategy(5),
+        this.attackStrategies = [new RegroupStrategy(COLOR_WHITE), new SwitchFocusStrategy(), new RemoteHealKeeperGuardStrategy(5), new SquadAttackStrategy(),new /*DisableTargetStrategy*/RemoteAttackStrategy(5),
             /*new DisableTargetStrategy(5)*/ /*new RemoteHealKeeperGuardStrategy()*//*,new MoveToActiveKeeperLair(),*/ new MoveToSpawningKeeperLair(),new RegroupStrategy(COLOR_BLUE)];
 // todo if only 1 free square near a source is free and is occupied by keeper, kill it
     }
