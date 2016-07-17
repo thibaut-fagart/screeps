@@ -72,6 +72,13 @@ module.exports = {
             memory: {role: 'mineralGatherer'}
         },
         'scout': {body: [MOVE], count: 0, scale: false, memory: {role: 'scout'}},
+        'roleRemoteGuard': {
+            body: [MOVE, MOVE, MOVE, MOVE, MOVE, MOVE,
+                RANGED_ATTACK, HEAL, RANGED_ATTACK, HEAL, RANGED_ATTACK, HEAL, RANGED_ATTACK, RANGED_ATTACK],
+            count: 0,
+            scale: true,
+            memory: {role: 'roleSoldier', type: 'remote'}
+        },
         'remoteUpgrader': {
             body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE, MOVE, WORK, CARRY, MOVE, CARRY, WORK, MOVE, MOVE],
             count: 0,
@@ -120,13 +127,6 @@ module.exports = {
         },
         'claimer': {body: [MOVE, MOVE, CLAIM, CLAIM,], count: 0, scale: true, memory: {role: 'claimer'}},
         'reserver': {body: [MOVE, MOVE, CLAIM, CLAIM,], count: 0, scale: true, memory: {role: 'reserver'}},
-        'roleRemoteGuard': {
-            body: [MOVE, MOVE, MOVE, MOVE, MOVE, MOVE,
-                RANGED_ATTACK, HEAL, RANGED_ATTACK, HEAL, RANGED_ATTACK, HEAL, RANGED_ATTACK, RANGED_ATTACK],
-            count: 0,
-            scale: true,
-            memory: {role: 'roleSoldier', type: 'remote'}
-        },
         'roleCloseGuard': {
             body: [TOUGH, MOVE, ATTACK, MOVE
                 /*
@@ -358,6 +358,13 @@ module.exports = {
         if (creep.room.find(FIND_CONSTRUCTION_SITES, {filter: (c)=> STRUCTURE_EXTENSION === c.structureType}).length > 0) {
             patterns['upgrader'].count = 0;
         }
+
+        if (creep.room.find(FIND_STRUCTURES, {filter:{structureType:STRUCTURE_CONTAINER}}).filter((s)=>_.sum(s.store)> s.store.energy).length >0) {
+            patterns['mineralGatherer'].count = 1;
+        } else if (currentSplit['mineralGatherer']||0 >0) {
+            creep.find(FIND_MY_CREEPS, {filter: (c)=>c.memory.role === 'mineralGatherer'}).forEach((c)=>c.memory.role = 'energyFiller');
+        }
+
         /*
          if (creep.room.storage && creep.room.controller.my && creep.room.controller.level < 8) {
          patterns['upgrader'] += (creep.room.storage.store.energy - 20000) / 10000;
