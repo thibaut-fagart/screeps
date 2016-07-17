@@ -8,8 +8,7 @@ class RoleUpgrader {
     constructor() {
         this.loadStrategies = [
             new PickupStrategy(RESOURCE_ENERGY),
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_STORAGE),
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER),
+            new LoadFromContainerStrategy(RESOURCE_ENERGY, undefined, (s)=>(s.structureType !== STRUCTURE_TOWER )),
             new HarvestEnergySourceStrategy()];
         this.ACTION_FILL = 'fill';
     }

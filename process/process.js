@@ -1,11 +1,6 @@
 var util = require('./../room1/util');
 var _ = require('lodash');
 
-/**
- *
- * @type {string}
- */
-_.merge(global,{STATUS_NEW: 'NEW', STATUS_READY : 'READY', STATUS_WAITING : 'WAITING', STATUS_RUNNING :'RUNNING', STATUS_TERMINATED :'TERMINATED'});
 
 
 /**
@@ -15,7 +10,7 @@ _.merge(global,{STATUS_NEW: 'NEW', STATUS_READY : 'READY', STATUS_WAITING : 'WAI
  * @property {Object} state
  * @property {Status} status
  */
-module.exports = class Process {
+var Process= class Process {
     /**
      * @typed {NEW|READY|WAITING|RUNNING|TERMINATED} Status
      */
@@ -67,5 +62,10 @@ module.exports = class Process {
         
     }
 };
+Process.STATUS_NEW= 'NEW';
+Process.STATUS_READY = 'READY';
+Process.STATUS_WAITING = 'WAITING';
+Process.STATUS_RUNNING ='RUNNING';
+Process.STATUS_TERMINATED ='TERMINATED'
 
-
+module.exports =Process;

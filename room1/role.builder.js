@@ -10,8 +10,7 @@ class RoleBuilder {
     constructor() {
         this.loadStrategies = [
             new PickupStrategy(RESOURCE_ENERGY),
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_STORAGE),
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER),
+            new LoadFromContainerStrategy(RESOURCE_ENERGY,  undefined, (s)=>(s.structureType !== STRUCTURE_TOWER )),
             new HarvestEnergySourceStrategy()];
         this.buildStrategy = new BuildStrategy();
         this.BUILD_TARGET = 'buildtarget';
@@ -87,7 +86,7 @@ class RoleBuilder {
                 util.setCurrentStrategy(creep, strategy);
                 // creep.log('strategy ', strategy.constructor.name);
             } else {
-                creep.log('no loadStrategy');
+                // creep.log('no loadStrategy');
             }
         }
     }

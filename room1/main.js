@@ -30,8 +30,11 @@ var profiler = require('./screeps-profiler');
 // var RoomManager = require('./manager.room'), roomManager = new RoomManager(); // todo manager
 // This line monkey patches the global prototypes.
 // profiler.enable();
+var debug = ['keeperGuard','remoteCarryKeeper'];
 Creep.prototype.log = function () {
-    console.log([this.name, this.pos, this.memory.role].concat(Array.prototype.slice.call(arguments)));
+    if (!debug.length || (debug.indexOf(this.memory.role)>=0)) {
+        console.log([this.name, this.pos, this.memory.role].concat(Array.prototype.slice.call(arguments)));
+    }
 };
 Spawn.prototype.log = function () {
     console.log([this.name, this.room.name].concat(Array.prototype.slice.call(arguments)));
@@ -76,6 +79,7 @@ Structure.prototype.memory = function () {
 };
 function innerLoop() {
     let messages = [];
+    let globalStart = Game.cpu.getUsed();
     let oldSeenTick = Game.time || (Memory.counters && Memory.counters.seenTick);
     Memory.counters = {tick: Game.time, seenTick: oldSeenTick + 1};
     _.keys(Memory.stats).forEach((k) => {
@@ -88,8 +92,38 @@ function innerLoop() {
             }
         }
     }
+    let handlers = {
+        'harvester': roleHarvester,
+        'mineralHarvester': roleMineralHarvester,
+        'keeperGuard': roleKeeperGuard,
+        'remoteCarryKeeper': roleRemoteCarryKeeper,
+        'recycle': roleRecycle,
+        'carry': roleCarry,
+        'keeperHarvester': roleKeeperHarvester,
+        'energyFiller': roleEnergyFiller,
+        'energyGatherer': roleEnergyGatherer,
+        'mineralGatherer': roleMineralGatherer,
+        'remoteCarry': roleRemoteCarry,
+        'upgrader': roleUpgrader,
+        'repair': roleRepair,
+        'repair2': roleRepair2,
+        'reserver': roleReserve,
+        'builder': roleBuilder,
+        'scout': roleScout,
+        'remoteBuilder': roleRemoteBuilder,
+        'attacker': roleAttacker,
+        'remoteHarvester': roleRemoteHarvester,
+        'roleRemoteGuard': roleRemoteGuard,
+        'roleCloseGuard': roleRemoteGuard,
+        'roleSoldier': roleRemoteGuard,
+    };
+    let cpu = {};
+    _.keys(handlers).forEach((k)=>cpu[k] = 0);
     for (var roomName in Game.rooms) {
         var room = Game.rooms[roomName];
+        if (!room.memory.harvestContainers) {
+            room.memory.harvestContainers = [];
+        }
         if (0 == Game.time % 100) {
             let locks = _.pairs(room.memory.reserved);
             locks.forEach((p)=> {
@@ -137,50 +171,14 @@ function innerLoop() {
             try {
                 if (creep.spawning) {
 
-                } else if (creep.memory.role == 'harvester') {
-                    roleHarvester.run(creep);
-                } else if (creep.memory.role == 'mineralHarvester') {
-                    roleMineralHarvester.run(creep);
-                } else if (creep.memory.role == 'keeperHarvester') {
-                    roleKeeperHarvester.run(creep);
-                } else if (creep.memory.role == 'keeperGuard') {
-                    roleKeeperGuard.run(creep);
-                } else if (creep.memory.role == 'remoteCarryKeeper') {
-                    roleRemoteCarryKeeper.run(creep);
-                } else if (creep.memory.role == 'recycle') {
-                    roleRecycle.run(creep);
-                } else if (creep.memory.role == 'carry') {
-                    roleCarry.run(creep);
-                } else if (creep.memory.role == 'energyFiller') {
-                    roleEnergyFiller.run(creep);
-                } else if (creep.memory.role == 'energyGatherer') {
-                    roleEnergyGatherer.run(creep);
-                } else if (creep.memory.role == 'mineralGatherer') {
-                    roleMineralGatherer.run(creep);
-                } else if (creep.memory.role == 'remoteCarry') {
-                    roleRemoteCarry.run(creep);
-                } else if (creep.memory.role == 'upgrader') {
-                    roleUpgrader.run(creep);
-                } else if (creep.memory.role == 'repair') {
-                    roleRepair.run(creep);
-                } else if (creep.memory.role == 'repair2') {
-                    roleRepair2.run(creep);
-                } else if (creep.memory.role == 'claimer') {
-                    roleClaim.run(creep);
-                } else if (creep.memory.role == 'reserver') {
-                    roleReserve.run(creep);
-                } else if (creep.memory.role == 'builder') {
-                    roleBuilder.run(creep);
-                } else if (creep.memory.role == 'scout') {
-                    roleScout.run(creep);
-                } else if (creep.memory.role == 'remoteBuilder') {
-                    roleRemoteBuilder.run(creep);
-                } else if (creep.memory.role == 'attacker') {
-                    roleAttacker.run(creep);
-                } else if (creep.memory.role == 'remoteHarvester') {
-                    roleRemoteHarvester.run(creep);
-                } else if (['roleRemoteGuard', 'roleCloseGuard', 'roleSoldier'].indexOf(creep.memory.role) >= 0) {
-                    roleRemoteGuard.run(creep);
+                } else {
+                    let start = Game.cpu.getUsed();
+                    let handler =handlers[creep.memory.role];
+                    if (handler) handler.run(creep);
+                    else {creep.log('!!!!!!no handler !! ');}
+                    
+                    let end = Game.cpu.getUsed();
+                    cpu[creep.memory.role] += (end - start);
                 }
             } catch (e) {
                 console.log(e.stack);
@@ -228,6 +226,8 @@ function innerLoop() {
         Memory.stats["room." + room.name + ".energyInSources"] = _.sum(_.map(room.find(FIND_SOURCES_ACTIVE), (s)=> s.energy));
         Memory.stats["room." + room.name + ".energyInStructures"] = _.sum(_.map(room.find(FIND_MY_STRUCTURES), (s)=> s.store ? s.store.energy : 0));
         Memory.stats["room." + room.name + ".energyDropped"] = _.sum(_.map(room.find(FIND_DROPPED_RESOURCES, {filter: (r) => r.resourceType == RESOURCE_ENERGY}), (s)=> s.amount));
+        Memory.stats["room." + room.name + ".spawns.idle"] = _.sum(room.find(FIND_MY_SPAWNS),(s)=>s.memory.idle);
+        Memory.stats["room." + room.name + ".spawns.waitFull"] = _.sum(room.find(FIND_MY_SPAWNS),(s)=>s.memory.waitFull);
 
         let strangers = room.find(FIND_HOSTILE_CREEPS);
         let hostiles = _.filter(strangers, (c)=>_.sum(c.body, (p)=>p == ATTACK || p == RANGED_ATTACK) > 0);
@@ -246,19 +246,18 @@ function innerLoop() {
             Memory.stats["room." + room.name + ".controller.progress"] = room.controller.progress;
             Memory.stats["room." + room.name + ".controller.ProgressRatio"] = 100 * room.controller.progress / room.controller.progressTotal;
         }
-        let creepCount = _.countBy(room.find(FIND_MY_CREEPS), (c)=>c.memory.role);
-
-        _.pairs(creepCount).forEach((kv)=> {
-            Memory.stats["room." + room.name + ".creeps." + kv[0]] = kv[1];
-        });
+        let roster = util.roster(room);
+        _.keys(handlers).forEach((k)=> Memory.stats["room." + room.name + ".creeps." + k] = roster[k]||0);
     }
-    Memory.stats["cpu"] = Game.cpu.getUsed();
-    Memory.stats["counter.cpu.cumul"] = (Memory.stats["counter.cpu.cumul"] || 0) + Game.cpu.getUsed();
-    Memory.stats["counter.time"] = Game.time;
+    _.keys(cpu).forEach((k)=> {
+        Memory.stats["cpu_." + k] = cpu[k];
+    });
     Memory.stats["cpu_bucket"] = Game.cpu.bucket;
     if (messages.length > 0) {
         Game.notify(messages);
     }
+    Memory.stats["cpu_.main"] = Game.cpu.getUsed()-_.sum(cpu);
+    Memory.stats["cpu"] = Game.cpu.getUsed();
     // counting walkable tiles neer location:
     //_.filter(Game.rooms.E37S14.lookAtArea(y-1,x-1,y+1,x+1,true), function(o) {return o.type== 'terrain' &&(o.terrain =='plain' || o.terrain =='swamp')}).length
 }

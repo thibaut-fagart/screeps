@@ -3,8 +3,9 @@ var BaseStrategy = require('./strategy.base');
 var util = require('./util');
 
 class FleeToHomeRoomStrategy extends BaseStrategy {
-    constructor() {
+    constructor(range) {
         super();
+        this.range = range || 50;
     }
     clearMemory(creep) {
         delete creep.memory[this.path];
@@ -18,7 +19,7 @@ class FleeToHomeRoomStrategy extends BaseStrategy {
      * @return {Creep|| null}**/
     accepts(creep) {
         if (creep.memory.homeroom &&  creep.room.name !== creep.memory.homeroom) {
-            let hostiles = creep.room.find(FIND_HOSTILE_CREEPS);
+            let hostiles = creep.pos.findInRange(FIND_HOSTILE_CREEPS, this.range) ;
             // if(creep instanceof Creep) creep.log('hostiles', hostiles.length);
             if (hostiles.length) {
                 var exit = this.findHomeExit(creep);

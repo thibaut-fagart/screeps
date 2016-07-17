@@ -9,7 +9,8 @@ class Util {
     /**
      * @param {Object} memoryRoot
      * @param {string} path
-     * @param {Function} validator memory is cleared if this doest not validate
+     * @param {Function} (validator= memory is cleared if this doest not validate
+     * @param {Function} (releaseLambda)
      * @return {Object}
      */
     objectFromMemory(memoryRoot, path, validator, releaseLambda) {
@@ -23,6 +24,7 @@ class Util {
                 if ((!validator || validator(o))) {
                     return o;
                 } else {
+                    // console.log('invalid', id, o);
                     // remote reservation
                     if (releaseLambda) releaseLambda(o);
                     delete memoryRoot[path];
@@ -56,7 +58,7 @@ class Util {
                 if (creep.memory.locks.indexOf(object.id) < 0) {
                     creep.memory.locks.push(object.id);
                 }
-                creep.log('reserved', object.id, reason);
+                // creep.log('reserved', object.id, reason);
                 return true;
             } else if (owner !== creep.id) {
                 creep.log(object.id, 'is already reserved');
@@ -158,6 +160,9 @@ class Util {
                 state: strategy.saveState()
             };
         } else {
+            if (creep.memory[this.CURRENT_STRATEGY])  {
+                
+            }
             delete creep.memory[this.CURRENT_STRATEGY];
         }
     }
@@ -221,8 +226,12 @@ class Util {
         if (!remoteRoom) return [];
         let hostiles = remoteRoom.find(FIND_HOSTILE_CREEPS);
         let mineralsAreHarvestable = allowMinerals && remoteRoom.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_EXTRACTOR}}).length;
-        if (!hostiles.length) {
-            return remoteRoom.find(FIND_SOURCES).concat((mineralsAreHarvestable) ? remoteRoom.find(FIND_MINERALS) : []);
+        if (!(hostiles.length)) {
+            let deposits = remoteRoom.find(FIND_SOURCES);
+            if (mineralsAreHarvestable) {
+                deposits = deposits.concat(remoteRoom.find(FIND_MINERALS));
+            }
+            return deposits;
         }
         let keeperName = 'Source Keeper';
         let keepers = _.filter(hostiles, (h)=>h.owner && keeperName === h.owner.username);
@@ -252,17 +261,55 @@ class Util {
      */
     isAtDoor(creep) {
         let pos = creep.pos;
-        if (pos.x < 2) {
+        if (pos.x < 1) {
             return LEFT;
-        } else if (pos.x > 47) {
+        } else if (pos.x > 48) {
             return RIGHT;
-        } else if (pos.y < 2) {
+        } else if (pos.y < 1) {
             return TOP;
-        } else if (pos.y > 47) {
+        } else if (pos.y > 48) {
             return BOTTOM;
         }
         return false;
     }
 
+    safeMoveTo(creep, destitnation) {
+        let path = PathFinder.search(creep.pos, destitnation, {
+            roomCallback: this.avoidCostMatrix(creep, creep.room.find(FIND_HOSTILE_CREEPS), 3)
+        }).path;
+        creep.moveTo(path[0]);
+        return path;
+    }
+    healingCapacity(creep) {
+        return (creep instanceof Creep) ? creep.getActiveBodyparts(HEAL)*10: 100 ;
+    }
+
+
+    avoidCostMatrix(creep, hostiles, range) {
+        range = range || 1;
+        return (roomName) => {
+            new PathFinder.CostMatrix();
+            if (roomName == creep.room.name) {
+                let matrix = new PathFinder.CostMatrix();
+                hostiles.forEach((c)=> {
+                    new PathFinder.CostMatrix()
+                    matrix.set(c.pos.x, c.pos.y, 255);
+                    for (let r = 1; r <= range; r++) {
+                        matrix.set(c.pos.x - r, c.pos.y - r, 10);
+                        matrix.set(c.pos.x - r, c.pos.y, 10);
+                        matrix.set(c.pos.x - r, c.pos.y + r, 10);
+                        matrix.set(c.pos.x, c.pos.y - r, 10);
+                        matrix.set(c.pos.x, c.pos.y + r, 10);
+                        matrix.set(c.pos.x + r, c.pos.y - r, 10);
+                        matrix.set(c.pos.x + r, c.pos.y, 10);
+                        matrix.set(c.pos.x + r, c.pos.y + r, 10);
+                    }
+                });
+                return matrix;
+            } else {
+                return false;
+            }
+        };
+    }
 }
 module.exports = new Util();

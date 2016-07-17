@@ -8,87 +8,159 @@ class SquadAttackStrategy extends Base {
         this.range = range || 3;
         this.MOVE_PATH = 'movePath';
     }
+
     findBrothers(creep) {
         return creep.pos.findInRange(FIND_MY_CREEPS, this.range, {filter: (c) => c.memory.role == creep.memory.role});
     }
-    previousClosest (creep) {
+
+    previousClosest(creep) {
         return creep.memory['previousClosest'];
     }
-    setPreviousClosest (creep, v) {
-        if (v) creep.memory['previousClosest']= v; else delete creep.memory['previousClosest'];
+
+    setPreviousClosest(creep, v) {
+        if (v) creep.memory['previousClosest'] = v; else delete creep.memory['previousClosest'];
+    }
+
+    findRemoteExit(creep) {
+        if (creep.memory.exitToHome) {
+            return creep.memory.exitToHome;
+        } else if (creep.memory.exitToRemote) {
+            let e = creep.memory.exitToRemote;
+            let mirrorLamba = (x)=> (x === 0) ? 49 : (x === 49) ? 0 : x;
+            let exit = new RoomPosition(mirrorLamba(e.x), mirrorLamba(e.y), creep.room.name);
+            creep.memory.exitToHome = exit;
+            return exit;
+        }
+        return util.findExit(creep, creep.memory.homeroom, 'remoteExit');
     }
 
     /**
-     * waits for , either the hostiles to get in range, or the number of brothers to mathc homeroom.min_attack
+     * waits for , either the hostiles to get in range, or the number of squad to mathc homeroom.min_attack
      * @param creep
      * @returns {*}
      */
     accepts(creep) {
-        let hostiles = creep.room.find(FIND_HOSTILE_CREEPS);
+        let squad = creep.room.find(FIND_MY_CREEPS).filter((c)=>(c.memory.role === creep.memory.role));
+        // creep.log('squad?', squad.length);
 
-
-        if (!hostiles.length) {
-            this.setPreviousClosest(creep);
-            return false;
-        }
-        let all = creep.room.find(FIND_MY_CREEPS, {filter:(c)=>(c.memory.role === creep.memory.role)})
-        let brothers = _.filter(all,(c)=>(c.memory.role === creep.memory.role));
-        // creep.log('brothers?', brothers.length);
-
-        let leader = _.sortBy(brothers, (b)=>b.name)[0];
+        let leader = _.sortBy(squad, (b)=>b.name)[0];
         let isLeader = leader.name === creep.name;
-        if (brothers.length < Game.rooms[creep.memory.homeroom].memory.attack_min) {
-            if (!isLeader && creep.pos.getRangeTo(leader)>1) {
-                creep.moveTo(leader);
-            }
-            return true;
-        }
-        // creep.log('leader', leader);
-        let closestEnemy = leader.pos.findClosestByRange(hostiles);
-        let myRange = closestEnemy.pos.getRangeTo(creep);
-        if (myRange< 4) {
-            // in range, BANZAI !
-            return false;
-        } else  if(!isLeader && creep.pos.getRangeTo(leader)>1) {
-            creep.moveTo(leader);
-        } else {
-            let minAttack = Game.rooms[creep.memory.homeroom].memory.attack_min;
-            // creep.log('brothers?', brothers.length, minAttack);
-            if ((minAttack && (brothers.length +1))< minAttack) {
-                // waiit till roster complete
-                return true;
-            }
-            let brothersRange = _.map(brothers, (b)=> [b, b.pos.getRangeTo(closestEnemy)]);
-            let brotherAndRangeClosestToEnnemy = _.max(brothersRange, (pair)=>pair[1]);
-            let distanceToClosestBrother = creep.pos.getRangeTo(brotherAndRangeClosestToEnnemy[0]);
-            // creep.log('closest brother range', brotherAndRangeClosestToEnnemy[0],brotherAndRangeClosestToEnnemy[1], myRange, distanceToClosestBrother);
-            if (myRange+2 < brotherAndRangeClosestToEnnemy[1]) {
-                if (distanceToClosestBrother < 4) {
-                    // wait, i'm too far ahead
-                    // creep.log(this.constructor.name, 'waiting');
-                    return true;
-                } else {
-                    // we're too spread out, get to hte center
-                    let center = _.reduce(brothers, (center, c) => {
-                        center.x += c.pos.x;
-                        center.y += c.pos.y;
-                        return center;
-                    }, {x: 0, y: 0});
-                    let moveTo = creep.moveTo(Math.floor(center.x/brothers.length), Math.floor(center.y/brothers.length));
-                    creep.log(this.constructor.name, 'gathering', center.x, center.y, moveTo);
 
+        let brotherFurthestToLeader = _.sortBy(squad, (c)=>-c.pos.getRangeTo(leader))[0];
+        let maxDistanceToLeader = brotherFurthestToLeader.pos.getRangeTo(leader);
+        let myDistanceToLeader = creep.pos.getRangeTo(leader);
+        // if roster is not enough, regroup to exit
+        // keep the squad together
+        // creep.log('squad.length', squad.length, Game.rooms[creep.memory.homeroom].memory.attack_min);
+        // creep.log('leader?', myDistanceToLeader, 'max', maxDistanceToLeader);
+        if (squad.length < Game.rooms[creep.memory.homeroom].memory.attack_min) {
+            // let the leader lead the way, safely
+            if (isLeader) {
+                let exitToHome = this.findRemoteExit(creep);
+                let exitDist = creep.pos.getRangeTo(exitToHome);
+                creep.log('exit at?', exitDist);
+                if (creep.pos.getRangeTo(exitToHome) > 5) {
+                    util.safeMoveTo(exitToHome);
+                    return true;
+                } else if (creep.pos.findInRange(FIND_HOSTILE_CREEPS, 3).length) {
+                    creep.log('hostiles near regroup point, fighting');
+                    return false;
+                } else {
+                    creep.log('waiting for reinforcements');
                     return true;
                 }
-            } else if ((myRange > brotherAndRangeClosestToEnnemy[1] + 1) && distanceToClosestBrother> 1) {
-                creep.log(this.constructor.name, 'closing on brother');
-                creep.moveTo(brotherAndRangeClosestToEnnemy[0]);
-                return true;
             } else {
-                // ok, same range
-                // creep.moveTo
-                return false;
+                // stick to the leader
+                if (myDistanceToLeader > squad.length - 1) {
+                    util.safeMoveTo(creep, leader.pos);
+                } else if (myDistanceToLeader > 1) {
+                    creep.moveTo(leader.pos);
+                }
+                // creep.log('stick to leader');
+                return true;
             }
         }
+
+        let hostiles = creep.room.find(FIND_HOSTILE_CREEPS);
+        if (!hostiles.length) {
+            this.setPreviousClosest(creep);
+            if (myDistanceToLeader > squad.length - 1) {
+                util.safeMoveTo(creep, leader.pos);
+                return true;
+            } else if (myDistanceToLeader > 1 && myDistanceToLeader < squad.length) {
+                creep.moveTo(leader.pos);
+                return true;
+            }
+            return false;
+        }
+        // creep.log('leader', leader);
+        // choose target
+        let closestEnemy = this.findLeaderTarget(leader, hostiles);
+        // and move to it, squad manner
+        let myRange = closestEnemy.pos.getRangeTo(creep);
+        // if (isLeader) creep.log('hostiles', hostiles.length, myRange, JSON.stringify(closestEnemy.pos));
+        let rangeToLeader = leader.pos.getRangeTo(closestEnemy);
+        if (myRange <= 4 && rangeToLeader <= squad.length) {
+            // ok, attack
+            return false;
+        }
+        if (isLeader) {
+            if (!creep.memory.path) {
+                creep.memory.path =[];
+            }
+            // creep.log('leader',maxDistanceToLeader,squad.length);
+            // move forwards if everyone is nearby, otherwise go back
+            if (maxDistanceToLeader < squad.length) {
+                if (myRange <= 4) {
+                    delete creep.memory.path[closestEnemy.id];
+                    return false;
+                } else {
+                    // creep.log('computing safe path');
+                    let path = creep.memory.path[closestEnemy.id] || util.safeMoveTo(creep, closestEnemy.pos);
+                    creep.memory.path[closestEnemy.id] = path;
+                    creep.moveByPath(path);
+                    return true;
+                }
+            } else {
+                util.safeMoveTo(creep, brotherFurthestToLeader.pos);
+                return true;
+            }
+        } else {
+            if (maxDistanceToLeader < squad.length && myRange <= 4) {
+                return false;
+            } else {
+                //move to leader
+                // creep.log('closing on leader', JSON.stringify(leader.pos));
+                creep.moveTo(leader.pos);
+                return true;
+            }
+        }
+        /*        if (maxDistanceToLeader < squad.length - 1 && myRange <= 4) {
+         // in range, BANZAI !
+         return false;
+         } else if (myDistanceToLeader > squad.length - 1) {
+         if (myDistanceToLeader < 5) {
+         creep.moveTo(leader);
+         } else {
+         util.safeMoveTo(creep, leader.pos);
+         }
+         return true;
+         } else if (isLeader && maxDistanceToLeader >= squad.length) {
+         creep.log('moving to lost member', JSON.stringify(brotherFurthestToLeader.pos));
+         util.safeMoveTo(creep, brotherFurthestToLeader.pos);
+         return true;
+         } else if (isLeader) {
+         // move to ennemy
+         creep.log('moving to ennemy', JSON.stringify(closestEnemy.pos));
+
+         creep.moveTo(closestEnemy);
+         return true;
+         } */
+    }
+
+    findLeaderTarget(leader, hostiles) {
+
+        return leader.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
     }
 
 }

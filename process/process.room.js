@@ -43,16 +43,26 @@ class RoomEnonomyProcess extends Process {
      */
     run(processTable) {
         switch (this.status) {
-            case STATUS_NEW :
+            case Process.STATUS_NEW :
             {
                 let room = this.room();
+                if ((room.memory.previousLevel || 0) !==room.controller.level) {
+                    // controller improved TODO
+                    
+                }
+                this.createSpawnQueue(processTable, room);
                 room.find(FIND_SOURCES).forEach((s)=> {
-
-                    this.createSpawnQueue(processTable, room);
-                    processTable.register(new ProcessHarvest(this, s.id));
+                    new ProcessHarvest(this, 1);
                 });
+                processTable.register(new ProcessHarvest(this, s.id));
+                this.status = Process.STATUS_RUNNING;
+                room.memory.previousLevel = room.controller ? room.controller.level : 0;
                 break;
             }
+            case Process.STATUS_RUNNING : {
+                break;
+            }
+
             default:
             {
 

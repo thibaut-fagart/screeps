@@ -14,116 +14,96 @@ class MoveToActiveKeeperLair extends BaseStrategy {
         return creep.pos.findInRange(FIND_MY_CREEPS, 10, {filter: (c) => c.memory.role == creep.memory.role});
     }
 
+    /**
+     * let the leader lead
+     * for the leader, check if the keepers moved/disapaeared/popped.
+     * If not , reuse previous ppath if found
+     * else find path
+     * @param creep
+     * @returns {*}
+     */
     accepts(creep) {
         // creep.log('moveToNextKeeper');
         let notDisabledPredicate = (c)=>_.filter(c.body, (b)=>b.hits > 0).length > 1;
-        let keeper = util.objectFromMemory(creep, this.KEEPER_PATH, notDisabledPredicate);
-        // creep.log('keeper?', !!keeper);
-        if (keeper) {
-            let keepers = creep.room.find(FIND_HOSTILE_CREEPS, {filter: (c)=> c.owner.username === 'Source Keeper' && notDisabledPredicate(c)});
-            let keeperPositions = this.toComparableString(keepers);
-            if (keeperPositions == creep.memory.previousKeeperPositions) {
-                // creep.log('keeper', keeper);
-                if (creep.pos.gerRangeTo(keeper) < 5) {
-                    // stop here
-                    // creep.log('close enough, stopping');
-                    delete creep.memory[this.KEEPER_PATH];
-                    return true;
-                }
-                let path = util.objectFromMemory(creep, this.KEEPER_PATH_PATH);
-                // creep.log('previous path', path.length);
-                if (path) {
-                    // followpath
-                    creep.log('following');
-                    let to = creep.moveTo(path[0]);
-                    if (OK !== to && ERR_TIRED !== to) {
-                        creep.log('moving?', to);
-                    } else if (moveTo === ERR_NO_PATH) {
-                        let conflicts = path[0].lookFor(LOOK_CREEPS);
-                        if (conflicts.length && conflicts[0]) {
-                            conflicts[0].moveTo(20, 20);
-                        }
-                    } else if (OK === to) {
-                        path = path.slice(1);
-                        creep.memory[this.KEEPER_PATH] = keeper.id;
-                        creep.memory[this.KEEPER_PATH_PATH] = path;
-                    }
-                    return true;
-                }
-
-            } else {
-                creep.log('keepers moved, updating path');
-                delete creep.memory.previousKeeperPositions ;
-                delete creep.memory[this.KEEPER_PATH_PATH] ;
-                delete creep.memory[this.KEEPER_PATH] ;
-            }
+        // let keeperMem = creep.memory[this.KEEPER_PATH];
+        // let keeper = Game.getObjectById(keeperMem);
+        // creep.log('memory', keeperMem, keeperObj, (keeperObj && notDisabledPredicate(keeperObj)));
+        /*if (!keeper) {
+            delete creep.memory[this.KEEPER_PATH];
+            delete creep.memory[this.KEEPER_PATH_PATH];
         }
-
-
-        let brothers = this.findBrothers(creep);
-        // creep.log('brothers', brothers.length);
-
-        if (brothers.length < 1) return false;
-        let leader = _.sortBy(brothers, (b)=>b.name)[0];
+        */
+        let keeper = util.objectFromMemory(creep, this.KEEPER_PATH, notDisabledPredicate); // TODO figure why this is not working !
+        // creep.log('preivous keeper?', keeper);
+        let brotherCount = creep.memory.brotherCount || 0;
+        if (brotherCount < 1) return false;
         // creep.log('leader', leader.name);
-        if (leader.name == creep.name) {
-            // creep.log('leader, find path');
-            // lookup path
+        let isLeader = (!creep.memory.leader ) || (creep.memory.leader === creep.name);
+        let leader = (creep.memory.leader ) ? Game.creeps[creep.memory.leader] : creep;
+        if (isLeader && !keeper) {
             let keepers = creep.room.find(FIND_HOSTILE_CREEPS, {filter: (c)=> c.owner.username === 'Source Keeper' && notDisabledPredicate(c)});
-            // creep.log('keepers', keepers.length);
-            if (!keepers.length) return false;
+            // creep.log('keepers?', keepers.length);
+            let keeperPositions = this.toComparableString(keepers);
+            // update path
+            delete creep.memory[this.KEEPER_PATH_PATH];
+            delete creep.memory[this.KEEPER_PATH];
             let sorted = _.sortBy(keepers, (lair)=> -lair.ticksToLive);
-            // creep.log('first keeper ? ', sorted.length);
             if (sorted.length) {
-                let target = sorted[0];
-                let rangeTo = creep.pos.getRangeTo(target);
+                keeper = sorted[0];
+                let rangeTo = creep.pos.getRangeTo(keeper);
                 // creep.log('target', rangeTo);
-                let path = PathFinder.search(creep.pos, {pos: target.pos, range: 1}, {
+                let path = PathFinder.search(creep.pos, {pos: keeper.pos, range: 1}, {
                     roomCallback: (roomName) => {
                         return (roomName == creep.room.name) ? new PathFinder.CostMatrix() : false;
                     }
                 }).path;
-                let keeperPositions = this.toComparableString(keepers);
-
+                // creep.log('path?', path.length);
                 creep.memory.previousKeeperPositions = keeperPositions;
                 creep.memory[this.KEEPER_PATH_PATH] = path;
-                creep.memory[this.KEEPER_PATH] = target;
-                if (rangeTo > 5) {
-                    let moveTo = creep.moveTo(path[0]);
-                    if (moveTo === ERR_NO_PATH) {
-                        let conflicts = path[0].lookFor(LOOK_CREEPS);
-                        if (conflicts.length && conflicts[0]) {
-                            conflicts[0].moveTo(20, 20);
-                        }
-
-                    } else if (moveTo !== OK && moveTo !== ERR_TIRED) {
-                        creep.log('moveTo?', moveTo);
-                    }
-                    creep.memory[this.KEEPER_PATH_PATH] = path;
-                    creep.memory[this.KEEPER_PATH] = target.id;
-                    return true;
-
-                }
+                creep.memory[this.KEEPER_PATH] = keeper.id;
+            } else {
+                // all dead, clean up
+                delete creep.memory.previousKeeperPositions;
+                delete creep.memory[this.KEEPER_PATH_PATH];
+                delete creep.memory[this.KEEPER_PATH];
                 return false;
-                /*
-
-                 let to = creep.moveTo(path[0]);
-                 if (OK !== to && ERR_TIRED !== to) {
-                 creep.log('moving?', to);
-                 } else if (OK === to) {
-                 path = path.slice(1);
-                 creep.memory[this.KEEPER_PATH] = target.id;
-                 creep.memory[this.KEEPER_PATH_PATH] = path;
-                 }
-                 */
+            }
+        }
+        // creep.log('moving, keeper ? ', keeper);
+        if (isLeader) {
+            let path = creep.memory[this.KEEPER_PATH_PATH];
+            // creep.log('restored path', path.length);
+            if (path) {
+                // followpath
+                // creep.log('moving to ', path[0]);
+                let conflicts = path[0].lookFor(LOOK_CREEPS);
+                if (conflicts.length) {
+                    creep.log('jam ! ', conflicts[0].name);
+                    conflicts[0].moveTo(creep.pos);
+                }
+                let to = creep.moveTo(path[0]);
+                if (OK !== to && ERR_TIRED !== to) {
+                    // creep.log('moving?', to);
+                } else if (to === ERR_NO_PATH) {
+                    let conflicts = conflicts;
+                    creep.log('jam ! ', conflicts[0].name);
+                    if (conflicts.length && conflicts[0]) {
+                        conflicts[0].moveTo(creep.pos);
+                    }
+                } else if (OK === to) {
+                    // creep.log('moved');
+                    path = path.slice(1);
+                    creep.memory[this.KEEPER_PATH] = keeper.id;
+                    creep.memory[this.KEEPER_PATH_PATH] = path;
+                } else {
+                    // creep.log('moving?');
+                }
+                return true;
             }
         } else {
-            // follow leader
-            // creep.log('following');
             creep.moveTo(leader);
             return true;
         }
-
         return false;
 
     }

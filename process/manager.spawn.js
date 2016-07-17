@@ -1,5 +1,5 @@
 var _ = require('lodash');
-
+var PriorityQueue = require('./pqueue');
 const BODY_TEMPLATES = {
     1: {
         'harvester': {
@@ -40,11 +40,14 @@ const MAX_SHIFT_REQUESTS = 100;
  * @property {RequestSpec|number} requireQueue sparse array , planned builds are inserted at their start tick, and the time of the start tick is inserted at end tick
  *
  */
-class SpawnManager {
-    constructor() {
+class SpawnManagerProcess extends Process {
+    constructor(parent, spawn) {
+        super('spawnmanager', parent);
         this.requireQueue = {};
         this.requestQueue = {};
         this.whenPossible = {};
+        this.spawnid = spawn.id;
+        this.pqueue = new PriorityQueue({comparator: (spec1, spec2)=>spec1.priority - spec2.priority, capacity: 50});
     }
 
     spawnTime(body) {
@@ -66,8 +69,15 @@ class SpawnManager {
      * @param {number} needByTick
      * @param {Memory} memory
      */
-    request(memory, needByTick) {
+    request(body, memory, priority) {
+        if (body.length) {
 
+        } else if (_.isString(body)) {
+
+        } else {
+            throw 'unexpected body' + JSON.stringify(body);
+
+        }
     }
 
     /**
@@ -85,7 +95,6 @@ class SpawnManager {
         } else {
             console.log('spawnManager', room.name, 'require : invalid parameters', room, memory, needByTick);
         }
-
     }
 
     /**
@@ -105,16 +114,28 @@ class SpawnManager {
 
     }
 
-    isRequired(role) {
-
+    /**
+     * @return {StructureSpawn}
+     */
+    spawn() {
+        return Game.getObjectById(this.spawnid);
     }
 
     run(room) {
-
+        let spawn = this.spawn();
+        if (!spawn.spawning) {
+            let spec = this.pqueue.top;
+            let creepName = spawn.createCreep(spec.body, spec.name, spec.memory);
+            if(_.isString(creepName)) {
+                // todo notify request's owner 
+            } else {
+                this.pqueue.pop();
+            }
+        }
     }
 
     shapeBody() {
-        
+
     }
 
 
@@ -137,9 +158,9 @@ class SpawnManager {
     insertInQueue(room, requireQueue, request) {
         // check that another request won't be in progress at @needby
         // check that there is an open window (size [request.min,request.max]) before @needby
-        let startNeededForMaxBody = request.needby - request.max-1;
-        let startNeededForMinBody = request.needby - request.min-1;
-        let buildEndTarget = request.needby-1;
+        let startNeededForMaxBody = request.needby - request.max - 1;
+        let startNeededForMinBody = request.needby - request.min - 1;
+        let buildEndTarget = request.needby - 1;
         let conflict = false;
         for (let i = request.needby; i > request.needby - 600 && (!request.start) && i > Game.time; i--) {
             if ('number' === typeof requireQueue[i] && 'number' === typeof requireQueue[requireQueue[i]]) {
@@ -149,16 +170,16 @@ class SpawnManager {
                 && this.backshift(requireQueue, requireQueue[requireQueue[i]], i - startNeededForMaxBody));
             if ('object' === typeof requireQueue[i]) {
                 // hit the start of a previous request, we need to backup
-                startNeededForMaxBody = i - request.max-1;
-                startNeededForMinBody = i - request.min-1;
-                buildEndTarget= i;
+                startNeededForMaxBody = i - request.max - 1;
+                startNeededForMinBody = i - request.min - 1;
+                buildEndTarget = i;
             }
             if (i == startNeededForMaxBody && !requireQueue[i]) {
                 // found a slot for max body, stop
                 request.start = i;
                 request.end = buildEndTarget;
-                if(!requireQueue[i]) requireQueue[i] = request; else console.log('error slot occupied ', i);
-                if(!requireQueue[buildEndTarget]) requireQueue[buildEndTarget] = i; else console.log('error slot occupied ', i);
+                if (!requireQueue[i]) requireQueue[i] = request; else console.log('error slot occupied ', i);
+                if (!requireQueue[buildEndTarget]) requireQueue[buildEndTarget] = i; else console.log('error slot occupied ', i);
             }
         }
         return request;
@@ -175,8 +196,8 @@ class SpawnManager {
     backshift(requireQueue, request, neededbackshift) {
         let startFrom = request.end;
         let conflict = false;
-        for (let j = startFrom; j > startFrom- neededbackshift && j > Game.time && !conflict && ((!request.needby && (request.needby-MAX_SHIFT_REQUESTS>j+request.max))); j--) {
-            conflict =conflict ||  (requireQueue[j] && !this.backshift(requireQueue, requireQueue[requireQueue[j]],neededbackshift- (startFrom-j+1))) ;
+        for (let j = startFrom; j > startFrom - neededbackshift && j > Game.time && !conflict && ((!request.needby && (request.needby - MAX_SHIFT_REQUESTS > j + request.max))); j--) {
+            conflict = conflict || (requireQueue[j] && !this.backshift(requireQueue, requireQueue[requireQueue[j]], neededbackshift - (startFrom - j + 1)));
         }
         if (!conflict) {
             delete requireQueue[request.start];
@@ -202,4 +223,4 @@ class SpawnManager {
     }
 }
 
-module.exports = SpawnManager;
+module.exports = SpawnManagerProcess;

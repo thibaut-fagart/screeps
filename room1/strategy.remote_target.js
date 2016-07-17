@@ -3,9 +3,10 @@ var BaseStrategy = require('./strategy.base');
 var util = require('./util');
 
 class RemoteTargetStrategy extends BaseStrategy {
-    constructor(range) {
+    constructor(range, predicate) {
         super();
         this.range = 0 || range;
+        this.predicate = predicate || (function(creep){return (target)=>true;})
         this.path = 'attacking_remote';
     }
 
@@ -42,12 +43,10 @@ class RemoteTargetStrategy extends BaseStrategy {
 
                 // if(creep instanceof Creep) creep.log('attacking',target);
                 let rangedAttack = this.performAttack(creep, target);
-                // creep.log('rangedAttack?', rangedAttack);
+                creep.log('rangedAttack?', rangedAttack); // TODO removed predicate
                 if (rangedAttack === ERR_NOT_IN_RANGE) {
                     creep.moveTo(target);
                     // if(creep instanceof Creep) creep.log('not in range, moving');
-                } else if (false === rangedAttack) {// disabling
-                    target = null;
                 } else if (rangedAttack !== OK) {
                     if (creep instanceof Creep) creep.log('rangedAttack?', rangedAttack);
                 }

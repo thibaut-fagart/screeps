@@ -13,7 +13,7 @@ class HarvestKeeperEnergySourceToContainerStrategy extends HarvestEnergySourceTo
 
 
     findSources(creep) {
-        let safeSources = util.findSafeSources(creep.room, true);
+        let safeSources = _.filter(util.findSafeSources(creep.room, true));
         // creep.log('safeSources', safeSources.length);
         return safeSources;
     }

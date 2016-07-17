@@ -35,11 +35,36 @@ class MoveToRoomTask extends BaseStrategy {
                 return false;
             } else {
                 var exit = this.findHomeExit(creep);
-                creep.moveTo(exit.x, exit.y, {reusePath: 50});
+                let creeps = creep.room.lookForAt(LOOK_CREEPS, exit.x, exit.y);
+                if (creeps.length) {
+                    // creep.log('conflict ', creeps);
+                    if (!exit.x || exit.x == 49) {
+                        let number = exit.y + Math.floor(Math.random()*3)-1;
+                        // creep.log('trying ', exit.x, number);
+                        creep.moveTo(exit.x, number);
+                    } else if (!exit.y || exit.y == 49) {
+                        creep.moveTo(exit.x+ Math.floor(Math.random()*3)-1, exit.y);
+                    }
+                } else {
+                    let moveTo = creep.moveTo(exit.x, exit.y, {reusePath: 50});
+                }
                 return true;
                 // console.log("moving to homeExit ", );
             }
-        } else {
+        } else if (creep.memory.action == 'go_remote_room' && creep.room.name == creep.memory[this.CREEP_REMOTE_PATH]) {
+            if (creep.pos.x ===0) {
+                creep.move(RIGHT);
+                return true;
+            } else if (creep.pos.y ===0) {
+                creep.move(TOP);
+                return true;
+            } else if (creep.pos.y ===49) {
+                creep.move(BOTTOM);
+                return true;
+            } else if(creep.pos.x ===49) {
+                creep.move(LEFT);
+                return true;
+            }
             // creep.log(creep.memory.action, creep.room.name, creep.memory.homeroom);
             return false;
         }

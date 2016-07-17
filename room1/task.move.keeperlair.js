@@ -44,12 +44,15 @@ class MoveToSpawningKeeperLair extends BaseStrategy {
         }
 
 
-        let brothers = this.findBrothers(creep);
-        // creep.log('brothers', brothers.count);
-        if (brothers.length < 1) return false;
-        let leader = _.sortBy(brothers, (b)=>b.name)[0];
+        let brotherCount = creep.memory.brotherCount || 0;
+        if (brotherCount < 1) return false;
+        // creep.log('leader', leader.name);
+        let isLeader = (!creep.memory.leader ) || (creep.memory.leader === creep.name);
+        let leader = (creep.memory.leader )?Game.creeps[creep.memory.leader]:creep;
+
+        if (brotherCount < 1) return false;
         // creep.log('leader',leader.name);
-        if (leader.id === creep.id) {
+        if (isLeader) {
             // creep.log('leader, find path');
             // lookup path
             let lairs = creep.room.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_KEEPER_LAIR}});
@@ -59,14 +62,14 @@ class MoveToSpawningKeeperLair extends BaseStrategy {
             // creep.log('first lair ? ', sorted.length);
             if (sorted.length) {
                 let target = sorted[0];
-                // creep.log('target', JSON.stringify(target.pos.getRangeTo(creep)));
+                creep.log('lair at', JSON.stringify(target.pos.getRangeTo(creep)));
                 let rangeTo = creep.pos.getRangeTo(target);
+                let hostiles = creep.room.find(FIND_HOSTILE_CREEPS);
                 if (rangeTo > 10) {
                     let path = PathFinder.search(creep.pos, {pos: target.pos, range: 5}, {
-                        roomCallback: this.getCostMatrix(creep)}).path;
-
-
+                        roomCallback: util.avoidCostMatrix(creep,hostiles,4)}).path;
                     let to = creep.moveTo(path[0]);
+                    creep.log('monving', JSON.stringify(path[0]));
                     if (OK !== to && ERR_TIRED !== to) {
                         creep.log('moving?', to);
                     } else if (OK === to) {
@@ -77,7 +80,7 @@ class MoveToSpawningKeeperLair extends BaseStrategy {
                 } else if (rangeTo < 5) {
                     let path = PathFinder.search(creep.pos, {pos: target.pos, range: 5}, {
                         flee: true,
-                        roomCallback: this.getCostMatrix(creep)
+                        roomCallback: util.avoidCostMatrix(creep, hostiles)
                     });
 
                     let byPath = creep.moveByPath(path.path);
@@ -97,37 +100,6 @@ class MoveToSpawningKeeperLair extends BaseStrategy {
         return true;
 
     }
-
-    getCostMatrix(creep) {
-        return (roomName) => {
-            if (roomName !== creep.room.name) return false;
-
-            let matrixCache = creep.room.keeperCostMatrixes = creep.room.keeperCostMatrixes || {}
-
-            let matrix = matrixCache[roomName];
-            if (matrix) {
-                return matrix;
-            }
-            matrix = new PathFinder.CostMatrix();
-            let hostiles = Game.rooms[roomName].find(FIND_HOSTILE_CREEPS);
-            hostiles.forEach((c)=> {
-
-                matrix.set(c.pos.x, c.pos.y, 255);
-                matrix.set(c.pos.x - 1, c.pos.y - 1, 255);
-                matrix.set(c.pos.x - 1, c.pos.y, 255);
-                matrix.set(c.pos.x - 1, c.pos.y + 1, 255);
-                matrix.set(c.pos.x, c.pos.y - 1, 255);
-                matrix.set(c.pos.x, c.pos.y, 255);
-                matrix.set(c.pos.x, c.pos.y + 1, 255);
-                matrix.set(c.pos.x + 1, c.pos.y - 1, 255);
-                matrix.set(c.pos.x + 1, c.pos.y, 255);
-                matrix.set(c.pos.x + 1, c.pos.y + 1, 255);
-            });
-            MoveToSpawningKeeperLair.costMatrixes[roomName] = matrix;
-            return matrix;
-        };
-    }
-
 }
 MoveToSpawningKeeperLair.costMatrixes = {};
 module.exports = MoveToSpawningKeeperLair;

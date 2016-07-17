@@ -8,8 +8,7 @@ class RoleRepair2 {
     constructor() {
         this.loadStrategies = [
             new PickupStrategy(RESOURCE_ENERGY),
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_STORAGE),
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER),
+            new LoadFromContainerStrategy(RESOURCE_ENERGY ,undefined, (s)=>(s.structureType !== STRUCTURE_TOWER )),
             new HarvestEnergySourceStrategy()
         ];
         this.ACTION_FILL = 'fill';
@@ -93,6 +92,7 @@ class RoleRepair2 {
 
         var target = util.objectFromMemory(creep.memory, 'targetid');
         if (target && target.hits == target.hitsMax) {
+            util.release(creep, target, 'repair');
             delete creep.memory.targetid;
             target = null;
         }

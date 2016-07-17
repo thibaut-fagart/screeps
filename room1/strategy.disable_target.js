@@ -20,25 +20,23 @@ class DisableTargetStrategy extends StrategyRemoteTarget {
 
     performAttack(creep, target) {
         // creep.log('performAttack');
-        let brothers = this.findBrothers(creep);
-        let leader = _.sortBy(brothers, (b)=>b.name)[0];
-        let isLeader = leader.name === creep.name;
-        if (target.hits < brothers.length * this.getDamage(creep) && !isLeader) {
+        let isLeader = (!creep.memory.leader) || creep.memory.leader === creep.name;
+        let brotherCount = creep.memory.brotherCount||0;
+        if (target.owner.username !=='Keeper Source' || _.filter(target.body, (b)=>b.hits > 0).length > 1) {
+            return creep.rangedAttack(target);
+        } else  if (target.hits < brotherCount * this.getDamage(creep) && !isLeader) {
             let source = target.pos.findClosestByRange(FIND_SOURCES);
             let sourcePos = source.pos;
             let area = source.pos.lookAtArea(sourcePos.y - 1, sourcePos.x - 1, sourcePos.y + 1, sourcePos.x + 1, true);
             //{x: 7, y: 11, type: 'terrain', terrain: 'wall'}
-            let freeSquares = area.filter((array)=>(array.type === 'terrain' && array.type !== wall) || (array.type === creep && array.creep.owner !== 'Keeper Source'));
-            if (freeSquares.length < 3) {
+            let freeSquares = area.filter((array)=>(array.type === 'terrain' && array.type !== 'wall') /*|| (array.type === creep && array.creep.owner !== 'Keeper Source')*/);
+            if (freeSquares.length < 2) {
                 // kill
+                return super.performAttack(creep, target);
             } else {
                 creep.log('halting fire, only disabling');
                 return OK;
             }
-        } else if (_.filter(target.body, (b)=>b.hits > 0).length > 1) {
-            // creep.log('me',creep.rangedAttack);
-
-            return creep.rangedAttack(target);
         } else {
             return false;
         }
