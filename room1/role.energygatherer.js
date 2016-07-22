@@ -9,7 +9,7 @@ class RoleEnergyGatherer extends RoleCarry {
     constructor() {
         super();
         this.loadStrategies = [
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (c)=>(!c.room.memory.harvestContainers || c.room.memory.harvestContainers.indexOf(c.id) >= 0))];
+            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (creep)=>((c)=>(!c.room.memory.harvestContainers || c.room.memory.harvestContainers.indexOf(c.id) >= 0)))];
         this.unloadStrategies = [
             new DropToContainerStrategy(RESOURCE_ENERGY, STRUCTURE_STORAGE),
             // new DropToEnergyStorageStrategy(STRUCTURE_EXTENSION),

@@ -1,10 +1,13 @@
 var _ = require('lodash');
 var util = require('./util');
 var ClaimControllerStrategy = require('./strategy.controller.claim');
+var MoveToRoomTask = require('./task.move.toroom');
 
 class RoleClaimController {
     constructor() {
         this.loadStrategies = [new ClaimControllerStrategy()];
+        this.goRemoteTask = new MoveToRoomTask('claim', 'homeroom', 'remoteRoom');
+        this.goHomeTask = new MoveToRoomTask('claim', 'remoteRoom', 'homeroom');
     }
 
     /*
@@ -25,11 +28,11 @@ class RoleClaimController {
     }
 
     findHomeExit(creep) {
-        return util.findExit(creep, creep.memory.remoteRoom, 'homeExit');
+        return util.findExit(creep, creep.memory.remoteRoom, 'exit_'+creep.memory.remoteRoom);
     }
 
     findRemoteExit(creep) {
-        return util.findExit(creep, creep.memory.homeroom, 'remoteExit');
+        return util.findExit(creep, creep.memory.homeroom, 'exit_'+creep.memory.homeroom);
     }
 
     /** @param {Creep} creep **/
@@ -38,28 +41,38 @@ class RoleClaimController {
             creep.memory.homeroom = creep.room.name;
         }
         if (!creep.memory.action) {
-            this.init(creep)
+            this.init(creep);
         }
         let remoteRoom = Game.rooms[creep.memory.remoteRoom];
         let roomAlreadyClaimed = remoteRoom && remoteRoom.controller  &&  remoteRoom.controller.owner
             && remoteRoom.controller.owner.username == creep.owner.username;
         // creep.log('claimed ok ? ', roomAlreadyClaimed, JSON.stringify(Game.rooms[creep.memory.remoteRoom].controller.owner));
-        if (creep.memory.action == 'go_remote_room' && creep.room.name != creep.memory.homeroom
-            && !(roomAlreadyClaimed)) {
-            creep.memory.action = 'load';
+        if (creep.memory.action == 'go_remote_room' && !(roomAlreadyClaimed)) {
+            if(!this.goRemoteTask.accepts(creep) ) {
+                creep.memory.action = 'load';
+            } else {
+                return;
+            }
             // creep.log('reached remote room',creep.memory.action)
         } else if (creep.memory.action == 'load' && creep.room.name != creep.memory.homeroom && roomAlreadyClaimed) {
             creep.memory.action = 'go_home_room';
             delete creep.memory.target;
             // creep.log('full', creep.memory.action);
-        } else if (creep.memory.action == 'go_home_room' && creep.room.name == creep.memory.homeroom && !roomAlreadyClaimed) {
-            creep.memory.action = 'go_remote_room';
+        } else if (creep.memory.action == 'go_home_room') {
+            if (!roomAlreadyClaimed) {
+                creep.memory.action = 'go_remote_room';
+            } else if (this.goHomeTask.accepts(creep)) {
+                return ;
+            } else {
+                creep.memory.role = 'recycle';
+            }
             delete creep.memory.target;
         } else {
             // creep.log(JSON.stringify(creep.memory));
         }
 
         // creep.log(creep.memory.action);
+/*
         if (creep.memory.action == 'go_remote_room' && creep.room.name == creep.memory.homeroom) {
             if (!creep.memory.remoteRoom) {
                 creep.log("no remote room");
@@ -69,6 +82,7 @@ class RoleClaimController {
                 // console.log("moving to homeExit ", );
             }
         }
+*/
 
         if (creep.memory.action == 'load' && creep.memory.remoteRoom == creep.room.name) {
             let strategy = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);
@@ -85,6 +99,7 @@ class RoleClaimController {
                 return;
             }
         }
+/*
         if (creep.memory.action == 'go_home_room') {
             if (creep.room.name != creep.memory.homeroom) {
                 var exit = this.findRemoteExit(creep);
@@ -109,6 +124,7 @@ class RoleClaimController {
                 }
             }
         }
+*/
 
     }
 }

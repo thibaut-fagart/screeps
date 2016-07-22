@@ -72,7 +72,7 @@ module.exports = {
             memory: {role: 'mineralGatherer'}
         },
         'scout': {body: [MOVE], count: 0, scale: false, memory: {role: 'scout'}},
-        'roleRemoteGuard': {
+        'roleSoldier': {
             body: [MOVE, MOVE, MOVE, MOVE, MOVE, MOVE,
                 RANGED_ATTACK, HEAL, RANGED_ATTACK, HEAL, RANGED_ATTACK, HEAL, RANGED_ATTACK, RANGED_ATTACK],
             count: 0,
@@ -113,8 +113,8 @@ module.exports = {
             memory: {role: 'keeperHarvester'}
         },
         'remoteCarry': {
-            body: [CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 300 */CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 600 *//*
-             CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /!* 900 *!/CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /!* 1200 *!/*/],
+            body: [CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 300 */CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 600 */
+                CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 900 */CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 1200 */],
             count: 0,
             scale: false,
             memory: {role: 'remoteCarry'}
@@ -127,15 +127,17 @@ module.exports = {
         },
         'claimer': {body: [MOVE, MOVE, CLAIM, CLAIM,], count: 0, scale: true, memory: {role: 'claimer'}},
         'reserver': {body: [MOVE, MOVE, CLAIM, CLAIM,], count: 0, scale: true, memory: {role: 'reserver'}},
+/*
         'roleCloseGuard': {
             body: [TOUGH, MOVE, ATTACK, MOVE
-                /*
+                /!*
                  [TOUGH,TOUGH, TOUGH,TOUGH,MOVE, MOVE,MOVE,MOVE,
                  ATTACK, MOVE, ATTACK,MOVE, HEAL,MOVE,HEAL,MOVE,HEAL,MOVE,
                  ATTACK,MOVE,ATTACK,MOVE,TOUGH,MOVE,HEAL, MOVE,ATTACK,MOVE,ATTACK,MOVE
-                 */
+                 *!/
             ], count: 0, scale: true, memory: {role: 'roleSoldier', type: 'close'}
         },
+*/
         'upgrader': {
             body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE, MOVE, WORK, CARRY, MOVE, CARRY, WORK, MOVE, MOVE],
             count: 2,
@@ -148,6 +150,14 @@ module.exports = {
             scale: true,
             memory: {role: 'attacker'}
         },
+        'labOperator': {
+            body: [CARRY, MOVE, CARRY, CARRY, CARRY, MOVE, /* 300 */CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 600 */
+                CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /*/!* 900 *!/CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /!* 1200 *!/*/],
+            count: 0,
+            scale: false,
+            memory: {role: 'labOperator'}
+        },
+
         // 'attack': {body: [WORK, CARRY, MOVE, ATTACK, CARRY, MOVE,ATTACK , MOVE,WORK, CARRY, MOVE, ATTACK, CARRY, ATTACK, MOVE,MOVE], count: 1, memory: {role: 'attack'}},
     },
     BODY_ORDER: [TOUGH, WORK, CARRY, MOVE, ATTACK, HEAL, RANGED_ATTACK, CLAIM],
@@ -201,22 +211,6 @@ module.exports = {
             roomPatterns.repair2.count = 0;
             // creep.log("NO NEED FOR REPAIRERS");
         }
-        /*
-         if (_.size(Game.creeps) >= this.maxCreeps) {
-         roomPatterns.harvester.count = 1;
-         }
-         */
-        /*
-         if (_.size(creep.room.find(FIND_STRUCTURES, {
-         filter: function(structure) {
-         return (structure.structureType == STRUCTURE_EXTENSION || structure.structureType == STRUCTURE_SPAWN) &&
-         structure.energy < structure.energyCapacity;
-         }
-         })) ==0) {
-         roomPatterns.harvester.count = 1;
-         // creep.log("NO building to refill=> no HARVESTERS");
-         }
-         */
 
     },
     findSafeSources: function (remoteRoom) {
@@ -225,236 +219,199 @@ module.exports = {
     findCreepsMatching: function (room, memory) {
         return _.filter(room.find(FIND_MY_CREEPS), (c)=> _.all(_.keys(memory), (k)=>memory[k] === c.memory[k]));
     },
+    queue: function (creep, queue, role, patterns, currentSplit, remoteRoster, upTo, memory) {
+        'use strict';
+        let __new = _.cloneDeep(patterns[role]);
+        _.merge(__new.memory, memory);
+        let l = queue.length;
+        let currentCount = 0 + (currentSplit[role]||0) + (remoteRoster?(remoteRoster[role]||0):0);
+        // creep.log('queueing ',role, currentCount, 'to', upTo);
+        for (let i = currentCount; i < upTo;i++) {
+            queue.push(__new);
+        }
+        let queued = queue.length -l;
+        // if (queued) creep.log('queued ',queued, role);
+
+    },
+    addRemoteMiningToQueue: function (remoteRoomName, creep, patterns, currentSplit, queue) {
+
+        let remoteRoom = Game.rooms[remoteRoomName];
+        let remoteRoster = remoteRoom? util.roster(Game.rooms[remoteRoomName], ((c)=>c.ticksToLive > 100)):{};
+        if (remoteRoom) {
+            // creep.log('queueing for remoteMining', remoteRoom.name);
+            let keeperLairs = remoteRoom.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_KEEPER_LAIR}});
+            let safeSourcesAndMinerals = this.findSafeSources(remoteRoom, keeperLairs.length ? true : false);
+            // creep.log('safeSourcesAndMinerals', safeSourcesAndMinerals.length);
+            if (keeperLairs.length && creep.room.energyCapacityAvailable >= 1800) {
+                this.queue(creep, queue, 'keeperGuard', patterns, currentSplit, remoteRoster, 3, {remoteRoom: remoteRoomName});
+                // creep.log('keeperGuards?',patterns['keeperGuard'].count,remoteRoster['keeperGuard']||0, dyingCount);
+            }
+            if (safeSourcesAndMinerals.length) {
+                // creep.log('remoteMining');
+                if (keeperLairs.length) {
+                    if (remoteRoster['keeperGuard'] > 2 && creep.room.energyCapacityAvailable >= 1800) {
+                        this.queue(creep, queue, 'keeperHarvester', patterns, currentSplit, remoteRoster, remoteRoom.find(FIND_SOURCES).length +remoteRoom.find(FIND_MINERALS).length, {remoteRoom: remoteRoomName});
+                        this.queue(creep, queue, 'remoteCarryKeeper', patterns, currentSplit, remoteRoster, (2 * remoteRoster['keeperHarvester'] || 0), {remoteRoom: remoteRoomName});
+                    }
+                } else {
+                    this.queue(creep, queue, 'remoteHarvester', patterns, currentSplit, remoteRoster,
+                        Math.max(0, safeSourcesAndMinerals.filter((s)=> s instanceof Source).length), {remoteRoom: remoteRoomName});
+                    this.queue(creep, queue, 'remoteCarry', patterns, currentSplit, remoteRoster, (2 * remoteRoster['keeperHarvester'] || 0), {remoteRoom: remoteRoomName});
+                    this.queue(creep, queue, 'roleSoldier', patterns, currentSplit, remoteRoster, 2, {remoteRoom: remoteRoomName});
+                }
+            } else if (!keeperLairs.length) {
+                // creep.log('hostiles present, no remoteMining!');
+                this.queue(creep, queue, 'roleSoldier', patterns, currentSplit, remoteRoster, 2, {remoteRoom: remoteRoomName});
+            }
+            let spawnReserve = ( !(keeperLairs.length) && (!remoteRoom.controller || !remoteRoom.controller.reservation || creep.owner.username !== remoteRoom.controller.reservation.username)
+                || (remoteRoom.controller && remoteRoom.controller.reservation.ticksToEnd < 500));
+            // creep.log('current reservation  ?', remoteRoom.name, JSON.stringify(remoteRoom.controller.reservation));
+            // spawn reserver if  the room is not reserved, or due to expire soon
+            if (spawnReserve) {
+                this.queue(creep, queue, 'reserver', patterns, currentSplit, remoteRoster, 1, {remoteRoom: remoteRoomName});
+            }
+
+            this.queue(creep, queue, 'scout', patterns, currentSplit, remoteRoster, 1, {remoteRoom: remoteRoomName});
+        } else {
+            // creep.log('queueing scout for remoteMining', remoteRoomName);
+            this.queue(creep, queue, 'scout', patterns, currentSplit, remoteRoster, 1, {remoteRoom: remoteRoomName});
+        }
+    },
 
     whatToBuild: function (patterns, creep) {
-
+        let queue = [];
+        if (creep.room.controller && creep.room.controller.my && creep.room.controller.level < 2) {
+            return patterns['upgrader'];
+        }
         var currentSplit = util.roster(creep.room, (c)=> c.ticksToLive > 50);
-        // creep.log('roster',JSON.stringify(currentSplit ))
-        /*
-         var harvesters = currentSplit.harvester || 0;
-         if (harvesters < 2 || _.filter(harvesters, function(c) {return c.ticksToLive> 100}).length<2) {
-         return patterns.harvester;
-         }
-
-         var carrys = currentSplit.carry||0;
-         if (_.filter(carrys, function(c) {return c.ticksToLive> 100}).length < 1) {
-         return patterns.carry;
-         }
-         */
-        _.uniq(['remoteMining', 'attack', 'remotebuild', 'claim', 'reserve']
-            .map((mem)=>creep.room.memory[mem])) // don't count several times the same room
-            .map((roomName)=> roomName ? util.roster(roomName, (c)=> c.ticksToLive > 50) : {})// roster of not dying
-            .forEach((roster)=> {
-                "use strict";
-                _.keys(roster).forEach((k)=> currentSplit[k] = (currentSplit[k] || 0) + roster[k])
-            }); // add the remote Roster
+        // creep.log('initial split', JSON.stringify(currentSplit));
+        // creep.log('correct harvester to ? ',  notDyingRoster['harvester']);
+        // creep.log('correct carry to ? ',  notDyingRoster['carry']);
+        /*        _.uniq(['remoteMining', 'attack', 'remotebuild', 'claim', 'reserve']
+         .map((mem)=>creep.room.memory[mem])) // don't count several times the same room
+         .map((roomName)=> roomName ? util.roster(roomName, (c)=> c.ticksToLive > 50) : {})// roster of not dying
+         .forEach((roster)=> {
+         'use strict';
+         _.keys(roster).forEach((k)=> currentSplit[k] = (currentSplit[k] || 0) + roster[k]);
+         });*/ // add the remote Roster
 
         if (creep.room.memory.remoteMining) {
-            let remoteRoom = Game.rooms[creep.room.memory.remoteMining];
+            let remoteRoomName = creep.room.memory.remoteMining;
+            let rooms = _.isString(remoteRoomName) ? [creep.room.memory.remoteMining] : creep.room.memory.remoteMining;
+            // creep.log('rooms', JSON.stringify(rooms));
+            rooms.forEach((name)=>this.addRemoteMiningToQueue(name, creep, patterns, currentSplit, queue));
+        }
 
-            if (remoteRoom) {
-                let keeperLairs = remoteRoom.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_KEEPER_LAIR}});
-                let safeSourcesAndMinerals = this.findSafeSources(remoteRoom, keeperLairs.length ? true : false);
-                // creep.log('safeSourcesAndMinerals', safeSourcesAndMinerals.length);
-                if (keeperLairs.length && creep.room.energyCapacityAvailable >= 1800) {
-                    let dyingCount = remoteRoom.find(FIND_MY_CREEPS, {filter: (c)=> c.memory.role === 'keeperGuard'}).filter((c)=>c.ticksToLive < 100).length;
-                    patterns['keeperGuard'].count = 3 + dyingCount;
-                    patterns['roleCloseGuard'].count = 0;
-                    patterns['roleRemoteGuard'].count = 0;
-                    // creep.log('keeperGuards?',patterns['keeperGuard'].count,remoteRoster['keeperGuard']||0, dyingCount);
+        if (creep.room.controller.level > 4 && creep.room.memory.claim) {
+            let rooms = _.isString(creep.room.memory.claim) ? [creep.room.memory.claim] : creep.room.memory.claim;
+            roooms.forEach((room)=> {
+                'use strict';
+                let remoteRoom = Game.rooms[room];
+                if (remoteRoom && remoteRoom.controller && !remoteRoom.controller.my) {
+                    this.queue(creep, queue, 'claimer', currentSplit, remoteRoster, 1, {remoteRoom: room});
+                } else if (remoteRoom && remoteRoom.controller && remoteRoom.controller.my && remoteRoom.controller.level < 3) {
+                    let remoteRoster = util.roster(remoteRoom, (c)=> c.ticksToLive > 100);
+                    this.queue(creep, queue, 'remoteUpgrader', currentSplit, remoteRoster, 2, {remoteRoom: room});
                 }
-                if (safeSourcesAndMinerals.length) {
-                    // creep.log('remoteMining');
-                    if (keeperLairs.length) {
-                        if (currentSplit['keeperGuard'] > 0 && creep.room.energyCapacityAvailable >= 1800) {
-                            // creep.log('keepers');
-                            patterns['keeperHarvester'].count = Math.max(0, safeSourcesAndMinerals.length);
-                            patterns['remoteCarryKeeper'].count = 3 * currentSplit['keeperHarvester'] || 0;
+            });
+        }
+        if (creep.room.memory.remotebuild) {
+            let rooms = _.isString(creep.room.memory.remotebuild) ? [creep.room.memory.remotebuild.claim] : creep.room.memory.remotebuild;
+            rooms.forEach((roomName)=> {
+                'use strict';
+                let remoteRoom = Game.rooms[roomName];
+                if (!remoteRoom) {
+                    patterns['remoteBuilder'].count = 0;
+                } else {
+                    let remoteRoster = util.roster(remoteRoom, (c)=> c.ticksToLive > 100);
+                    if (remoteRoom.controller && !remoteRoom.controller.my) {
+                        let constructionSites = remoteRoom.find(FIND_CONSTRUCTION_SITES);
+                        if (constructionSites.length > 0) {
+                            let wantedBuilderCount = constructionSites.find((site)=>site.structureType == STRUCTURE_SPAWN) ? 3 : 1;
+                            this.queue(creep, queue, 'remoteBuilder', currentSplit, remoteRoster, wantedBuilderCount, {remoteRoom: roomName});
                         }
-                    } else {
-                        patterns['remoteHarvester'].count = Math.max(0, safeSourcesAndMinerals.filter((s)=> s instanceof Source).length);
-                        patterns['roleRemoteGuard'].count = creep.room.memory.attack_min;
-                        patterns['remoteCarry'].count = patterns['remoteHarvester'].count * 3;
+
+                    } else if (remoteRoom.controller && remoteRoom.controller.my && remoteRoom.find(FIND_MY_SPAWNS) == 0) {
+                        this.queue(creep, queue, 'remoteBuilder', currentSplit, remoteRoster, 3, {remoteRoom: roomName});
+                    } else if (remoteRoom.find(FIND_MY_SPAWNS) > 0) {
+                        // creep.log('disabling remotebuilds');
+                        this.queue(creep, queue, 'remoteBuilder', currentSplit, remoteRoster, 3 - remoteRoom.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_EXTENSION}}).length
+                            , {remoteRoom: roomName});
                     }
-                    patterns['remoteCarryKeeper'].count = (patterns['remoteCarryKeeper'].count || 0);
-                    patterns['keeperHarvester'].count = (patterns['keeperHarvester'].count || 0);
-                    patterns['remoteHarvester'].count = (patterns['remoteHarvester'].count || 0);
-                    patterns['remoteCarry'].count = (patterns['remoteCarry'].count || 0);
-
-                } else if (!keeperLairs.length) {
-                    // creep.log('hostiles present, no remoteMining!');
-                    patterns['roleRemoteGuard'].count = creep.room.memory.attack_min;
-                    patterns['remoteHarvester'].count = 0; // scout it first !
-                    patterns['remoteCarry'].count = 0; // scout it first !
                 }
-                patterns['scout'].count = currentSplit['scout'] ? 0 : 1; // scout it first !
-            } else {
-                patterns['scout'].count = 1; // scout it first !
-                // creep.log('no remoteMining before scouting !');
-                patterns['remoteHarvester'].count = 0; // scout it first !
-                patterns['remoteCarry'].count = 0; // scout it first !
-            }
-        } else {
-            patterns['remoteHarvester'].count = 0; // scout it first !
-            patterns['remoteCarry'].count = 0; // scout it first !
+            });
+            // creep.log('remotebuilders', patterns['remoteBuilder'].count)
         }
 
-        if (creep.room.controller.level < 4 || !creep.room.memory.remotebuild) {
-            patterns['remoteUpgrader'].count = 0;
-        }
+
         if (creep.room.controller.level >= 4) {
-            if (creep.room.storage && creep.room.storage.store.energy > 10000) {
+            if (creep.room.storage/* && creep.room.storage.store.energy > 10000*/) {
                 patterns['carry'].count = 0;
                 patterns['energyFiller'].count = 2;
                 patterns['energyGatherer'].count = 1;
             }
         }
-        if (creep.room.controller.level >= 6 && creep.room.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_EXTRACTOR}}).length > 0) {
-
-            let minerals = creep.room.find(FIND_MINERALS);
-            let storedMinerals = creep.room.storage.store;
-            minerals.forEach((m)=> {
-                if (storedMinerals[m.mineralType] < 100000 && m.mineralAmount) {
-                    patterns['mineralHarvester'].count = 1;
-                    // patterns['mineralGatherer'].count = 1;
+        if (creep.room.controller.level >= 6) {
+            if (creep.room.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_EXTRACTOR}}).length > 0) {
+                let find = creep.room.find(FIND_STRUCTURES, {filter: (s)=>s.structureType === STRUCTURE_CONTAINER && _.sum(s.store) > 1000 && s.store.energy !== _.sum(s.store)});
+                if (find.length) {
+                    patterns['mineralGatherer'].count = 1;
+                    creep.log('containers with minerals', find.length, find[0].id);
                 }
-            });
 
-        }
-        if (!currentSplit['claimer'] && creep.room.memory.claim) {
-            // creep.log('adjusting for claims');
-            let remoteRoom = Game.rooms[creep.room.memory.claim];
-            if (!remoteRoom || !remoteRoom.controller.my) {
-                patterns['claimer'].count = 1;
-            }
-        } else {
-            // creep.log('claimers', !currentSplit['claimer'], 'claim', creep.room.memory.claim);
-        }
-        if (creep.room.memory.remotebuild) {
-            let remoteRoom = Game.rooms[creep.room.memory.remotebuild];
-            if (!remoteRoom) {
-                patterns['remoteBuilder'].count = 0;
-            } else {
-                if (remoteRoom.controller && !remoteRoom.controller.my) {
-                    if (remoteRoom.find(FIND_CONSTRUCTION_SITES).length > 0) {
-                        patterns['remoteBuilder'].count = Math.max(1, patterns['remoteBuilder'].count);
-                    } else {
-                        patterns['remoteBuilder'].count = 0;
+                let minerals = creep.room.find(FIND_MINERALS);
+                let storedMinerals = creep.room.storage.store;
+                minerals.forEach((m)=> {
+                    // creep.log('mineral', m.mineralType, storedMinerals[m.mineralType], storedMinerals[m.mineralType] < 100000, m.mineralAmount);
+                    if (!(storedMinerals[m.mineralType]) || storedMinerals[m.mineralType] < 100000 && m.mineralAmount) {
+                        patterns['mineralHarvester'].count = 1;
                     }
+                });
+                // creep.log('mineralHarvester?', patterns['mineralHarvester'].count);
 
-                } else if (remoteRoom.controller && remoteRoom.controller.my && remoteRoom.find(FIND_MY_SPAWNS) == 0) {
-                    patterns['remoteBuilder'].count = 3;
-                } else if (remoteRoom.find(FIND_MY_SPAWNS) > 0) {
-                    // creep.log('disabling remotebuilds');
-                    patterns['remoteBuilder'].count = 3 - remoteRoom.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_EXTENSION}}).length;
-                } else {
-                    patterns['remoteBuilder'].count = 1;
-                }
             }
-            // creep.log('remotebuilders', patterns['remoteBuilder'].count)
-        } else {
-            patterns['remoteBuilder'].count = 0;
-        }
-        if (creep.room.find(FIND_CONSTRUCTION_SITES, {filter: (c)=> STRUCTURE_EXTENSION === c.structureType}).length > 0) {
-            patterns['upgrader'].count = 0;
+            let labs = creep.room.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_LAB}});
+            if (labs.length > 0 && labs.find((lab)=>
+                lab.mineralAmount < 0.1 * lab.mineralCapacity // empty
+                && creep.room.storage.store[creep.room.expectedMineralType(lab)])
+            ) {
+                patterns['labOperator'].count = 1;
+            }
         }
 
-        if (creep.room.find(FIND_STRUCTURES, {filter:{structureType:STRUCTURE_CONTAINER}}).filter((s)=>_.sum(s.store)> s.store.energy).length >0) {
-            patterns['mineralGatherer'].count = 1;
-        } else if (currentSplit['mineralGatherer']||0 >0) {
-            creep.find(FIND_MY_CREEPS, {filter: (c)=>c.memory.role === 'mineralGatherer'}).forEach((c)=>c.memory.role = 'energyFiller');
-        }
-
-        /*
-         if (creep.room.storage && creep.room.controller.my && creep.room.controller.level < 8) {
-         patterns['upgrader'] += (creep.room.storage.store.energy - 20000) / 10000;
-         }
-         */
-        ['roleCloseGuard', 'roleRemoteGuard', 'keeperGuard'].forEach((role) => {
-            'use strict';
-            if (patterns[role].count) {
-                if (creep.room.memory.attack) {
-                    let room = Game.rooms[creep.room.memory.attack];
-                    if (room) {
-                        let matches = this.findCreepsMatching(room, patterns[role].memory);
-                        let count = _.filter(matches, (c)=> c.ticksToLive > 150).length;
-                        // creep.log('found', room.name, role, count);
-                        patterns[role].count -= count;
-                    }
-                } else {
-                    patterns[role].count = 0;
-                }
-                let matchingCreeps = this.findCreepsMatching(creep.room, patterns[role].memory);
-                // creep.log('found', creep.room.name, role, matchingCreeps.length);
-                // add the OTHERS , as they will be decreased (bug !)
-                // creep.log('matching',role, matchingCreeps.length);
-                patterns[role].count += ((currentSplit[role] || 0) - matchingCreeps.length);
-            }
-            // creep.log('corrected', role, patterns[role].count);
-        });
-        if (creep.room.memory.nomilitary) {
-            patterns['roleCloseGuard'].count = 0;
-            patterns['roleRemoteGuard'].count = 0;
-        }
-        let notDyingRoster = util.roster(creep.room, (c)=>c.ticksToLive > 50);
-        // creep.log('correct harvester to ? ',  notDyingRoster['harvester']);
-        // creep.log('correct carry to ? ',  notDyingRoster['carry']);
-        currentSplit['harvester'] = notDyingRoster['harvester'];
-        currentSplit['carry'] = notDyingRoster['carry'];
-        if (!currentSplit['reserver'] && creep.room.memory.reserve) {
-            // creep.log('adjusting for reserves');
-            let remoteRoom = Game.rooms[creep.room.memory.reserve];
-            if (remoteRoom) {
-                let spawnReserve = ( !remoteRoom.controller || !remoteRoom.controller.reservation || creep.owner.username !== remoteRoom.controller.reservation.username)
-                    || (remoteRoom.controller && remoteRoom.controller.reservation.ticksToEnd < 500);
-                // creep.log('current reservation  ?', remoteRoom.name, JSON.stringify(remoteRoom.controller.reservation));
-                // spawn reserver if  the room is not reserved, or due to expire soon
-                if (spawnReserve) {
-                    let currentReservers = remoteRoom.find(FIND_MY_CREEPS, {filter: (c)=> c.memory.role === 'reserver' && c.ticksToLive > 100});
-                    patterns['reserver'].count = currentReservers.length == 0 ? 1 : 0;
-                }
-            }
-        } else {
-            // creep.log('reserver', !currentSplit['reserver'], 'reserve', creep.room.memory.reserver);
-        }
         if (creep.room.storage) {
             patterns['upgrader'].count = patterns['upgrader'].count + Math.floor(creep.room.storage.store.energy) / 100000;
-        }
-        // currentSplit = _.mapValues(currentSplit, (v)=>{return v/creepCount;});
-        // creep.log("currentSplit " , JSON.stringify(currentSplit));
-        var required = {};
-
-
-        // creep.log('targetCount', targetCount);
-        var targetSplit = _.mapValues(patterns, (spec)=>spec.count);
-        // creep.log('targetSplit ', JSON.stringify(targetSplit));
-        /* required : {role : need filled%}*/
-        _.keys(targetSplit).forEach((role)=> {
-            targetSplit[role] -= (currentSplit[role] || 0);
-        });
-        let result = _.find(_.keys(targetSplit), (role) => (targetSplit[role] && targetSplit[role] > 0));
-        // creep.log('no result?', JSON.stringify(targetSplit));
-/*
-        if (result) {
-            creep.log('targetSplit-current', JSON.stringify(targetSplit));
-        }
-*/
-
-        //function(role) {if (role) required[role] = (currentSplit[role]?currentSplit[role]:0)/targetSplit[role]});
-        if (result /*targetSplit[result]>0*/) {
-            return patterns[result];
         } else {
-            let availableStorage = _.sum(creep.room.find(FIND_STRUCTURES, {filter: (c)=>c.store}), (c)=>c.storeCapacity - _.sum(c.store));
-            return availableStorage < 1000 ? patterns['upgrader'] : null;
-
+            let nonFullStructures = creep.room.find(FIND_STRUCTURES,
+                {filter: (s)=>((s.energyCapacity && s.energy !== s.energyCapacity) || (s.storeCapacity && _.sum(s.store) !== s.storeCapacity))})
+                .filter((s)=>((!creep.room.memory.harvestContainers || creep.room.memory.harvestContainers.indexOf(s.id) < 0)));
+            if (!nonFullStructures.length) {
+                creep.log('energy overflowing, upgrader');
+                patterns['upgrader'].count = (currentSplit['upgrader'] || 0) + 1;
+            } else {
+                // creep.log('nonFullStructures',JSON.stringify(nonFullStructures.map((s)=>s.pos)),nonFullStructures.length);
+            }
         }
-        // var result = 'upgrader';
-        // var roleScore = required[result];
-        // _.keys(patterns).forEach(function(role) {if (roleScore > required[role]) {result = role; roleScore = required[result]}});
-        // _.keys(patterns).forEach(function(role) {if (required[role]> currentSplit[role]) {result = role}});
-        // if (!result) {result = 'harvester'};
-        // return patterns[result];
+        if (creep.room.find(FIND_CONSTRUCTION_SITES, {filter: (c)=> STRUCTURE_EXTENSION === c.structureType}).length > 0) {
+            patterns['builder'].count = (0 || patterns['builder'].count) + patterns['upgrader'].count;
+            patterns['upgrader'].count = 0;
+        }
+        // creep.log("currentSplit " , JSON.stringify(currentSplit));
+        // creep.log("targetSplit" , JSON.stringify(_.values(patterns).map((p)=>({role:p.memory.role, count: p.count})).filter((e)=>e.count)));
 
+        ['harvester', 'carry', 'energyFiller', 'energyGatherer', 'builder', 'repair2', 'mineralHarvester', 'mineralGatherer', 'upgrader']
+            .forEach((role)=> {
+                'use strict';
+                this.queue(creep, queue, role, patterns, currentSplit, undefined, patterns[role].count, {});
+            });
+        // currentSplit = _.mapValues(currentSplit, (v)=>{return v/creepCount;});
+        _.sortBy(queue, (elem)=> _.findIndex(patterns, (pat)=>pat.memory.role === elem.memory.role));
+        // creep.log('queue', JSON.stringify(queue.map((e)=>e.memory)));
+        if (queue.length) creep.log('queued ', JSON.stringify(_.countBy(queue, (c)=>c.memory.role)));
+        let result = queue.shift();
+        // creep.log('first in queue ', JSON.stringify(result));
+        return result;
+        // creep.log('targetCount', targetCount);
     },
     reassignCreeps: function (spawn, roomPatterns) {
         /*
@@ -484,6 +441,7 @@ module.exports = {
 
     },
     createCreep: function (creep, buildSpec) {
+        creep.log('createCreep', JSON.stringify(buildSpec));
         if (!buildSpec.memory || !buildSpec.body) {
             creep.log('ERROR, invalid create', JSON.stringify(buildSpec));
         }
@@ -523,7 +481,8 @@ module.exports = {
             this.createCreep(creep, spec);
             return;
         }
-        if (((localRoster['carry'] || 0) + (localRoster['energyGatherer'] || 0) + (localRoster['energyFiller'] || 0) === 0) && creep.room.energyAvailable > 250) {
+        if (((localRoster['carry'] || 0) + (localRoster['energyGatherer'] || 0) + (localRoster['energyFiller'] || 0) === 0)
+            && creep.room.energyAvailable > 250 && creep.room.energyAvailable < 800) {
             let spec = _.cloneDeep(roomPatterns.carry);
             spec.body = this.shapeBody(creep, roomPatterns.carry.body);
             this.createCreep(creep, spec);

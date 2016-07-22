@@ -31,7 +31,7 @@ class SquadAttackStrategy extends Base {
             creep.memory.exitToHome = exit;
             return exit;
         }
-        return util.findExit(creep, creep.memory.homeroom, 'remoteExit');
+        return util.findExit(creep, creep.memory.homeroom, 'exit_'+homeroom);
     }
 
     /**
@@ -56,17 +56,19 @@ class SquadAttackStrategy extends Base {
         if (squad.length < Game.rooms[creep.memory.homeroom].memory.attack_min) {
             // let the leader lead the way, safely
             if (isLeader) {
-                let exitToHome = util.findExit(creep, creep.memory.homeroom,'exitToHome');
-                creep.log('exitToHome', JSON.stringify(exitToHome));
+                let exitToHome = util.findExit(creep, creep.memory.homeroom,'exit_'+creep.memory.homeroom);
+                // creep.log('exitToHome', JSON.stringify(exitToHome));
                 let exitDist = creep.pos.getRangeTo(exitToHome.x, exitToHome.y);
-                creep.log('exit at?', exitDist);
-                if (creep.pos.getRangeTo(exitToHome) > 5) {
-                    util.safeMoveTo(exitToHome);
+                // creep.log('exit at?', exitDist);
+                if (exitDist > 5) {
+                    // creep.log('moving to exit');
+                    util.safeMoveTo(creep, exitToHome);
                     return true;
                 } else if (creep.pos.findInRange(FIND_HOSTILE_CREEPS, 3).length) {
                     creep.log('hostiles near regroup point, fighting');
                     return false;
                 } else {
+                    // creep.log('moving to exit2');
                     let pathToExit;
                     if (!creep.memory.pathToExit || !creep.memory.pathToExit.length || creep.pos.getRangeTo(creep.memory.pathToExit[0].x, creep.memory.pathToExit[0].y)>1) {
                         pathToExit  = creep.memory.pathToExit = util.safeMoveTo(creep, exitToHome);
@@ -76,8 +78,13 @@ class SquadAttackStrategy extends Base {
                             creep.memory.pathToExit = pathToExit = pathToExit.slice(1);
                         }
                     }
-                    creep.moveTo(pathToExit[0]);
-                    creep.log('waiting for reinforcements');
+                    if (pathToExit && pathToExit.length) {
+                        let moveTo = creep.moveTo(pathToExit[0].x,pathToExit[0].y);
+                        // creep.log('waiting for reinforcements',moveTo , JSON.stringify(pathToExit[0]));
+                    } else  {
+                        creep.log('no path ??');
+                    }
+
                     return true;
                 }
             } else {
@@ -115,6 +122,7 @@ class SquadAttackStrategy extends Base {
             // ok, attack
             return false;
         }
+
         if (isLeader) {
             if (!creep.memory.path) {
                 creep.memory.path =[];
@@ -124,8 +132,16 @@ class SquadAttackStrategy extends Base {
             if (maxDistanceToLeader < squad.length+1) {
                 if (myRange <= 4) {
                     delete creep.memory.path[closestEnemy.id];
+                    // determine best spot : need 2 available cells at range 3
                     return false;
                 } else {
+                    let damaged = squad.find((c)=>c.hits<c.hitsMax);
+                    if (damaged) {
+                        creep.log('damaged member, healing');
+                        // wait
+                        creep.heal(damaged);
+                        return true;
+                    }
                     // creep.log('computing safe path');
                     let lastPos = creep.memory.lastPos || creep.pos;
                     let stoppedCounter = creep.memory.ticksAtLastPos||0;
@@ -145,7 +161,12 @@ class SquadAttackStrategy extends Base {
                     creep.moveByPath(path);
                     return true;
                 }
+            } else if (maxDistanceToLeader < 2*squad.length){
+                creep.log('too spread out, waiting');
+                // just wait
+                return true;
             } else {
+                creep.log('too spread out, gathering');
                 util.safeMoveTo(creep, brotherFurthestToLeader.pos);
                 return true;
             }
@@ -162,8 +183,11 @@ class SquadAttackStrategy extends Base {
     }
 
     findLeaderTarget(leader, hostiles) {
-
-        return leader.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
+        let nonKeepers = hostiles.filter((c)=>c.owner.username !== 'Keeper Source');
+        if (!nonKeepers.length) {
+            hostiles = nonKeepers;
+        }
+        return leader.pos.findClosestByRange(hostiles);
     }
 
     samePos(lastPos, pos) {

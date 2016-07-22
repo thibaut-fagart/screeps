@@ -1,6 +1,7 @@
 var _ = require('lodash');
 var util = require('./util');
 var BaseStrategy = require('./strategy.base');
+var PickupManager = require('./util.manager.pickup');
 /**
  * finds a non-empty  energy container, preferably enough to fill this creep, otherwise closesst
  */
@@ -17,91 +18,13 @@ class PickupStrategy extends BaseStrategy {
         this.predicate = (predicate || function (creep) {
             return ((drop)=> true);
         });
-        this.PATH = 'pickupSource';
+        this.PATH = PickupStrategy.PATH;
     }
 
     clearMemory(creep) {
         delete creep.memory[this.PATH];
     }
-
-    /**
-     * @param {Creep} creep
-     */
-    roomPlannedPickups(creep) {
-        let plannedPickups = creep.room.memory[this.constructor.name] || {};
-        creep.room.memory[this.constructor.name] = plannedPickups;
-        // console.log('loaded plannedPickups', JSON.stringify(this.plannedPickups));
-
-
-        let dropids = _.keys(plannedPickups);
-        // let beforeCount = _.size(dropids);
-        // remove old drops
-        _.filter(dropids, (id)=> !Game.getObjectById(id)).forEach((id)=> {
-            delete plannedPickups[id];
-        });
-        // let afterCount = _.size(_.keys(this.plannedPickups));
-        // creep.log('validating reserves','before', beforeCount, afterCount);
-        return plannedPickups;
-    }
-
-
-    /**
-     * TODO doesn't work
-     * @param {Creep} creep
-     * @param {Resource} drop
-     * **/
-    nonReservedAmount(creep, drop) {
-        return drop.amount;
-        /*
-         let a = this.roomPlannedPickups(creep)[drop.id];
-         if (a) {
-         let reservedByOthers = _.filter(_.pairs(a), (pair)=>pair.creepid != creep.id);
-         // creep.log('nonReserved reservedByOthers', JSON.stringify(reservedByOthers));
-         let reservedAmount = _.sum(reservedByOthers, (pair)=>pair[1]);
-         /!*
-         if (reservedByOthers [0]) {
-         creep.log('a pair', JSON.stringify(reservedByOthers[0]));
-         }
-         *!/
-         // creep.log('already reserved amount', reservedAmount);
-         return drop.amount - reservedAmount;
-         }
-         return drop.amount;
-         */
-    }
-
-    /**
-     * @param {Creep} creep
-     * @param {Resource} drop
-     * **/
-    reserve(creep, drop) {
-        let a;
-        let myMem2 = this.roomPlannedPickups(creep);
-        if (!(a = myMem2[drop.id])) {
-            a = myMem2[drop.id] = {};
-        }
-        // creep.log('planned before', JSON.stringify(this.plannedPickups));
-        a[creep.id] = Math.min(creep.carryCapacity - _.sum(creep.carry), drop.amount);
-        // creep.log('reserving',drop.id, a[creep.id]);
-        // creep.log('planned after', JSON.stringify(this.plannedPickups));
-        return a[creep.id];
-
-    }
-
-    /**
-     * @param {Creep} creep
-     * @param {Resource} drop
-     * **/
-    pickedUp(creep, drop) {
-        let a;
-        let myMem2 = this.roomPlannedPickups(creep);
-        if (!(a = myMem2[drop.id])) {
-            a = myMem2[drop.id] = {};
-        }
-        delete a[creep.id];
-
-    }
-
+    
     /** @param {Creep} creep
      * @return {boolean}**/
     accepts(creep) {
@@ -111,6 +34,7 @@ class PickupStrategy extends BaseStrategy {
         if (!source) {
             source = this.findSource(creep);
             // source = creep.pos.findClosestByRange(FIND_DROPPED_ENERGY);
+            // creep.log('reserved?', source && source.id);
             if (source) {
                 creep.memory[this.PATH] = source.id;
             }
@@ -126,7 +50,7 @@ class PickupStrategy extends BaseStrategy {
                 // creep.log('pickup  move?', move);
             } else if (ret == OK) {
                 delete creep.memory[this.PATH];
-                this.pickedUp(creep, source);
+                // this.pickedUp(creep, source);
                 // creep.log('successfully picked up', source.id, oldEnergy, creep.carry.energy);
 
             }
@@ -138,25 +62,33 @@ class PickupStrategy extends BaseStrategy {
     }
 
     findSource(creep) {
-        let source;
-        let drops = this.findDrops(creep);
-        drops = drops.filter(this.predicate(creep));
-        // creep.log('filtered drops', countBefore, drops.length);
-        // if (creep.room.name ==='E36S14') creep.log('drops', drops.length);
-        let sortedDrops = drops.sort((d) => (d.amount - 5 * creep.pos.getRangeTo(d))*-1);
-        // creep.log('sortedDrops', sortedDrops.length, (sortedDrops.reduce(((str,drop)=> str + drop.amount+','),'')));
-        if (sortedDrops.length) {
-            let drop = sortedDrops.shift();
-            // creep.log('choosing drop', drop.amount, JSON.stringify(drop.pos));
-            let myAmount = this.nonReservedAmount(creep, drop);
-            // creep.log('myAmount', drop.id, drop.amount, myAmount);
-            if (myAmount > 0) {
-                // creep.log('reserved', drop.id, myAmount);
-                source = drop;
-                this.reserve(creep, drop);
+        // if (false)
+        // if (true)
+            return PickupManager.getManager(creep.room.name).allocateDrop(creep, this.resource, this.predicate);
+/*
+        else {
+            let source;
+            let drops = this.findDrops(creep);
+            drops = drops.filter(this.predicate(creep));
+            // creep.log('filtered drops', countBefore, drops.length);
+            // if (creep.room.name ==='E36S14') creep.log('drops', drops.length);
+            let availableCarry = creep.carryCapacity - _.sum(creep.carry);
+            let sortedDrops = drops.sort((d) => (Math.min(d.amount, availableCarry) - 5 * creep.pos.getRangeTo(d)) * -1);
+            // creep.log('sortedDrops', sortedDrops.length, (sortedDrops.reduce(((str,drop)=> str + drop.amount+','),'')));
+            if (sortedDrops.length) {
+                let drop = sortedDrops.shift();
+                // creep.log('choosing drop', drop.amount, JSON.stringify(drop.pos));
+                let myAmount = this.nonReservedAmount(creep, drop);
+                // creep.log('myAmount', drop.id, drop.amount, myAmount);
+                if (myAmount > 0) {
+                    // creep.log('reserved', drop.id, myAmount);
+                    source = drop;
+                    this.reserve(creep, drop);
+                }
             }
+            return source;
         }
-        return source;
+*/
     }
 
     findDrops(creep) {
@@ -175,4 +107,5 @@ class PickupStrategy extends BaseStrategy {
     }
 }
 
+PickupStrategy.PATH = 'pickupSource';
 module.exports = PickupStrategy;

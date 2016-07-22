@@ -65,7 +65,7 @@ class MoveToSpawningKeeperLair extends BaseStrategy {
                 // creep.log('lair at', target.pos, JSON.stringify(target.pos.getRangeTo(creep)), creep.pos.getRangeTo(target));
                 let rangeTo = creep.pos.getRangeTo(target);
                 let hostiles = creep.room.find(FIND_HOSTILE_CREEPS);
-                if (rangeTo > 7) {
+                if (rangeTo > 10) {
                     let path = PathFinder.search(creep.pos, {pos: target.pos, range: 5}, {
                         roomCallback: util.avoidCostMatrix(creep,hostiles,4)}).path;
                     let to = creep.moveTo(path[0]);
@@ -77,7 +77,7 @@ class MoveToSpawningKeeperLair extends BaseStrategy {
                         creep.memory[this.KEEPER_PATH] = target.id;
                         creep.memory[this.KEEPER_PATH_PATH] = path;
                     }
-                } else if (rangeTo < 5) {
+                } else if (rangeTo < 7) {
                     let path = PathFinder.search(creep.pos, {pos: target.pos, range: 5}, {
                         flee: true,
                         roomCallback: util.avoidCostMatrix(creep, hostiles)

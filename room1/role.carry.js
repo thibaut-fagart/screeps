@@ -7,11 +7,11 @@ var DropToEnergyStorageStrategy = require('./strategy.drop_to_energyStorage');
 
 class RoleCarry {
     constructor() {
-        this.pickupStrategy = new PickupStrategy();
+        this.pickupStrategy = new PickupStrategy(RESOURCE_ENERGY, (creep)=>(function(d){return d.amount > 50;}));
         this.loadStrategies = [new PickupStrategy(),
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_LINK, (s)=>( s.energy && s.room.storage && (s.pos.getRangeTo(s.room.storage) < 5))),
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (s)=>( (s.room.memory.harvestContainers||[]).indexOf(s.id)>=0)),
-            new LoadFromContainerStrategy(LoadFromContainerStrategy.ANY, STRUCTURE_CONTAINER/*
+            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_LINK, (creep)=>((s)=>( s.energy && s.room.storage && (s.pos.getRangeTo(s.room.storage) < 5)))),
+            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER),
+            new LoadFromContainerStrategy(LoadFromContainerStrategy.ANY_MINERAL, STRUCTURE_CONTAINER/*
 ,                (s)=>(
                     (!(s.room.memory.harvestContainers) || (s.room.memory.harvestContainers && (s.room.memory.harvestContainers.indexOf(s.id) >= 0))))*/)];
         this.unloadStrategies = [
@@ -21,7 +21,9 @@ class RoleCarry {
             new DropToContainerStrategy(RESOURCE_ENERGY, STRUCTURE_LINK),
             new DropToContainerStrategy(null, STRUCTURE_STORAGE),
             // new DropToContainerStrategy(RESOURCE_ENERGY,STRUCTURE_LINK),
-            new DropToContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER)
+            new DropToContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (creep)=>{
+                return ((s)=>( (s.room.memory.harvestContainers || []).indexOf(s.id) >= 0));
+            })
 
         ];
         this.ACTION_UNLOAD = 'unload';
@@ -59,6 +61,7 @@ class RoleCarry {
             if (strategy) {
                 util.setCurrentStrategy(creep, strategy);
             } else {
+                this.onNoLoadStrategy(creep);
                 creep.log('no load strategy');
             }
 
@@ -89,7 +92,8 @@ class RoleCarry {
             if (strategy) {
                 util.setCurrentStrategy(creep, strategy);
             } else {
-                let target = util.objectFromMemory(creep.memory, 'unload_container', (c)=>_.sum(c.store) < c.storeCapacity);
+                this.onNoUnloadStrategy(creep);
+/*                let target = util.objectFromMemory(creep.memory, 'unload_container', (c)=>_.sum(c.store) < c.storeCapacity);
                 if (!target) {
                     let array = _.filter(creep.room.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_CONTAINER}}),
                         (c)=> _.sum(c.store) < c.storeCapacity);
@@ -112,13 +116,13 @@ class RoleCarry {
                     if (ERR_NOT_IN_RANGE === transfer) {
                         // creep.log('moving to', target);
                         creep.moveTo(target);
-/*
+/!*
                     } else if (transfer !== OK && transfer !== ERR_TIRED) {
                         creep.log('transfer?', target, JSON.stringify(creep.carry), transfer);
-*/
+*!/
                     }
                     return;
-                }
+                }*/
                 creep.log('no unloadStrategy');
                 return;
             }
@@ -126,6 +130,12 @@ class RoleCarry {
         }
     }
 
+    onNoLoadStrategy(creep) {
+
+    }
+    onNoUnloadStrategy(creep) {
+
+    }
 }
 
 module.exports = RoleCarry;

@@ -5,11 +5,12 @@ class RemoteHealKeeperGuardStrategy extends RemoteHealStrategy {
 
     constructor(range) {
         super(range);
-        this.matrix = void(0);
     }
 
     findHealingTargets(creep) {
-        let targets = super.findHealingTargets(creep)
+        let findHealingTargets2 = super.findHealingTargets(creep);
+        // creep.log('base healing targets', findHealingTargets2.length);
+        let targets = findHealingTargets2
             .filter((c)=> {
                 if (c.memory.role !== creep.memory.role) return (c.hits < 0.5 * c.hitsMax);
                 let ratio = c.hits / c.hitsMax;
@@ -21,17 +22,24 @@ class RemoteHealKeeperGuardStrategy extends RemoteHealStrategy {
     }
 
     moveToAndHeal(creep, damaged) {
+        // creep.log('moveToAndHeal');
+        // return super.moveToAndHeal(creep, damaged); // TODO
         let rangeToDamaged = creep.pos.getRangeTo(damaged);
         if (rangeToDamaged > 1) {
             let hostiles = damaged.pos.findInRange(FIND_HOSTILE_CREEPS);
             if (hostiles.length) {
                 let rangeTo = hostiles[0].pos.getRangeTo(creep.pos);
                 if (rangeTo === 3) {
+                    creep.log('at range3, closing on ennemy to heal');
                     creep.moveTo(hostiles[0]);
                     creep.rangedHeal(damaged);
                 } else if (rangeTo ===2) {
-                    creep.moveTo(damaged);
-                    creep.heal(damaged);
+                    creep.log('at range2, closing on squadmate to heal');
+                    if (creep.moveTo(damaged) ===OK) {
+                        creep.heal(damaged);
+                    } else {
+                        creep.rangedHeal(damaged);
+                    }
                 }
             } else {
                 creep.moveTo(damaged);

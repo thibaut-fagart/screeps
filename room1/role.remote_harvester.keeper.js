@@ -12,6 +12,7 @@ class RoleRemoteHarvesterKeeper extends RoleRemoteHarvester {
         this.healStrategy = new RemoteHealStrategy(1/*, (creep)=>((c)=>(creep.id ===c.id && creep.hits +this.healingCapacity(creep) < creep.hitsMax)) || creep.id !==c.id */);
         this.harvestStrategy = new HarvestKeeperSourceToContainerStrategy();
         super.loadStrategies = [this.harvestStrategy];
+        
     }
     /** @param {Creep} creep **/
     run(creep) {

@@ -24,7 +24,11 @@ class RoleAttacker{
         creep.memory.remoteRoom = creep.memory.remoteRoom || creep.room.memory.attack;
     }
     findHomeExit(creep) {
-        return util.findExit(creep, creep.memory.remoteRoom, 'homeExit');
+        return util.findExit(creep, creep.memory.remoteRoom, 'exit_'+creep.memory.remoteRoom);
+    }
+
+    findRemoteExit(creep) {
+        return util.findExit(creep, creep.memory.homeroom, 'exit_'+creep.memory.homeroom);
     }
 
     /** @param {Creep} creep **/

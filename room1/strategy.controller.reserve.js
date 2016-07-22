@@ -29,7 +29,12 @@ class ReserveControllerStrategy extends BaseStrategy {
                 target = util.objectFromMemory(creep.memory, this.PATH, (/**@param {StructureController}s*/s)=> (!s.owner && (!s.reservation || s.reservation.username==creep.owner.username)));
                 if (!target) {
                     target = creep.room.controller;
-                    creep.memory[this.PATH] = target.id;
+                    if (!target) {
+                        creep.log('no controller????');
+                        return false;
+                    } else {
+                        creep.memory[this.PATH] = target.id;
+                    }
                 }
                 // creep.log('target', target);
                 if (target) {

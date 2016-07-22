@@ -207,12 +207,12 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
                 // creep.log('source && container');
                 creep.memory[this.CONTAINER_PATH] = container.id;
                 let harvestContainers = creep.room.memory.harvestContainers ||[];
-                creep.log('harvestContainers', harvestContainers, (harvestContainers&& harvestContainers.length));
+                // creep.log('harvestContainers', harvestContainers, (harvestContainers&& harvestContainers.length));
                 if (harvestContainers && harvestContainers.indexOf(container.id) < 0) {
                     harvestContainers.push(container.id);
                     creep.room.memory.harvestContainers = harvestContainers;
                 }
-                creep.log('harvestContainers2', harvestContainers, (harvestContainers&& harvestContainers.length));
+                // creep.log('harvestContainers2', harvestContainers, (harvestContainers&& harvestContainers.length));
 
             } else {
                 container = null;

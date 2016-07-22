@@ -13,6 +13,11 @@ class KeeperPickupStrategy extends PickupStrategy {
     }
 
 
+    findSource(creep) {
+        delete creep.memory[this.PATH_TO_SOURCE_PATH];
+        return super.findSource(creep);
+    }
+
     findDrops(creep) {
         return super.findDrops(creep).filter((drop)=> drop.pos.findInRange(FIND_HOSTILE_CREEPS, 3).length ==0);
     }

@@ -4,7 +4,11 @@ let RemoteHealStrategy = require('./strategy.remote_heal');
 // let RemoteRepairStrategy = require('./strategy.remote_repair');
 class RoleTower {
     constructor() {
-        this.remoteAttackStrategy = new RemoteTargetStrategy(15);
+        this.remoteAttackStrategy = new RemoteTargetStrategy(undefined,(creep)=>{
+            return function(target) {
+                return target.owner.username === 'Invader'|| creep.pos.getRangeTo(target)< 15;
+            };
+        });
         this.remoteHealStrategy = new RemoteHealStrategy();
         // this.remoteRepairStrategy = new RemoteRepairStrategy();
     }

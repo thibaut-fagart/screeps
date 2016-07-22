@@ -25,12 +25,8 @@ class DisableTargetStrategy extends StrategyRemoteTarget {
         if (target.owner.username !=='Keeper Source' || _.filter(target.body, (b)=>b.hits > 0).length > 1) {
             return creep.rangedAttack(target);
         } else  if (target.hits < brotherCount * this.getDamage(creep) && !isLeader) {
-            let source = target.pos.findClosestByRange(FIND_SOURCES);
-            let sourcePos = source.pos;
-            let area = source.pos.lookAtArea(sourcePos.y - 1, sourcePos.x - 1, sourcePos.y + 1, sourcePos.x + 1, true);
-            //{x: 7, y: 11, type: 'terrain', terrain: 'wall'}
-            let freeSquares = area.filter((array)=>(array.type === 'terrain' && array.type !== 'wall') /*|| (array.type === creep && array.creep.owner !== 'Keeper Source')*/);
-            if (freeSquares.length < 2) {
+            let shouldDisable = target.findInRange(FIND_FLAGS, 5, {filer:{color:COLOR_ORANGE}}).length;
+            if (!shouldDisable) {
                 // kill
                 return super.performAttack(creep, target);
             } else {

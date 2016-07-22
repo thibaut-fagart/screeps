@@ -10,8 +10,8 @@ class RoleEnergyFiller extends RoleCarry {
     constructor() {
         super();
         this.loadStrategies = [
-            new PickupStrategy(RESOURCE_ENERGY),
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_LINK, (s)=>s.room.storage && (s.pos.getRangeTo(s.room.storage) < 5)),
+            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_LINK, (creep)=> ((s)=>s.room.storage && (s.pos.getRangeTo(s.room.storage) < 5) && s.cooldown === 0)) ,
+            new PickupStrategy(RESOURCE_ENERGY, (creep)=>(function(d){return d.amount > 50;})),
             new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_STORAGE),
         ];
         this.unloadStrategies = [

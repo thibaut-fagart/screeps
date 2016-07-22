@@ -23,6 +23,7 @@ var RoleRemoteBuilder = require('./role.builder.remote'), roleRemoteBuilder = ne
 var RoleRecycle = require('./role.recycle'), roleRecycle = new RoleRecycle();
 var RoleRemoteHarvesterKeeper = require('./role.remote_harvester.keeper'), roleKeeperHarvester = new RoleRemoteHarvesterKeeper();
 var RoleKeeperGuard = require('./role.soldier.keeperguard'), roleKeeperGuard = new RoleKeeperGuard();
+var RoleLabOperator = require('./role.lab_operator'), roleLabOperator = new RoleLabOperator();
 var RoleRemoteCarryKeeper = require('./role.remote.carrykeeper'), roleRemoteCarryKeeper = new RoleRemoteCarryKeeper();
 
 
@@ -30,9 +31,13 @@ var profiler = require('./screeps-profiler');
 // var RoomManager = require('./manager.room'), roomManager = new RoomManager(); // todo manager
 // This line monkey patches the global prototypes.
 // profiler.enable();
-var debug = ['keeperGuard','remoteCarryKeeper'];
+var debugRoles = ['labOperator'];
+// var debugRooms = ['E36S14'];
+// var debugCreeps = ['Xavier' ];
 Creep.prototype.log = function () {
-    if (!debug.length || (debug.indexOf(this.memory.role)>=0)) {
+    if ((!debugRoles.length || (debugRoles.indexOf(this.memory.role) >= 0))) {
+    // if ((!debugRooms.length || (debugRooms.indexOf(this.room.name) >= 0))) {
+    // if ((!debugCreeps.length || (debugCreeps.indexOf(this.name) >= 0))) {
         console.log([this.name, this.pos, this.memory.role].concat(Array.prototype.slice.call(arguments)));
     }
 };
@@ -77,6 +82,41 @@ Structure.prototype.memory = function () {
     }
 
 };
+Room.prototype.findLabWith= function(resource) {
+    let pairs = _.pairs(this.memory.labs);
+    // creep.log('pairs', JSON.stringify(pairs));
+    let find = pairs.find((pair)=>pair[1] === resource);
+    // creep.log('match', JSON.stringify(find));
+    let labid = find[0];
+    // creep.log('match', labid);
+    return Game.getObjectById(labid);
+
+};
+Room.prototype.expectedMineralType= function(lab) {
+    return (this.memory.labs || [])[lab.id];
+};
+var handleLabs = function (room) {
+    _.keys(room.memory.labs).forEach((labid)=> {
+        let lab = Game.getObjectById(labid);
+        if (!lab.cooldown) {
+            // creep.log('testing ', labid);
+            let reaction = room.expectedMineralType(lab);
+            // creep.log('using ', reaction);
+            if (reaction) {
+                let ingredients = RoleLabOperator.reactions [reaction];
+                // creep.log('searching labs with ingredients', ingredients, !!ingredients);
+
+                if (ingredients) {
+                    let sourceLabs = ingredients.map((i)=>room.findLabWith(i));
+                    // console.log('running with ', JSON.stringify(sourceLabs.map((lab)=>lab.id)));
+                    let result = lab.runReaction(sourceLabs[0], sourceLabs[1]);
+                    // console.log('run?', lab.mineralType, result);
+                }
+            }
+
+        }
+    })
+};
 function innerLoop() {
     let messages = [];
     let globalStart = Game.cpu.getUsed();
@@ -98,6 +138,7 @@ function innerLoop() {
         'keeperGuard': roleKeeperGuard,
         'remoteCarryKeeper': roleRemoteCarryKeeper,
         'recycle': roleRecycle,
+        'claimer': roleClaim,
         'carry': roleCarry,
         'keeperHarvester': roleKeeperHarvester,
         'energyFiller': roleEnergyFiller,
@@ -116,6 +157,7 @@ function innerLoop() {
         'roleRemoteGuard': roleRemoteGuard,
         'roleCloseGuard': roleRemoteGuard,
         'roleSoldier': roleRemoteGuard,
+        'labOperator': roleLabOperator,
     };
     let cpu = {};
     _.keys(handlers).forEach((k)=>cpu[k] = 0);
@@ -124,6 +166,11 @@ function innerLoop() {
         if (!room.memory.harvestContainers) {
             room.memory.harvestContainers = [];
         }
+        if (!(Game.time %10) && room.memory.labs) {
+            // creep.log('running reactions');
+            handleLabs(room);
+        }
+
         if (0 == Game.time % 100) {
             let locks = _.pairs(room.memory.reserved);
             locks.forEach((p)=> {
@@ -258,6 +305,8 @@ function innerLoop() {
     }
     Memory.stats["cpu_.main"] = Game.cpu.getUsed()-_.sum(cpu);
     Memory.stats["cpu"] = Game.cpu.getUsed();
+    Memory.stats["gcl.progress"] = Game.gcl.progress;
+    Memory.stats["gcl.progressTotal"] = Game.gcl.progressTotal;
     // counting walkable tiles neer location:
     //_.filter(Game.rooms.E37S14.lookAtArea(y-1,x-1,y+1,x+1,true), function(o) {return o.type== 'terrain' &&(o.terrain =='plain' || o.terrain =='swamp')}).length
 }

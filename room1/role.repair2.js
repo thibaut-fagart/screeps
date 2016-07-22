@@ -7,7 +7,7 @@ var PickupStrategy = require('./strategy.pickup');
 class RoleRepair2 {
     constructor() {
         this.loadStrategies = [
-            new LoadFromContainerStrategy(RESOURCE_ENERGY ,undefined, (s)=>(s.structureType !== STRUCTURE_TOWER )),
+            new LoadFromContainerStrategy(RESOURCE_ENERGY, undefined, (creep)=>((s)=>(s.structureType !== STRUCTURE_TOWER ))),
             new PickupStrategy(RESOURCE_ENERGY),
             new HarvestEnergySourceStrategy()
         ];
@@ -65,7 +65,7 @@ class RoleRepair2 {
      * @param {Creep} creep
      */
     clearTarget(creep) {
-        util.release(creep, creep.memory.targetid,'repair');
+        util.release(creep, creep.memory.targetid, 'repair');
         delete creep.memory.targetid;
     }
 
@@ -75,9 +75,9 @@ class RoleRepair2 {
         return _.sortBy(creep.room.find(FIND_STRUCTURES, {
             filter: function (structure) {
                 // return this.markedTargets.indexOf(structure) <0 && // marked for dismantle
-                return (structure.structureType == STRUCTURE_ROAD
-                    || structure.structureType == STRUCTURE_CONTAINER)
-                    && (structure.hits < structure.hitsMax);
+                return ([STRUCTURE_ROAD, STRUCTURE_CONTAINER].indexOf(structure.structureType) >= 0
+                    || structure.structureType === STRUCTURE_RAMPART && structure.hits < 1000)
+                    && structure.hits < structure.hitsMax;
             }
         }), (s) => s.hits);
     }
@@ -108,17 +108,17 @@ class RoleRepair2 {
                 if (mostDamagedContainer2 && mostDamagedContainer2.hits < 100000) {
                     target = mostDamagedContainer2;
                 } else {
-                    target = _.find(_.sortBy(myDamagedStructures, (s) => s.hits ), (s) => !util.isReserved(creep, s, 'repair'));
+                    target = _.find(_.sortBy(myDamagedStructures, (s) => s.hits), (s) => !util.isReserved(creep, s, 'repair'));
                 }
             } else if (myDamagedWalls.length) {
-                target =  _.find(_.sortBy(myDamagedWalls, (s) => s.hits ), (s) => !util.isReserved(creep, s, 'repair'));
-/*
-                let wallsByHealth = _.filter(_.sortBy(myDamagedWalls, (s) => s.hits ), (s) => !util.isReserved(creep, s,'repair'));
-                // creep.log('most damaged wall', wallsByHealth[0], wallsByHealth[0].hits);
-                let baseline = wallsByHealth[0].hits;
-                wallsByHealth = wallsByHealth.slice(0, _.findIndex(wallsByHealth, (w)=> w.hits > 2 * baseline));
-                target = creep.pos.findClosestByRange(wallsByHealth);
-*/
+                target = _.sortBy(myDamagedWalls, (s) => s.hits).find((s) => !util.isReserved(creep, s, 'repair'));
+                /*
+                 let wallsByHealth = _.filter(_.sortBy(myDamagedWalls, (s) => s.hits ), (s) => !util.isReserved(creep, s,'repair'));
+                 // creep.log('most damaged wall', wallsByHealth[0], wallsByHealth[0].hits);
+                 let baseline = wallsByHealth[0].hits;
+                 wallsByHealth = wallsByHealth.slice(0, _.findIndex(wallsByHealth, (w)=> w.hits > 2 * baseline));
+                 target = creep.pos.findClosestByRange(wallsByHealth);
+                 */
 
             } else {
                 target = creep.pos.findClosestByRange(myDamagedStructures);

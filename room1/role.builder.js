@@ -9,7 +9,7 @@ var BuildStrategy = require('./strategy.build');
 class RoleBuilder {
     constructor() {
         this.loadStrategies = [
-            new LoadFromContainerStrategy(RESOURCE_ENERGY,  undefined, (s)=>(s.structureType !== STRUCTURE_TOWER )),
+            new LoadFromContainerStrategy(RESOURCE_ENERGY,  undefined, (creep)=>((s)=>([STRUCTURE_TOWER, STRUCTURE_SPAWN, STRUCTURE_EXTENSION].indexOf(s.structureType) < 0))),
             new PickupStrategy(RESOURCE_ENERGY),
             new HarvestEnergySourceStrategy()];
         this.buildStrategy = new BuildStrategy();

@@ -1,21 +1,20 @@
 var _ = require('lodash');
 var util = require('./util');
 var MoveToRoomTask = require('./task.move.toroom');
+var RegroupStrategy = require('./strategy.regroup');
 
 
 class RoleScout {
     constructor() {
         this.moveTask = new MoveToRoomTask('scout');
+        this.regroupTask = new RegroupStrategy(COLOR_YELLOW);
     }
 
     /** @param {Creep} creep **/
     run(creep) {
         let accepts = this.moveTask.accepts(creep);
         if (!accepts ) {
-            let atDoor = util.isAtDoor(creep);
-            if (atDoor) {
-                creep.moveTo(20, 20);
-            }
+            this.regroupTask.accepts(creep);
         }
 
     }

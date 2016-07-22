@@ -4,6 +4,7 @@ class Util {
     constructor() {
         this.CURRENT_STRATEGY = 'strategy';
         this.currentid = Memory.uuid || 0;
+        this.ANY_MINERAL = 'anyMineral';
     }
 
     /**
@@ -160,8 +161,8 @@ class Util {
                 state: strategy.saveState()
             };
         } else {
-            if (creep.memory[this.CURRENT_STRATEGY])  {
-                
+            if (creep.memory[this.CURRENT_STRATEGY]) {
+
             }
             delete creep.memory[this.CURRENT_STRATEGY];
         }
@@ -171,15 +172,54 @@ class Util {
         return (strategy ? strategy.constructor.name : 'none');
     }
 
-    findExit(creep, room, memoryName) {
-        var exit;
-        if (!creep.room.memory[memoryName]) { // todo refresh  exit every once in a while ?
-            creep.log("finding exit to", room);
-            var exitDir = creep.room.findExitTo(room);
-            exit = creep.pos.findClosestByPath(exitDir); // TODO cache
-            creep.room.memory[memoryName] = JSON.stringify(exit);
+    /**
+     * 
+     * @param creep
+     * @param targetRoom name of the room to go to
+     * @param roomMemoryName memory slot to store the exit
+     * @returns {*}
+     */
+    findExit(creep, targetRoom, roomMemoryName) {
+        if (!targetRoom || !roomMemoryName || (creep.room.name === targetRoom)) {
+            creep.log('util.findExit,invalid params', creep.room.name, targetRoom, roomMemoryName);
+            throw new Error('util.findExit,invalid params');
+        }
+        // creep.log('findExit', targetRoom, roomMemoryName);
+        let exit;
+        if (!creep.room.memory[roomMemoryName]) { // todo refresh  exit every once in a while ?
+            // creep.log("finding exit to", targetRoom);
+            let match = /exit_([EW]\d+[NS]\d+)/.exec(roomMemoryName);
+            if (match) {
+                let otherRoom = match[1];
+                creep.log('regex?', JSON.stringify(match), otherRoom);
+                if (Memory.rooms[otherRoom]) {
+                    let matchingExit = Memory.rooms[otherRoom]['exit_' + creep.room.name];
+                    // creep.log('matchingExit', JSON.stringify(matchingExit));
+                    if (matchingExit) {
+                        matchingExit = JSON.parse(matchingExit);
+                        let mirrorLamba = (x)=> (x === 0) ? 49 : (x === 49) ? 0 : x;
+                        // creep.log(matchingExit.x, matchingExit.y, creep.targetRoom.name);
+                        // creep.log(mirrorLamba(matchingExit.x), mirrorLamba(matchingExit.y), creep.targetRoom.name);
+                        exit = new RoomPosition(mirrorLamba(matchingExit.x), mirrorLamba(matchingExit.y), creep.room.name);
+                        creep.room.memory[roomMemoryName] = JSON.stringify(exit);
+                    } else {
+                        var exitDir = creep.room.findExitTo(targetRoom);
+                        exit = creep.pos.findClosestByPath(exitDir); // TODO cache
+                        creep.room.memory[roomMemoryName] = JSON.stringify(exit);
+                    }
+                } else {
+                    var exitDir = creep.room.findExitTo(targetRoom);
+                    exit = creep.pos.findClosestByPath(exitDir); // TODO cache
+                    creep.room.memory[roomMemoryName] = JSON.stringify(exit);
+                }
+            } else {
+                var exitDir = creep.room.findExitTo(targetRoom);
+                exit = creep.pos.findClosestByPath(exitDir); // TODO cache
+                creep.room.memory[roomMemoryName] = JSON.stringify(exit);
+            }
         } else {
-            exit = JSON.parse(creep.room.memory[memoryName]);
+            // creep.log('parsing ', creep.targetRoom.memory[roomMemoryName]);
+            exit = JSON.parse(creep.room.memory[roomMemoryName]);
         }
         return exit;
     }
@@ -190,7 +230,7 @@ class Util {
     /**
      *
      * @param {Room|string} [room]
-     * @param {Function} predicate
+     * @param {Function} [predicate] only counts creeps where predicate is true
      * @return {Roster}
      */
     roster(room, predicate) {
@@ -280,8 +320,9 @@ class Util {
         creep.moveTo(path[0]);
         return path;
     }
+
     healingCapacity(creep) {
-        return (creep instanceof Creep) ? creep.getActiveBodyparts(HEAL)*10: 100 ;
+        return (creep instanceof Creep) ? creep.getActiveBodyparts(HEAL) * 10 : 100;
     }
 
 
@@ -292,12 +333,10 @@ class Util {
             if (roomName == creep.room.name) {
                 let matrix = new PathFinder.CostMatrix();
                 hostiles.forEach((c)=> {
-                    let cost = (c.hits >100)?255:60;
-                        
-                    
+                    let cost = (c.hits > 100) ? 255 : 60;
                     matrix.set(c.pos.x, c.pos.y, 255);
                     for (let r = 1; r <= range; r++) {
-                        let rcost = cost * (range-r+1)/range;
+                        let rcost = cost * (range - r + 1) / range;
                         matrix.set(c.pos.x - r, c.pos.y - r, rcost);
                         matrix.set(c.pos.x - r, c.pos.y, rcost);
                         matrix.set(c.pos.x - r, c.pos.y + r, rcost);
@@ -318,4 +357,5 @@ class Util {
         };
     }
 }
+
 module.exports = new Util();

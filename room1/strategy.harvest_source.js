@@ -28,7 +28,7 @@ class HarvestEnergySourceStrategy extends BaseStrategy {
                 source = util.objectFromMemory(creep.memory, this.PATH, (s)=> creep.carry.energy+s.energy >= creep.carryCapacity);
                 // creep.log('source', source);
                 if (!source) {
-                    this.findSource(creep);
+                    source = this.findSource(creep);
                 }
                 // creep.log('source2', source);
                 if (source) {
@@ -37,7 +37,8 @@ class HarvestEnergySourceStrategy extends BaseStrategy {
                     // creep.log('transfer', harvest);
                     if (harvest == ERR_NOT_IN_RANGE) {
                         let moveTo = creep.moveTo(source);
-                        if (source.room.controller.reservation && source.room.controller.reservation.username != creep.owner.username) {
+                        // creep.log('moveTo', moveTo);
+                        if (source.room.controller && source.room.controller.reservation && source.room.controller.reservation.username != creep.owner.username) {
                             // release strategy for pickup opportunity
                             return null;
                         }
@@ -54,15 +55,12 @@ class HarvestEnergySourceStrategy extends BaseStrategy {
     findSource(creep) {
         let source;
         let sources = creep.room.find(FIND_SOURCES).sort((s)=>-s.energy);
+        // creep.log('sources', sources.length);
         if (sources.length) {
             let max = sources[0].energy;
-            sources = creep.pos.findClosestByRange(_.filter(sources, (s)=> s.energy == max));
-            if (sources && sources[0] && (sources[0].energy > creep.carryCapacity - _.sum(creep.carry))) {
-                source = sources[0];
-                // } else {
-                //     source = creep.pos.findClosestByPath(FIND_SOURCES_ACTIVE);
-            }
+            source = creep.pos.findClosestByRange(_.filter(sources, (s)=> s.energy == max));
         }
+        // creep.log('source', source);
         return source;
     }
 }
