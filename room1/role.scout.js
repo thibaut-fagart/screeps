@@ -12,10 +12,12 @@ class RoleScout {
 
     /** @param {Creep} creep **/
     run(creep) {
-        let accepts = this.moveTask.accepts(creep);
-        if (!accepts ) {
-            this.regroupTask.accepts(creep);
+        if (creep.memory.action !== 'scout') {
+            let accepts = this.moveTask.accepts(creep);
+            if (accepts) return;
         }
+        creep.memory.action = 'scout';
+        this.regroupTask.accepts(creep);
 
     }
 }

@@ -8,7 +8,7 @@ class RoleMineralGatherer extends RoleCarry{
         super();
         this.loadStrategies = [
             new LoadFromContainerStrategy(LoadFromContainerStrategy.ANY_MINERAL, STRUCTURE_CONTAINER, 
-                (creep)=>((c)=>(!c.room.memory.harvestContainers || c.room.memory.harvestContainers.indexOf(c.id) < 0))),
+                (creep)=>((c)=>(!c.room.memory.harvestContainers || c.room.memory.harvestContainers.indexOf(c.id) >=0))),
             // new LoadFromContainerStrategy(LoadFromContainerStrategy.ANY_MINERAL, STRUCTURE_STORAGE)
             ];
         this.unloadStrategies = [
@@ -18,7 +18,7 @@ class RoleMineralGatherer extends RoleCarry{
 
 
     onNoLoadStrategy(creep) {
-        creep.memory.role = 'energyFiller';
+        // creep.memory.role = 'energyFiller';
     }
 }
 module.exports = RoleMineralGatherer;

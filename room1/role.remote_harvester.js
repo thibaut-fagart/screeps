@@ -11,40 +11,43 @@ class RoleRemoteHarvester {
     constructor() {
         this.loadStrategies = [new HarvestEnergySourceToContainerStrategy(RESOURCE_ENERGY), new PickupStrategy(RESOURCE_ENERGY), new HarvestEnergySourceStrategy()];
         this.unloadStrategies = [new DropToContainerStrategy(RESOURCE_ENERGY), new DropToEnergyStorage()];
-        this.goRemoteTask = new MoveToRoomTask('remoteMining', 'homeroom', 'remoteRoom');
+        this.goRemoteTask = new MoveToRoomTask(undefined, 'homeroom', 'remoteRoom');
         this.goHomeTask = new MoveToRoomTask(undefined, 'remoteRoom', 'homeroom');
 
     }
+
     /*
-    requires : remoteRoom=creep.room.remoteMining, homeroom = creep.room.name, homeroom, remoteSource
+     requires : remoteRoom=creep.room.remoteMining, homeroom = creep.room.name, homeroom, remoteSource
      */
     resign(creep) {
-        creep.log("resigning");
+        creep.log('resigning');
         delete creep.memory.role;
         delete creep.memory.action; //{go_remote_room, load, go_home, unload}
         delete creep.memory.remoteRoom;
         delete creep.memory.homeroom;
         delete creep.memory.remoteSource;
     }
-    init (creep) {
+
+    init(creep) {
         creep.memory.action = 'go_remote_room';
         creep.memory.homeroom = creep.room.name;
-        creep.memory.remoteMining = creep.room.memory.remoteMining;
+        creep.memory.remoteMining = creep.memory.remoteMining || _.isString(creep.room.memory.remoteMining) ? creep.room.memory.remoteMining : creep.room.memory.remoteMining[0];
         if (!creep.memory.remoteRoom && creep.room.memory.remoteMining) {
-            creep.memory.remoteRoom = creep.room.memory.remoteMining;
+            creep.memory.remoteRoom = _.isString(creep.room.memory.remoteMining) ? creep.room.memory.remoteMining : creep.room.memory.remoteMining[0];
         }
 
     }
+
     findHomeExit(creep) {
-        return util.findExit(creep, creep.memory.remoteMining, 'exit_'+creep.memory.remoteMining);
+        return util.findExit(creep, creep.memory.remoteMining);
     }
 
     findRemoteExit(creep) {
-        return util.findExit(creep, creep.memory.homeroom, 'exit_'+creep.memory.homeroom);
+        return util.findExit(creep, creep.memory.homeroom);
     }
 
     /** @param {Creep} creep **/
-    run (creep) {
+    run(creep) {
         if (!creep.memory.homeroom) {
             creep.memory.homeroom = creep.room.name;
         }
@@ -58,9 +61,9 @@ class RoleRemoteHarvester {
         if (creep.memory.action == 'go_remote_room' && creep.room.name == creep.memory.remoteRoom) {
             creep.memory.action = 'load';
             // creep.log('reached remote room',creep.memory.action)
-        } else if (creep.memory.action == 'load' && creep.carry.energy == creep.carryCapacity && creep.carryCapacity>0
-                && !_.find(creep.pos.lookFor(LOOK_STRUCTURES), (s)=>s.structureType === STRUCTURE_CONTAINER)) {
-            
+        } else if (creep.memory.action == 'load' && creep.carry.energy == creep.carryCapacity && creep.carryCapacity > 0
+            && !_.find(creep.pos.lookFor(LOOK_STRUCTURES), (s)=>s.structureType === STRUCTURE_CONTAINER)) {
+
             // creep.memory.action = 'go_home_room';
             // creep.log('full', creep.memory.action);
         } else if (creep.memory.action == 'go_home_room' && creep.room.name == creep.memory.homeroom) {
@@ -74,21 +77,14 @@ class RoleRemoteHarvester {
         }
 
         // creep.log(creep.memory.action);
-        if (creep.memory.action == 'go_remote_room' && creep.room.name == creep.memory.homeroom && creep.memory.remoteRoom) {
-            if (!creep.room.memory.remoteMining) {
-                creep.log("no remoteMining room");
-                this.resign(creep);
-            } else {
-                this.goRemoteTask.accepts(creep);
-/*
-                var exit = this.findExit(creep);
-                creep.moveTo(exit.x, exit.y, {reusePath: 50});
-*/
-                // console.log("moving to homeExit ", );
+        if (creep.memory.action == 'go_remote_room') {
+            if (!this.goRemoteTask.accepts(creep)) {
+                creep.memory.action = 'load';
             }
+            // console.log("moving to homeExit ", );
         }
 
-        if (creep.memory.action == 'load' && creep.memory.remoteRoom == creep.room.name) {
+        if (creep.memory.action == 'load') {
             let strategy = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);
             // creep.log('previousStrategy',util.strategyToLog(strategy));
             if (!strategy) {
@@ -103,20 +99,14 @@ class RoleRemoteHarvester {
                 return;
             }
         }
-        if (creep.memory.action == 'go_home_room' && creep.room.name != creep.memory.homeroom) {
-            this.goHomeTask.accepts(creep);
-/*
-            var exit = this.findRemoteExit(creep);
-            if (exit) {
-                creep.moveTo(exit.x, exit.y,{reusePath: 50});
-            } else {
-                creep.log("no exit ?", creep.pos);
+        if (creep.memory.action == 'go_home_room') {
+            if (!this.goHomeTask.accepts(creep)) {
+                creep.memory.action = 'unload';
             }
-*/
 
             // console.log("moving to remoteExit ", );
         }
-        if (creep.memory.action == 'unload' && creep.room.name == creep.memory.homeroom) {
+        if (creep.memory.action == 'unload') {
             let strategy = util.getAndExecuteCurrentStrategy(creep, this.unloadStrategies);
             if (!strategy) {
                 strategy = _.find(this.unloadStrategies, (strat)=>!(null == strat.accepts(creep)));

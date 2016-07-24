@@ -12,7 +12,7 @@ class FleeToHomeRoomStrategy extends BaseStrategy {
     }
     
     findHomeExit(creep) {
-        return util.findExit(creep, creep.memory.homeroom, 'exit_'+creep.memory.homeroom);
+        return util.findExit(creep, creep.memory.homeroom);
     }
 
 

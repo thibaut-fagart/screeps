@@ -49,10 +49,11 @@ class Util {
             let reserved = this.reservations(creep, reason);
             let owner = reserved[object.id];
             if (owner && !Game.getObjectById(owner)) {
+                // clean old lock
                 delete reserved[object.id];
                 owner = null;
             }
-
+            
             if (!owner) {
                 reserved[object.id] = creep.id;
                 creep.memory.locks = (creep.memory.locks || []);
@@ -105,7 +106,7 @@ class Util {
             ownerid = null;
         }
         // if (ownerid) creep.log('testing lock', object, ownerid);
-        return (ownerid && ownerid !== creep.id);
+        return !!(ownerid && ownerid !== creep.id);
     }
 
     /**
@@ -173,54 +174,98 @@ class Util {
     }
 
     /**
-     * 
-     * @param creep
-     * @param targetRoom name of the room to go to
+     *
+     * @param {Creep} creep
+     * @param {string} targetRoom name of the room to go to
      * @param roomMemoryName memory slot to store the exit
-     * @returns {*}
+     * @returns {RoomPosition}
      */
-    findExit(creep, targetRoom, roomMemoryName) {
-        if (!targetRoom || !roomMemoryName || (creep.room.name === targetRoom)) {
+    findExitOld(creep, targetRoom) {
+        if (!targetRoom || (creep.room.name === targetRoom)) {
             creep.log('util.findExit,invalid params', creep.room.name, targetRoom, roomMemoryName);
             throw new Error('util.findExit,invalid params');
         }
         // creep.log('findExit', targetRoom, roomMemoryName);
         let exit;
         if (!creep.room.memory[roomMemoryName]) { // todo refresh  exit every once in a while ?
-            // creep.log("finding exit to", targetRoom);
-            let match = /exit_([EW]\d+[NS]\d+)/.exec(roomMemoryName);
-            if (match) {
-                let otherRoom = match[1];
-                creep.log('regex?', JSON.stringify(match), otherRoom);
-                if (Memory.rooms[otherRoom]) {
-                    let matchingExit = Memory.rooms[otherRoom]['exit_' + creep.room.name];
-                    // creep.log('matchingExit', JSON.stringify(matchingExit));
-                    if (matchingExit) {
-                        matchingExit = JSON.parse(matchingExit);
-                        let mirrorLamba = (x)=> (x === 0) ? 49 : (x === 49) ? 0 : x;
-                        // creep.log(matchingExit.x, matchingExit.y, creep.targetRoom.name);
-                        // creep.log(mirrorLamba(matchingExit.x), mirrorLamba(matchingExit.y), creep.targetRoom.name);
-                        exit = new RoomPosition(mirrorLamba(matchingExit.x), mirrorLamba(matchingExit.y), creep.room.name);
-                        creep.room.memory[roomMemoryName] = JSON.stringify(exit);
-                    } else {
-                        var exitDir = creep.room.findExitTo(targetRoom);
-                        exit = creep.pos.findClosestByPath(exitDir); // TODO cache
-                        creep.room.memory[roomMemoryName] = JSON.stringify(exit);
-                    }
-                } else {
-                    var exitDir = creep.room.findExitTo(targetRoom);
-                    exit = creep.pos.findClosestByPath(exitDir); // TODO cache
-                    creep.room.memory[roomMemoryName] = JSON.stringify(exit);
-                }
-            } else {
-                var exitDir = creep.room.findExitTo(targetRoom);
-                exit = creep.pos.findClosestByPath(exitDir); // TODO cache
-                creep.room.memory[roomMemoryName] = JSON.stringify(exit);
-            }
+            creep.log('finding exit', creep.room.name, targetRoom);
+
+            let exitDir = creep.room.findExitTo(targetRoom);
+            exit = creep.pos.findClosestByPath(exitDir); // TODO cache
+            creep.room.memory[roomMemoryName] = JSON.stringify(exit);
         } else {
-            // creep.log('parsing ', creep.targetRoom.memory[roomMemoryName]);
+            // creep.log('parsing ', creep.room.memory[roomMemoryName]);
             exit = JSON.parse(creep.room.memory[roomMemoryName]);
         }
+        return exit;
+    }
+    remember (creep,fromRoom, toRoom, exitJson)  {
+        if (_.isString(exitJson) && exitJson[0] == '{') {
+            creep.log('Memory.rooms[' + fromRoom + '].exits['+toRoom + ']=' + exitJson);
+            Memory.rooms[fromRoom] = Memory.rooms[fromRoom] || {};
+            Memory.rooms[fromRoom].exits = Memory.rooms[fromRoom].exits || {};
+            Memory.rooms[fromRoom].exits[toRoom] = exitJson;
+            creep.log('exits', Memory.rooms[fromRoom].exits);
+        } else {
+            creep.log('ERROR : trying ro remember undefined', fromRoom, toRoom, exitJson)
+        }
+    }
+
+    findExit(creep, targetRoom, roomMemoryName) {
+        if (!targetRoom || (creep.room.name === targetRoom)) {
+            creep.log('util.findExit,invalid params', creep.room.name, targetRoom, roomMemoryName);
+            throw new Error('util.findExit,invalid params');
+        }
+        // creep.log('findExit', targetRoom, roomMemoryName);
+        let exit;
+        // creep.log('known?',!!creep.room.memory[roomMemoryName]);
+        let roomExits =(creep.room.memory.exits = creep.room.memory.exits ||{});
+        if (!roomExits[targetRoom]) { // todo refresh  exit every once in a while ?
+            let mirror = (x)=>x === 0 || x === 49 ? 49 - x : x;
+            creep.log('finding exit', creep.room.name, targetRoom);
+            let route = Game.map.findRoute(creep.room, targetRoom);
+            creep.log('route before unshift', route.length, JSON.stringify(route));
+            route.unshift({room: creep.room.name});
+            creep.log('route', route.length, JSON.stringify(route));
+            let entryPoint = creep.pos;
+            if (route.length>1) {
+                for (let i = 1, max = route.length; i < max; i++) {
+                    let currentRoom = route[i-1].room;
+                    Memory.rooms[currentRoom] =Memory.rooms[currentRoom] || {};
+                    let currentExits =(Memory.rooms[currentRoom].exits =Memory.rooms[currentRoom].exits || {});
+                    let roomStep = route[i];
+                    let nextRoom = roomStep.room;
+                    if (! Game.rooms[currentRoom]) {
+                        creep.log('unknown room',currentRoom);
+                        continue;
+                    }
+                    creep.log('map step', nextRoom);
+                    if (!currentExits[nextRoom]) {
+                        let exitDir = roomStep.exit;
+                        creep.log('finding new exit', currentRoom, nextRoom);
+                        exit = entryPoint.findClosestByPath(exitDir); // TODO cache
+                    } else {
+                        exit = JSON.parse(currentExits[nextRoom]);
+                    }
+                    // store the path from every step in the route
+                    let exitJson = JSON.stringify(exit);
+                    creep.log(currentRoom, '->', nextRoom, exitJson);
+                    for (let j = i, maxj = route.length;j<maxj; j++) {
+                        this.remember(creep, currentRoom, route[j].room, exitJson);
+                    }
+                    entryPoint = new RoomPosition(mirror(exit.x), mirror(exit.y), nextRoom);
+                    creep.log('entryPoint ', JSON.stringify(entryPoint));
+                    for (let j = i;j>0; j--) {
+                        this.remember(creep, nextRoom, route[j-1].room, JSON.stringify(entryPoint));
+                    }
+                }
+            } else  {
+                creep.log('ERROR : no route', creep.room.name, targetRoom);
+            }
+        }
+        // creep.log('parsing ',roomExits[targetRoom]);
+        exit = JSON.parse(roomExits[targetRoom]);
+        // creep.log('findExit', creep.room.name, targetRoom, JSON.stringify(exit));
         return exit;
     }
 
@@ -325,6 +370,45 @@ class Util {
         return (creep instanceof Creep) ? creep.getActiveBodyparts(HEAL) * 10 : 100;
     }
 
+    direction(pos1, pos2) {
+        if (Math.abs(pos1.x - pos2.x) > 1 || Math.abs(pos1.y - pos2.y) > 1) {
+            throw new Error('incorrect use of direction(), pos should be tangent');
+        }
+        if (pos1.x === pos2.x) {
+            return pos2.y > pos1.y ? 5 : 1;
+        } else if (pos1.y === pos2.y) {
+            return pos2.x > pos1.x ? 3 : 7;
+        } else if (pos1.x < pos2.x) {
+            return (pos2.y < pos1.y) ? 2 : 4;
+        } else return (pos2.y < pos1.y) ? 8 : 6;
+    }
+
+    /**
+     *
+     * @param {RoomPosition} pos origin
+     * @param {Array} path
+     */
+    pathFinderToMoveByPath(pos, path) {
+        let x = pos.x, y = pos.y;
+        let result = Array(path.length);
+        let previousStep = pos;
+        for (var i = 0; i < path.length; i++) {
+
+            let step = path[i];
+            // console.log('step', JSON.stringify(step));
+            let mapped = {
+                x: step.x,
+                y: step.y,
+                dx: step.x - x,
+                dy: step.y - y,
+                direction: this.direction(previousStep, step)
+            };
+            // console.log('mapped', JSON.stringify(mapped));
+            result[i] = mapped;
+            previousStep = step;
+        }
+        return result;
+    }
 
     avoidCostMatrix(creep, hostiles, range) {
         range = range || 1;

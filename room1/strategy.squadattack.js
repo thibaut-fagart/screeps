@@ -31,7 +31,7 @@ class SquadAttackStrategy extends Base {
             creep.memory.exitToHome = exit;
             return exit;
         }
-        return util.findExit(creep, creep.memory.homeroom, 'exit_'+homeroom);
+        return util.findExit(creep, creep.memory.homeroom);
     }
 
     /**
@@ -56,7 +56,7 @@ class SquadAttackStrategy extends Base {
         if (squad.length < Game.rooms[creep.memory.homeroom].memory.attack_min) {
             // let the leader lead the way, safely
             if (isLeader) {
-                let exitToHome = util.findExit(creep, creep.memory.homeroom,'exit_'+creep.memory.homeroom);
+                let exitToHome = util.findExit(creep, creep.memory.homeroom);
                 // creep.log('exitToHome', JSON.stringify(exitToHome));
                 let exitDist = creep.pos.getRangeTo(exitToHome.x, exitToHome.y);
                 // creep.log('exit at?', exitDist);
@@ -120,11 +120,13 @@ class SquadAttackStrategy extends Base {
         let rangeToLeader = leader.pos.getRangeTo(closestEnemy);
         if (myRange <= 4 && rangeToLeader <= squad.length) {
             // ok, attack
+            // creep.log('ok, attack');
             return false;
         }
 
         if (isLeader) {
             if (!creep.memory.path) {
+                creep.log('initializing path');
                 creep.memory.path =[];
             }
             // creep.log('leader',maxDistanceToLeader,squad.length);
@@ -133,11 +135,12 @@ class SquadAttackStrategy extends Base {
                 if (myRange <= 4) {
                     delete creep.memory.path[closestEnemy.id];
                     // determine best spot : need 2 available cells at range 3
+                    // creep.log('deleting path');
                     return false;
                 } else {
                     let damaged = squad.find((c)=>c.hits<c.hitsMax);
                     if (damaged) {
-                        creep.log('damaged member, healing');
+                        // creep.log('damaged member, healing');
                         // wait
                         creep.heal(damaged);
                         return true;
@@ -151,14 +154,21 @@ class SquadAttackStrategy extends Base {
                         creep.memory.ticksAtLastPos =0;
                         creep.memory.lastPos = creep.pos;
                     }
-                    let path;
-                    if (stoppedCounter< 3) {
-                        path = creep.memory.path[closestEnemy.id] || util.safeMoveTo(creep, closestEnemy.pos);
-                        creep.memory.path[closestEnemy.id] = path;
-                    } else {
-                        path = creep.memory.path[closestEnemy.id] = util.safeMoveTo(creep, closestEnemy.pos);
+                    let path = creep.memory.path[closestEnemy.id];
+                    if (!path || path.length ===0) {
+                        if (stoppedCounter < 3) {
+                            path = creep.memory.path[closestEnemy.id] || util.safeMoveTo(creep, closestEnemy.pos);
+                            creep.memory.path[closestEnemy.id] = path;
+                        } else {
+                            creep.memory.path[closestEnemy.id] = util.safeMoveTo(creep, closestEnemy.pos)
+                            path = creep.memory.path[closestEnemy.id];
+                        }
                     }
-                    creep.moveByPath(path);
+                    // creep.log(path[0], creep.memory.path[closestEnemy.id]);
+                    if (this.samePos(path[0], creep.pos)) {
+                        path.shift();
+                    }
+                    creep.moveTo(path[0]);
                     return true;
                 }
             } else if (maxDistanceToLeader < 2*squad.length){
@@ -171,8 +181,24 @@ class SquadAttackStrategy extends Base {
                 return true;
             }
         } else {
-            if (maxDistanceToLeader < squad.length && myRange <= 4) {
-                return false;
+            if (maxDistanceToLeader < squad.length) {
+                if (myRange >4) {
+                    let damaged = squad.find((c)=>c.hits<c.hitsMax);
+                    if (damaged) {
+                        // creep.log('damaged member, healing');
+                        if (creep.pos.getRangeTo(damaged)>1) {
+                            creep.moveTo(damaged);
+                            creep.heal(damaged);
+                            return true;
+                        } else {
+                            creep.heal(damaged);
+                            return true;
+                        }
+                        // wait
+                    }
+                } else {
+                    return false;
+                }
             } else {
                 //move to leader
                 // creep.log('closing on leader', JSON.stringify(leader.pos));

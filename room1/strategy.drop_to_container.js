@@ -61,7 +61,7 @@ class DropToContainerStrategy extends BaseStrategy {
             // creep.log('2allCOntainers has labs?', this.structure,allContainers.find((c)=>c.structureType === STRUCTURE_LAB));
             allContainers = allContainers.filter((s)=> this.containerFreeSpace(creep, s) > 0// !full
                 && !this.isHarvestContainer(s));
-            // creep.log('allContainers has lab ?', this.structure,allContainers.find((c)=>c.structureType === STRUCTURE_LAB));
+            // creep.log('allContainers has storage ?', this.structure,allContainers.find((c)=>c.structureType === STRUCTURE_STORAGE));
             // creep.log('allCOntainers has links?', allContainers.find((c)=>c.structureType === STRUCTURE_LINK));
             /*
              if (this.structure === STRUCTURE_LAB) {
@@ -184,11 +184,15 @@ class DropToContainerStrategy extends BaseStrategy {
                 if (RESOURCE_ENERGY === resource) {
                     // creep.log('energy space?');
                     if (container instanceof StructureLink) {
-                        let otherLinks = creep.room.find(FIND_STRUCTURES, {filter: (s)=>s.structureType === STRUCTURE_LINK && s !== container});
-                        if (otherLinks.length) {
-                            let mostEmptyLink = _.min(otherLinks, (l)=>l.energy);
-                            space += 2 * container.energyCapacity - (mostEmptyLink.energy + container.energy);
-                        } else {
+                        if (container.cooldown) {
+                            let otherLinks = creep.room.find(FIND_STRUCTURES, {filter: (s)=>s.structureType === STRUCTURE_LINK && s !== container});
+                            if (otherLinks.length) {
+                                let mostEmptyLink = _.min(otherLinks, (l)=>l.energy);
+                                space += 2 * container.energyCapacity - (mostEmptyLink.energy + container.energy);
+                            } else {
+                                space += container.energyCapacity - container.energy;
+                            }
+                        }else {
                             space += container.energyCapacity - container.energy;
                         }
                     } else {

@@ -13,7 +13,7 @@ class RoleRemoteRoomGuard {
     constructor() {
         this.nonExclusiveStrategies = [/*new CloseAttackStrategy(5)*/];
         this.attackStrategies = [
-            new RemoteHealKeeperGuardStrategy(5), new RemoteAttackStrategy(5), new SquadAttackStrategy(),
+            new RemoteHealKeeperGuardStrategy(5), new RemoteAttackStrategy(5), new SquadAttackStrategy(),new RemoteAttackStrategy(),
             new HealStrategy(),new CloseAttackStrategy(),new RegroupStrategy(COLOR_BLUE)/*,new AttackStructureStrategy()*/];
         this.moveTask = new MoveToRoomTask('attack','homeroom','remoteRoom');
     }
@@ -30,15 +30,16 @@ class RoleRemoteRoomGuard {
     init(creep) {
         creep.memory.action = creep.memory.action || 'wait';
         creep.memory.homeroom = creep.memory.homeroom || creep.room.name;
-        creep.memory.remoteRoom = creep.memory.remoteRoom || creep.room.memory.remoteMining || creep.room.memory.claim ||creep.room.memory.attack;
+        creep.memory.remoteRoom = creep.memory.remoteRoom || (_.isString(creep.room.memory.remoteMining)?creep.room.memory.remoteMining:creep.room.memory.remoteMining[0])
+            || creep.room.memory.claim ||creep.room.memory.attack;
     }
 
     findHomeExit(creep) {
-        return util.findExit(creep, creep.memory.remoteRoom, 'exit_'+creep.memory.remoteRoom);
+        return util.findExit(creep, creep.memory.remoteRoom);
     }
 
     findRemoteExit(creep) {
-        return util.findExit(creep, creep.memory.homeroom, 'exit_'+creep.memory.homeroom);
+        return util.findExit(creep, creep.memory.homeroom);
     }
 
     /** @param {Creep} creep **/

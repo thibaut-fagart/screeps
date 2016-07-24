@@ -6,10 +6,21 @@ var PickupManager = require('./util.manager.pickup');
  * finds a non-empty  energy container, preferably enough to fill this creep, otherwise closesst
  */
 class PickupStrategy extends BaseStrategy {
+
+    /**
+     * @typedef {Function} PickupPredicate
+     * @param {Creep} creep 
+     * @return {CreepPickupPredicate}
+     */
+    /**
+     * @typedef {Function} CreepPickupPredicate
+     * @param {Resource} drop
+     * @return {boolean}
+     */
     /**
      *
-     * @param resource
-     * @param {Function(Creep)} predicate
+     * @param {string} resource
+     * @param {PickupPredicate} predicate
      */
     constructor(resource, predicate) {
         super();
@@ -19,6 +30,10 @@ class PickupStrategy extends BaseStrategy {
             return ((drop)=> true);
         });
         this.PATH = PickupStrategy.PATH;
+    }
+    cancelPickup(creep) {
+        PickupManager.getManager(creep.room).releaseDrop(creep, creep.memory[this.PATH]);
+        delete creep.memory[this.PATH];
     }
 
     clearMemory(creep) {
@@ -65,30 +80,6 @@ class PickupStrategy extends BaseStrategy {
         // if (false)
         // if (true)
             return PickupManager.getManager(creep.room.name).allocateDrop(creep, this.resource, this.predicate);
-/*
-        else {
-            let source;
-            let drops = this.findDrops(creep);
-            drops = drops.filter(this.predicate(creep));
-            // creep.log('filtered drops', countBefore, drops.length);
-            // if (creep.room.name ==='E36S14') creep.log('drops', drops.length);
-            let availableCarry = creep.carryCapacity - _.sum(creep.carry);
-            let sortedDrops = drops.sort((d) => (Math.min(d.amount, availableCarry) - 5 * creep.pos.getRangeTo(d)) * -1);
-            // creep.log('sortedDrops', sortedDrops.length, (sortedDrops.reduce(((str,drop)=> str + drop.amount+','),'')));
-            if (sortedDrops.length) {
-                let drop = sortedDrops.shift();
-                // creep.log('choosing drop', drop.amount, JSON.stringify(drop.pos));
-                let myAmount = this.nonReservedAmount(creep, drop);
-                // creep.log('myAmount', drop.id, drop.amount, myAmount);
-                if (myAmount > 0) {
-                    // creep.log('reserved', drop.id, myAmount);
-                    source = drop;
-                    this.reserve(creep, drop);
-                }
-            }
-            return source;
-        }
-*/
     }
 
     findDrops(creep) {

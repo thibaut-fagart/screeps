@@ -11,13 +11,13 @@ var RoleUpgrader = require('./role.upgrader'), roleUpgrader = new RoleUpgrader()
 var roleSpawn = require('./role.spawn');
 var RoleTower = require('./role.tower'), roleTower = new RoleTower();
 var RoleBuilder = require('./role.builder'), roleBuilder = new RoleBuilder();
-var roleRepair = require('./role.repair');
 var RoleRepair2 = require('./role.repair2'), roleRepair2 = new RoleRepair2();
 var RoleClaim = require('./role.controller.claim'), roleClaim = new RoleClaim();
 var RoleReserve = require('./role.controller.reserve'), roleReserve = new RoleReserve();
 var RoleRemoteHarvester = require('./role.remote_harvester'), roleRemoteHarvester = new RoleRemoteHarvester();
 var RoleGuard = require('./role.soldier.roomguard'), roleRemoteGuard = new RoleGuard(), roleCloseGuard = new RoleGuard();
 var RoleScout = require('./role.scout'), roleScout = new RoleScout();
+var RoleScout2 = require('./role.scout'), roleScout2 = new RoleScout2();
 var RoleAttacker = require('./role.soldier.attacker'), roleAttacker = new RoleAttacker();
 var RoleRemoteBuilder = require('./role.builder.remote'), roleRemoteBuilder = new RoleRemoteBuilder();
 var RoleRecycle = require('./role.recycle'), roleRecycle = new RoleRecycle();
@@ -31,7 +31,7 @@ var profiler = require('./screeps-profiler');
 // var RoomManager = require('./manager.room'), roomManager = new RoomManager(); // todo manager
 // This line monkey patches the global prototypes.
 // profiler.enable();
-var debugRoles = ['labOperator'];
+var debugRoles = [];
 // var debugRooms = ['E36S14'];
 // var debugCreeps = ['Xavier' ];
 Creep.prototype.log = function () {
@@ -146,11 +146,11 @@ function innerLoop() {
         'mineralGatherer': roleMineralGatherer,
         'remoteCarry': roleRemoteCarry,
         'upgrader': roleUpgrader,
-        'repair': roleRepair,
         'repair2': roleRepair2,
         'reserver': roleReserve,
         'builder': roleBuilder,
         'scout': roleScout,
+        'scout2': roleScout2,
         'remoteBuilder': roleRemoteBuilder,
         'attacker': roleAttacker,
         'remoteHarvester': roleRemoteHarvester,
@@ -208,9 +208,7 @@ function innerLoop() {
         }
         // roomManager.run(room); // todo manager
         delete roleRepair2.needRepairs;
-        delete roleRepair.needRepairs;
         delete roleRepair2.needRepairAmount;
-        delete roleRepair.needRepairAmount;
         // room.prototype.sourceConsumers = {};
         var creeps = room.find(FIND_MY_CREEPS);
         // room.creeps = creeps;
@@ -228,7 +226,7 @@ function innerLoop() {
                     cpu[creep.memory.role] += (end - start);
                 }
             } catch (e) {
-                console.log(e.stack);
+                creep.log(e.stack);
                 Game.notify(e.stack);
             }
         });
@@ -238,19 +236,12 @@ function innerLoop() {
         });
         room.find(FIND_MY_SPAWNS).forEach(function (spawn) {
             roleSpawn.run(spawn);
+            Memory.stats['room.' + room.name + '.spawns.queueLength'] = spawn.memory.queueLength;
+            _.keys(spawn.memory.queue).forEach((role)=> {
+                'use strict';
+                Memory.stats['room.' + room.name + '.spawns.queue.'+role] = spawn.memory.queue[role];
+            });
         });
-        if (roleRepair.underRepair) {
-            if (!room.memory.needRepairAmount) {
-                room.memory.needRepairAmount = 0;
-            }
-            var deltaRepair = room.memory.needRepairAmount - roleRepair.needRepairAmount;
-            room.memory.needRepairAmount = roleRepair.needRepairAmount;
-            /*
-             if (deltaRepair!=0) {
-             console.log('' + roleRepair.needRepairs.length + ' waiting for repairs, delta ' + deltaRepair + ',total needed ' + roleRepair.needRepairAmount);
-             }
-             */
-        }
         /*
          if (!(Game.time % 100)) {
          for (let id in room.memory.reserved) {
@@ -273,8 +264,8 @@ function innerLoop() {
         Memory.stats["room." + room.name + ".energyInSources"] = _.sum(_.map(room.find(FIND_SOURCES_ACTIVE), (s)=> s.energy));
         Memory.stats["room." + room.name + ".energyInStructures"] = _.sum(_.map(room.find(FIND_MY_STRUCTURES), (s)=> s.store ? s.store.energy : 0));
         Memory.stats["room." + room.name + ".energyDropped"] = _.sum(_.map(room.find(FIND_DROPPED_RESOURCES, {filter: (r) => r.resourceType == RESOURCE_ENERGY}), (s)=> s.amount));
-        Memory.stats["room." + room.name + ".spawns.idle"] = _.sum(room.find(FIND_MY_SPAWNS),(s)=>s.memory.idle);
-        Memory.stats["room." + room.name + ".spawns.waitFull"] = _.sum(room.find(FIND_MY_SPAWNS),(s)=>s.memory.waitFull);
+        // Memory.stats["room." + room.name + ".spawns.idle"] = _.sum(room.find(FIND_MY_SPAWNS),(s)=>s.memory.idle);
+        // Memory.stats["room." + room.name + ".spawns.waitFull"] = _.sum(room.find(FIND_MY_SPAWNS),(s)=>s.memory.waitFull);
 
         let strangers = room.find(FIND_HOSTILE_CREEPS);
         let hostiles = _.filter(strangers, (c)=>_.sum(c.body, (p)=>p == ATTACK || p == RANGED_ATTACK) > 0);

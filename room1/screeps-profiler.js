@@ -196,7 +196,6 @@ const Profiler = {
 {name:'RoleTower',val:require('./role.tower')},
 {name:'RoleUpgrader',val:require('./role.upgrader')},
   {name:'Util',val:require('./util')},
-  {name:'roleRepair', val: require('./role.repair')},
 {name:'RoleScout' , val:require('./role.scout')},
   {name:'RoleRemoteBuilder', val: require('./role.builder.remote')},
   {name:'RoleRecycle', val: require('./role.recycle')},

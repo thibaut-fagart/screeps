@@ -24,7 +24,12 @@ class PickupManager {
         console.log([this.constructor.name, this.roomName].concat(Array.prototype.slice.call(arguments)));
     }
 
+    /**
+     *
+     * @param {Room} room
+     */
     updateState(room) {
+        if (!room.memory.pickupManager) room.memory.pickupManager = {};
         if (Game.time !== room.memory.pickupManager.tick) {
             // let start = Game.cpu.getUsed();
             // this.log('updating state', Game.time,room.memory.pickupManager.tick);
@@ -82,13 +87,22 @@ class PickupManager {
             let sortedDrops = _.sortBy(allMatchingDrops, (d) => (Math.min(this.freeAmount(d), freeCapacity) - 5 * creep.pos.getRangeTo(d)) * -1);
 
             let chosen = sortedDrops[0];
+            if (!this.state) {
+                this.updateState(Game.rooms[this.roomName]);
+            }
             this.state[chosen.id] = this.state[chosen.id] || {};
             this.state[chosen.id][creep.id] = Math.min(freeCapacity, chosen.amount);
             this.freeDropAmounts[chosen.id] = this.freeDropAmounts[chosen.id] - freeCapacity;
             return chosen;
         }
     }
-
+    releaseDrop(creep, dropid) {
+        if (!this.state) return;
+        let state = this.state[dropid];
+        if (state) {
+            delete state[creep.id];
+        }
+    }
     freeAmount(drop) {
         // console.log(JSON.stringify('freeDropAmounts', this.freeDropAmounts), this.freeDropAmounts[drop.id], this.freeDropAmounts[drop.id] || drop.amount);
         if (!this.freeDropAmounts) {
@@ -103,7 +117,7 @@ PickupManager
     .managers = {};
 PickupManager.getManager = function (roomName) {
     'use strict';
-    let room = ('string' === typeof roomName) ? Game.rooms[roomName] : room;
+    let room = ('string' === typeof roomName) ? Game.rooms[roomName] : roomName;
     if (!PickupManager.managers[roomName]) {
         // console.log('new PickupManager', roomName);
         PickupManager.managers[roomName] = new PickupManager(room);

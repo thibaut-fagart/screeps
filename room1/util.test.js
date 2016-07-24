@@ -8,6 +8,42 @@ require('../lib/mocks/gameStateGlobals')();
 var util = require('./util');
 
 describe('util', function () {
+    describe('findExit', function () {
+        "use strict";
+        it("", function () {
+            let creep = new Creep();
+            let room = new Room();
+            creep.room = room;
+            Creep.prototype.log = function() {
+                console.log.apply(console, arguments);
+            }
+            room.memory = {};
+            room.name = 'A';
+            global.Game.map = {
+                findRoute: function () {
+                    return [{room: 'B', exit: 'left'}, {room: 'C', exit: 'left'}];
+                }
+            };
+            Memory.rooms={};
+            Memory.rooms[creep.room.name] = creep.room.memory;
+            // Memory.rooms['A']= {};
+            // Memory.rooms['B']= {};
+            Game.rooms['A'] = room;
+            Game.rooms['B'] = new Room();
+            let exit_A = new RoomPosition(0,10,'A');
+            RoomPosition.prototype.findClosestByPath = function() {
+                if (this.roomName === 'A') {
+                    return exit_A;
+                }
+                else if (this.roomName === 'B') return new RoomPosition(10,0, 'B');
+            };
+            creep.pos = new RoomPosition(10, 10, 'A');
+            let result = util.findExit(creep, 'C');
+            expect(result.x).to.equal(exit_A.x);
+            expect(result.y).to.equal(exit_A.y);
+            expect(result.roomName).to.equal(exit_A.roomName);
+        });
+    });
     describe('isReserved', function () {
         it('non locked objects should return false', function () {
             "use strict";
@@ -29,9 +65,12 @@ describe('util', function () {
             creep.id = '1';
             let room = new Room();
             creep.room = room;
+            creep.memory = {};
             room.memory = {};
             let subject = {id: 'o'};
-            Game.getObjectById=(id)=>{return true;};
+            Game.getObjectById = (id)=> {
+                return true;
+            };
             util.reserve(creep, subject, 'r');
             expect(util.isReserved(creep, subject, 'r'), 'lck should be free').to.equal(false);
 
@@ -43,9 +82,12 @@ describe('util', function () {
             creep.id = '1';
             let room = new Room();
             creep.room = room;
+            creep.memory = {};
             room.memory = {};
             let subject = {id: 'o'};
-            Game.getObjectById=(id)=>{return true;};
+            Game.getObjectById = (id)=> {
+                return true;
+            };
             util.reserve(creep, subject, 'r');
             creep.id = '2';
             expect(util.isReserved(creep, subject, 'r'), 'lck should be free').to.equal(true);
@@ -58,15 +100,18 @@ describe('util', function () {
             creep.id = '1';
             let room = new Room();
             creep.room = room;
+            creep.memory = {};
             room.memory = {};
             let subject = {id: 'o'};
-            Game.getObjectById=(id)=>{return false;};
+            Game.getObjectById = (id)=> {
+                return false;
+            };
             util.reserve(creep, subject, 'r');
             creep.id = '2';
             expect(util.isReserved(creep, subject, 'r'), 'lck should be free').to.equal(false);
 
         });
-    }) ;
+    });
     describe('release', function () {
         it('released locks should  be free', function () {
             "use strict";
@@ -78,10 +123,14 @@ describe('util', function () {
             let room = new Room();
             creep.room = room;
             creep2.room = room;
+            creep.memory = {};
+            creep2.memory = {};
             room.memory = {};
             let subject = {id: 'o'};
             util.reserve(creep, subject, 'r');
-            Game.getObjectById=(id)=>{return true;};
+            Game.getObjectById = (id)=> {
+                return true;
+            };
             expect(util.isReserved(creep, subject, 'r'), 'lck should be free').to.equal(false);
             expect(util.isReserved(creep2, subject, 'r'), 'lck should be free').to.equal(true);
             util.release(creep, subject, 'r');
@@ -96,9 +145,12 @@ describe('util', function () {
             creep.id = '1';
             let room = new Room();
             creep.room = room;
+            creep.memory = {};
             room.memory = {};
             let subject = {id: 'o'};
-            Game.getObjectById=(id)=>{return true;};
+            Game.getObjectById = (id)=> {
+                return true;
+            };
             util.reserve(creep, subject, 'r');
             expect(util.isReserved(creep, subject, 'r'), 'lck should be free').to.equal(false);
             // expect(JSON.parse(childString), 'root save').to.deep.equal(child);
@@ -111,9 +163,12 @@ describe('util', function () {
             creep.id = '1';
             let room = new Room();
             creep.room = room;
+            creep.memory = {};
             room.memory = {};
             let subject = {id: 'o'};
-            Game.getObjectById=(id)=>{return true;};
+            Game.getObjectById = (id)=> {
+                return true;
+            };
             util.reserve(creep, subject, 'r');
             creep.id = '2';
             expect(util.isReserved(creep, subject, 'r'), 'lck should be free').to.equal(true);
@@ -127,9 +182,12 @@ describe('util', function () {
             creep.id = '1';
             let room = new Room();
             creep.room = room;
+            creep.memory = {};
             room.memory = {};
             let subject = {id: 'o'};
-            Game.getObjectById=(id)=>{return false;};
+            Game.getObjectById = (id)=> {
+                return false;
+            };
             util.reserve(creep, subject, 'r');
             creep.id = '2';
             expect(util.isReserved(creep, subject, 'r'), 'lck should be free').to.equal(false);

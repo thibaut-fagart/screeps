@@ -102,7 +102,7 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
             } else {
                 let path = creep.memory[this.PATH_TO_SOURCE_PATH];
                 if (!path) {
-                    creep.log('looking up path');
+                    // creep.log('looking up path');
                     let hostiles = creep.room.find(FIND_HOSTILE_CREEPS);
                     /*
                      if (!creep.pos || !source.pos) {

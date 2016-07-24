@@ -13,6 +13,7 @@ class SwitchFocusStrategy extends Base {
      */
     accepts(creep) {
         if (creep.hits < creep.hitsMax && creep.memory.lastHits > creep.hits) {
+
             let moveParts = 0;
             let disabledMoveParts = 0;
             creep.body.forEach((p)=> {

@@ -12,7 +12,11 @@ class KeeperPickupStrategy extends PickupStrategy {
         this.PATH_TO_SOURCE_PATH = 'pickupPath';
     }
 
-
+    cancelPickup(creep) {
+        // creep.log('cancelPickup');
+        super.cancelPickup(creep);
+        delete creep.memory[this.PATH_TO_SOURCE_PATH];
+    }
     findSource(creep) {
         delete creep.memory[this.PATH_TO_SOURCE_PATH];
         return super.findSource(creep);
@@ -40,18 +44,10 @@ class KeeperPickupStrategy extends PickupStrategy {
         if (!path || !(path.length)  || creep.pos.getRangeTo(path[0].x,path[0].y)>1) {
             // creep.log('finding path to ', JSON.stringify(source.pos));
             path = util.safeMoveTo(creep, source.pos);
-/*
-
-            let hostiles = creep.room.find(FIND_HOSTILE_CREEPS);
-
-            path = PathFinder.search(creep.pos, {pos: source.pos, range: 0}, {
-                roomCallback: util.avoidCostMatrix(creep, hostiles)
-            }).path;
-*/
             creep.memory[this.PATH_TO_SOURCE_PATH] = creep.memory[this.PATH_TO_SOURCE_PATH]||{};
             creep.memory[this.PATH_TO_SOURCE_PATH][source.id] = path;
         }
-        if (path.length) {
+        if (path.length && path[0]) {
             // creep.log('at, next',JSON.stringify(creep.pos),JSON.stringify(path[0]));
 
             if (path[0].x == creep.pos.x && path[0].y == creep.pos.y) {

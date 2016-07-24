@@ -24,8 +24,8 @@ class LoadFromContainerStrategy extends BaseStrategy {
      * @return {boolean}**/
     accepts(creep) {
         let neededCarry = creep.carryCapacity - _.sum(creep.carry);
-        let source = util.objectFromMemory(creep.memory, this.PATH, (c)=>this.containerQty(creep,c) > neededCarry);
-        if (!source || this.containerQty(creep,source) < neededCarry) {
+        let source = util.objectFromMemory(creep.memory, this.PATH, (c)=>this.containerQty(creep, c) > neededCarry);
+        if (!source || this.containerQty(creep, source) < neededCarry) {
             source = this.findSource(creep, neededCarry, source);
         }
         // creep.log('source',source);
@@ -49,7 +49,7 @@ class LoadFromContainerStrategy extends BaseStrategy {
             if (source.transfer || source.transferEnergy) {
                 this.transferFromSource(source, creep, neededCarry);
             } else {
-                creep.log('source!transfer', source.structureType , source.prototype, JSON.stringify(source));
+                creep.log('source!transfer', source.structureType, source.prototype, JSON.stringify(source));
                 return null;
             }
 
@@ -63,26 +63,29 @@ class LoadFromContainerStrategy extends BaseStrategy {
     transferFromSource(source, creep, neededCarry) {
         let ret;
         // if (creep.room.name ==='E38S14') creep.log('transferFromSource', source);
-/*
-        if (this.resource === LoadFromContainerStrategy.ANY_MINERAL) {
-            creep.log('transfer from ', source.structureType, JSON.stringify(source.store));
-        }
-*/
+        /*
+         if (this.resource === LoadFromContainerStrategy.ANY_MINERAL) {
+         creep.log('transfer from ', source.structureType, JSON.stringify(source.store));
+         }
+         */
 
-        let resource = typeof this.resource ==='function' ? this.resource(creep):this.resource;
+        let resource = typeof this.resource === 'function' ? this.resource(creep) : this.resource;
         switch (resource) {
-            case RESOURCE_ENERGY: {
+            case RESOURCE_ENERGY:
+            {
                 // ret = source.transferEnergy ? source.transferEnergy(creep) : source.transfer(creep, this.resource);
                 ret = creep.withdraw(source, RESOURCE_ENERGY);
                 break;
             }
-            case LoadFromContainerStrategy.ANY_MINERAL : {
-                let resource = _.keys(source.store).find((r)=> (r !== RESOURCE_ENERGY && source.store[r]>0));
+            case LoadFromContainerStrategy.ANY_MINERAL :
+            {
+                let resource = _.keys(source.store).find((r)=> (r !== RESOURCE_ENERGY && source.store[r] > 0));
                 ret = creep.withdraw(source, resource);
                 break;
 
             }
-            default: {
+            default:
+            {
                 ret = creep.withdraw(source, resource);
             }
         }
@@ -125,36 +128,38 @@ class LoadFromContainerStrategy extends BaseStrategy {
         // creep.log('allSources has storage ?',this.structure,  allSources.find((c)=>c.structureType === STRUCTURE_STORAGE));
         // if (creep.memory.role ==='mineralGatherer') creep.log('allSources has links?', allSources.find((c)=>c.structureType === STRUCTURE_LINK));
         // if (this.structure === STRUCTURE_LINK) creep.log('allSources?', allSources.length);
-        // creep.log('allSources',allSources.length, _.filter(allSources, (s)=>s.structureType=== STRUCTURE_LINK).length);
+        // creep.log('allSources', allSources.length, _.filter(allSources, (s)=>s.structureType === STRUCTURE_LAB).length);
 
         // if (this.resource === LoadFromContainerStrategy.ANY_MINERAL) {
         //     if (creep.memory.role ==='mineralGatherer')  creep.log('LoadFromContainerStrategy', this.structure, 'finding source', 'allSources',allSources.length, allSources.find((s)=>s.structureType === STRUCTURE_STORAGE));
         // }
         // creep.log(this.constructor.name, 'storage ? ',_.find(allSources,(s)=>s.structureType ==STRUCTURE_STORAGE));
         var nonEmptySources = _.filter(allSources, (s)=> (this.containerQty(creep, s)));
-        var fullEnoughSources = _.filter(nonEmptySources, (s) => this.containerQty(creep,s) >= neededCarry);
+        var fullEnoughSources = _.filter(nonEmptySources, (s) => this.containerQty(creep, s) >= neededCarry);
         // var fullSources = _.filter(fullEnoughSources, (s) => this.containerQty(creep,s) == s.storeCapacity);
         // if (creep.room.name ==='E37S14') creep.log('nonEmptySources',nonEmptySources.length,'fullEnoughSources',fullEnoughSources.length,'fullSources', fullSources.length);
         // if (creep.room.name ==='E37S14') creep.log('nonEmptySources?', JSON.stringify(_.countBy(nonEmptySources.map((c)=>c.structureType))));
         // if (creep.room.name ==='E37S14') creep.log('fullEnoughSources?', JSON.stringify(_.countBy(fullEnoughSources.map((c)=>c.structureType))));
-        // if (creep.room.name ==='E37S14') creep.log('fullSources?', JSON.stringify(_.countBy(fullSources.map((c)=>c.structureType))));
-/*
+        // creep.log('fullEnoughSources?', JSON.stringify(_.countBy(fullEnoughSources.map((c)=>c.structureType))));
+        // creep.log('nonEmptySources?', JSON.stringify(_.countBy(nonEmptySources.map((c)=>c.structureType))));
+        /*
 
-        if (this.structure == STRUCTURE_LINK || !this.structure) {
-            // creep.log('links allowed');
-            let links = creep.room.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_LINK}});
-            allSources.concat(links);
-            if (_.sum(links, (s)=>s.energy) >= neededCarry) {
-                fullEnoughSources = fullEnoughSources.concat(links);
-            }
-        }
-*/
+         if (this.structure == STRUCTURE_LINK || !this.structure) {
+         // creep.log('links allowed');
+         let links = creep.room.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_LINK}});
+         allSources.concat(links);
+         if (_.sum(links, (s)=>s.energy) >= neededCarry) {
+         fullEnoughSources = fullEnoughSources.concat(links);
+         }
+         }
+         */
         /*if (fullSources.length > 0) {
-            source = creep.pos.findClosestByRange(fullSources);
-        } else */if (fullEnoughSources.length > 0) {
+         source = creep.pos.findClosestByRange(fullSources);
+         } else */
+        if (fullEnoughSources.length > 0) {
             source = creep.pos.findClosestByRange(fullEnoughSources);
         } else {
-            source = _.sortBy(nonEmptySources, (s)=>-1 * this.containerQty(creep,s))[0];
+            source = _.sortBy(nonEmptySources, (s)=>-1 * this.containerQty(creep, s))[0];
         }
         // creep.log('LoadFromContainerStrategy', this.structure, 'fullEnoughSources',allSources.length);
         // creep.log('LoadFromContainerStrategy', this.structure, 'source',source);
@@ -176,29 +181,32 @@ class LoadFromContainerStrategy extends BaseStrategy {
      * @param structure
      * @returns {number}
      */
-    containerQty(creep,structure) {
+    containerQty(creep, structure) {
+        let ret = 0;
+        let resource = typeof this.resource === 'function' ? this.resource(creep) : this.resource;
         try {
-            let ret =0;
-            let resource = typeof this.resource ==='function' ? this.resource(creep):this.resource;
             switch (resource) {
                 case  RESOURCE_ENERGY :
                     ret = structure.store ? structure.store.energy :
                         (structure.structureType === STRUCTURE_LINK ?
-                            _.sum(structure.room.find(FIND_STRUCTURES).filter((s)=>s.structureType===STRUCTURE_LINK  && s.cooldown ===0), (s)=>s.energy)
-                            :structure.energy);
+                            _.sum(structure.room.find(FIND_STRUCTURES).filter((s)=>s.structureType === STRUCTURE_LINK && s.cooldown === 0), (s)=>s.energy)
+                            : structure.energy);
                     break;
 
                 case LoadFromContainerStrategy.ANY_MINERAL :
-                    ret = structure.store ? _.sum(structure.store)-structure.store.energy: 0; break;
+                    ret = structure.store ? _.sum(structure.store) - structure.store.energy : 0;
+                    break;
                 default:
-                    ret = structure.store[resource];
+                    ret = structure.mineralCapacity ?
+                        (structure.mineralType === resource ? structure.mineralAmount : 0) // lab
+                        : structure.store ? structure.store[resource] : 0;
                     break;
             }
-/*
-            if (creep.room.name ==='E37S14' && this.resource === RESOURCE_ENERGY) {
-                creep.log('qty?', s.structureType, this.resource, JSON.stringify(s.store), ret);
-            }
-*/
+            /*
+             if (creep.room.name ==='E37S14' && this.resource === RESOURCE_ENERGY) {
+             creep.log('qty?', s.structureType, this.resource, JSON.stringify(s.store), ret);
+             }
+             */
             return ret;
         } catch (e) {
             console.log(this.constructor.name, resource, structure.structureType);

@@ -56,5 +56,10 @@ var pos = {"x":22,"y":32,"roomName":"E38S14"}; Game.rooms[pos.roomName].createFl
     require('./role.spawn').findCreepsMatching(Game.rooms.E37S14, {role: 'roleSoldier', type:'close'})
     _.filter(Game.rooms.E37S14.find(FIND_MY_CREEPS),(c)=>c.memory.role==='keeperHarvester').forEach((c)=> c.memory.role ='recycle')
 
+    let dest = JSON.parse(Game.rooms.E38S15.memory.exit_E38S16), room = Game.rooms.E38S15; Game.rooms.E38S15.storage.pos.findPathTo(dest.x, dest.y).forEach((pos)=>  room.createFlag(pos.x, pos.y,COLOR_CYAN))
 
+    require('./layout').clean('E38S14')
+
+
+    _.values(Memory.rooms).forEach((mem)=>{delete mem.exits})
     var structure = STRUCTURE_LAB; var creep = _.find(Game.creeps, (c)=>c.memory.role ==='mineralGatherer');var containerAccepts = (creep, c)=>(c.structureType === STRUCTURE_LINK && creep.carry.energy === _.sum(c.carry)) || (c.structureType !== STRUCTURE_LINK);creep.room.find(FIND_STRUCTURES, {filter: (s) =>(!structure||(s.structureType == structure)) && this.containerAccepts(creep, s)})

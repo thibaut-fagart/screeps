@@ -1,10 +1,13 @@
 var _ = require('lodash');
 var util = require('./util');
 var ReserveControllerStrategy = require('./strategy.controller.reserve');
+var MoveToRoomTask = require('./task.move.toroom');
 
 class RoleReserveController {
     constructor() {
         this.loadStrategies = [new ReserveControllerStrategy()];
+        this.moveTask = new MoveToRoomTask('reserve','homeroom','remoteRoom');
+
     }
 
     /*
@@ -25,17 +28,16 @@ class RoleReserveController {
 
     }
 
-    findHomeExit(creep) {
-        return util.findExit(creep, creep.memory.remoteRoom, 'exit_'+creep.memory.remoteRoom);
-    }
-
-    findRemoteExit(creep) {
-        return util.findExit(creep, creep.memory.homeroom, 'exit_'+creep.memory.homeroom);
-    }
 
     /** @param {Creep} creep **/
     run(creep) {
-        if (!creep.memory.homeroom) {
+        if (creep.memory.action !== 'reserve' && this.moveTask.accepts(creep)) {
+            return;
+        } else {
+            creep.memory.action = 'load';
+        }
+
+ /*       if (!creep.memory.homeroom) {
             creep.memory.homeroom = creep.room.name;
         }
         if (!creep.memory.action) {
@@ -69,7 +71,7 @@ class RoleReserveController {
                 // console.log("moving to homeExit ", );
             }
         }
-
+*/
         if (creep.memory.action == 'load' && creep.memory.remoteRoom == creep.room.name) {
             let strategy = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);
             // creep.log('previousStrategy',util.strategyToLog(strategy));
@@ -85,33 +87,6 @@ class RoleReserveController {
                 return;
             }
         }
-        if (creep.memory.action == 'go_home_room') {
-            if (creep.room.name != creep.memory.homeroom) {
-                var exit = this.findRemoteExit(creep);
-                if (exit) {
-                    creep.moveTo(exit.x, exit.y, {reusePath: 50});
-                } else {
-                    creep.log("no exit ?", creep.pos);
-                }
-
-                // console.log("moving to remoteExit ", );
-            } else if (roomAlreadyClaimed) {
-
-                let spawn = util.objectFromMemory(creep.memory, 'target');
-                if (!spawn) {
-                    spawn = creep.pos.findClosestByRange(FIND_MY_SPAWNS);
-                    creep.memory.target = spawn.id;
-                }
-
-
-                if (creep.pos.getRangeTo(spawn) < 5) {
-                    creep.moveTo(spawn);
-                }
-            } else {
-                creep.memory.action = 'go_remote_room';
-            }
-        }
-
     }
 }
 
