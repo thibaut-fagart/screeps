@@ -58,32 +58,8 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
                 }
                 // creep.log("transfer ? ", ret, ", ", container.store[this.resource]);
             } else {
-                let path = creep.memory[this.PATH_TO_SOURCE_PATH];
-                if (!path) {
-                    let hostiles = creep.room.find(FIND_HOSTILE_CREEPS);
-
-                    path = PathFinder.search(creep.pos, {pos: container.pos, range: 0}, {
-                        roomCallback: util.avoidCostMatrix(creep, hostiles)
-                    }).path;
-                    creep.memory[this.PATH_TO_SOURCE_PATH] = path;
-                }
-                if (path.length) {
-                    let moveTo = creep.moveTo(path[0].x, path[0].y, container, {noPathFinding: true});
-                    if (moveTo === OK) {
-                        path.shift();
-                    }
-                    // creep.log('moveTo?', moveTo);
-                    if (ERR_INVALID_TARGET === moveTo || ERR_NO_PATH === moveTo) {
-                        creep.log('unreachable? switching targets');
-                        this.clearMemory(creep);
-                    }
-                } else {
-                    // should be home !
-                    // creep.log('home?', creep.pos.getRangeTo(container));
-                    delete creep.memory[this.PATH_TO_SOURCE_PATH];
-                    path = void(0);
-                }
-
+                util.moveTo(creep, container.pos,this.constructor.name+"Path");
+                // let moveTo = this.moveTo(creep, container.pos);
             }
             // try transfering/moving
         }
@@ -100,38 +76,10 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
                     creep.log('harvest?', ret);
                 }
             } else {
-                let path = creep.memory[this.PATH_TO_SOURCE_PATH];
-                if (!path) {
-                    // creep.log('looking up path');
-                    let hostiles = creep.room.find(FIND_HOSTILE_CREEPS);
-                    /*
-                     if (!creep.pos || !source.pos) {
-                     if (!source.pos) {
-                     creep.log('!source.pos !!!!', source.id, source);
-                     util.release(creep, source,'harvest');
-                     delete creep.memory[this.SOURCE_PATH];
-                     return false;
-                     }
-                     }
-                     */
-                    path = PathFinder.search(creep.pos, {pos: source.pos, range: 1}, {
-                        roomCallback: util.avoidCostMatrix(creep, hostiles)
-                    }).path;
-                    creep.memory[this.PATH_TO_SOURCE_PATH] = path;
-                }
-
-                if (path.length) {
-
-                    let moveTo = creep.moveTo(path[0].x, path[0].y, container, {noPathFinding: true});
-                    if (moveTo === OK) {
-                        path.shift();
-                    }
-                } else {
-                    // creep.log('home?', creep.pos.getRangeTo(source));
+                if (ERR_NOT_FOUND ===util.moveTo(creep, source.pos,this.constructor.name+"Path")) {
+                    creep.log('discarding path');
                     delete creep.memory[this.PATH_TO_SOURCE_PATH];
-
                 }
-                // this.moveTo(creep, source);
             }
 
 
@@ -150,10 +98,13 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
     }
 
     findSourceAndContainer(creep) {
-        let releaseLambda = (id) => {creep.log('discarding', id); return (util.release(creep, id, 'harvest'));};
+        let releaseLambda = (id) => {
+            creep.log('discarding', id);
+            return (util.release(creep, id, 'harvest'));
+        };
 
         /** @type {Source} */
-        let container = util.objectFromMemory(creep.memory, this.CONTAINER_PATH, (s) =>  !util.isReserved(creep, s, 'harvest'), releaseLambda);
+        let container = util.objectFromMemory(creep.memory, this.CONTAINER_PATH, (s) => !util.isReserved(creep, s, 'harvest'), releaseLambda);
         /** @type {StructureContainer} */
         let source = util.objectFromMemory(creep.memory, this.SOURCE_PATH, (s)=> !util.isReserved(creep, s, 'harvest'), releaseLambda);
         if (!source || (!container && this.findFreeContainersNear(creep, source).length)) {
@@ -186,13 +137,13 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
                 let containers = this.findFreeContainersNear(creep, source).length;
                 container = containers[0];
             }
-/*
-            (creep.memory.locks || []).forEach((id)=> {
-                util.release(creep, id, 'harvest');
-                delete creep.memory.locks[id];
-            });
+            /*
+             (creep.memory.locks || []).forEach((id)=> {
+             util.release(creep, id, 'harvest');
+             delete creep.memory.locks[id];
+             });
 
-*/
+             */
             if (source && util.reserve(creep, source, 'harvest')) {
                 creep.memory[this.SOURCE_PATH] = source.id;
             } else {
@@ -206,7 +157,7 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
             if (container instanceof StructureContainer && util.reserve(creep, container, 'harvest')) {
                 // creep.log('source && container');
                 creep.memory[this.CONTAINER_PATH] = container.id;
-                let harvestContainers = creep.room.memory.harvestContainers ||[];
+                let harvestContainers = creep.room.memory.harvestContainers || [];
                 // creep.log('harvestContainers', harvestContainers, (harvestContainers&& harvestContainers.length));
                 if (harvestContainers && harvestContainers.indexOf(container.id) < 0) {
                     harvestContainers.push(container.id);
@@ -215,6 +166,31 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
                 // creep.log('harvestContainers2', harvestContainers, (harvestContainers&& harvestContainers.length));
 
             } else {
+                // build a container if none near the source
+                if (source) {
+                    let area = source.room.lookAtArea(source.pos.y - 1, source.pos.x - 1, source.pos.y + 1, source.pos.x + 1, true);
+                    let containers = area.filter((e)=>e.type === 'structure').map((e)=>(e.structure)).filter((s)=>s.structureType === STRUCTURE_CONTAINER);
+                    if (!containers.length) {
+                        let containerSites = area.filter((e)=>e.type === 'constructionSite').map((e)=>(e.constructionSite)).filter((s)=>s.structureType === STRUCTURE_CONTAINER);
+                        if (!containerSites.length) {
+                            // find a place
+                            let terrain = area.filter((e)=>e.type === 'terrain');
+                            let nonWallTerrain = terrain.filter((e)=>e.terrain !== 'wall');
+                            let minRange = 100;
+                            let minT;
+                            for (let i = 0, max = nonWallTerrain.length; i < max; i++) {
+                                let t = nonWallTerrain[i];
+                                let range = creep.pos.getRangeTo(t.x, t.y);
+                                if (range < minRange) {
+                                    minT = t;
+                                    minRange = range;
+                                }
+                            }
+                            let ret = creep.room.createConstructionSite(minT.x, minT.y, STRUCTURE_CONTAINER);
+                            creep.log('built a container?', ret, minT.x, minT.y);
+                        }
+                    }
+                }
                 container = null;
             }
             // creep.log('source', source);
@@ -235,7 +211,7 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
     }
 
     findSources(creep) {
-        let initial = (!this.resourceType || this.resourceType === RESOURCE_ENERGY)?creep.room.find(FIND_SOURCES, {filter: this.noHostiles()}):creep.room.find(FIND_MINERALS, {filter: this.noHostiles()});
+        let initial = (!this.resourceType || this.resourceType === RESOURCE_ENERGY) ? creep.room.find(FIND_SOURCES, {filter: this.noHostiles()}) : creep.room.find(FIND_MINERALS, {filter: this.noHostiles()});
         return initial.filter((s)=>!util.isReserved(creep, s, 'harvest'));
 
     }

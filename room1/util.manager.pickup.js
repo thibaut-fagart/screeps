@@ -82,17 +82,20 @@ class PickupManager {
      */
     allocateDrop(creep, resourceType, predicate) {
         let allMatchingDrops = creep.room.find(FIND_DROPPED_RESOURCES, {filter: (drop)=> drop.amount > 50 && (this.typeMatches(drop, resourceType, predicate))});
+        // creep.log('allDrops', resourceType, allMatchingDrops.length);
         if (allMatchingDrops.length) {
             let freeCapacity = creep.carryCapacity - _.sum(creep.carry);
-            let sortedDrops = _.sortBy(allMatchingDrops, (d) => (Math.min(this.freeAmount(d), freeCapacity) - 5 * creep.pos.getRangeTo(d)) * -1);
+            let sortedDrops = _.sortBy(allMatchingDrops, (d) => (Math.min(this.freeAmount(d), freeCapacity)) * -0.5 + 5 * creep.pos.getRangeTo(d));
 
             let chosen = sortedDrops[0];
+            // creep.log('chosen', chosen);
             if (!this.state) {
                 this.updateState(Game.rooms[this.roomName]);
             }
             this.state[chosen.id] = this.state[chosen.id] || {};
             this.state[chosen.id][creep.id] = Math.min(freeCapacity, chosen.amount);
             this.freeDropAmounts[chosen.id] = this.freeDropAmounts[chosen.id] - freeCapacity;
+            // creep.log('allocateDrop', JSON.stringify(chosen.pos), chosen.amount);
             return chosen;
         }
     }

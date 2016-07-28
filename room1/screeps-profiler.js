@@ -204,8 +204,18 @@ const Profiler = {
   {name:'RoleMineralHarvester', val: require('./role.harvester.mineral')},
   {name:'RoleEnergyFiller', val: require('./role.energyfiller')},
   {name:'RoleEnergyGatherer', val: require('./role.energygatherer')},
-  {name:'RoleMineralGatherer', val: require('./role.mineralgatherer')},
-      
+  {name:'StrategyAvoidRespawn', val: require('./strategy.avoidrespawn')},
+  {name:'StrategyRemoteHeal', val: require('./strategy.remote_heal')},
+  {name:'StrategyRemoteHealKeeper', val: require('./strategy.remote_heal_keeperguard')},
+  {name:'StrategyRemoteTarget', val: require('./strategy.remote_target')},
+  {name:'RoleMineralGatherer', val: require('./strategy.remote_target')},
+  {name:'StrategySquadAttack', val: require('./strategy.squadattack')},
+  {name:'StrategySwitchFocus', val: require('./strategy.switch_focus')},
+  {name:'TaskMoveActiveKeeper', val: require('./task.move.activekeeper')},
+  {name:'TaskMoveKeeperLair', val: require('./task.move.keeperlair')},
+  {name:'TaskMoveToRoom', val: require('./task.move.toroom')},
+
+
   ],
 
   record(functionName, time) {

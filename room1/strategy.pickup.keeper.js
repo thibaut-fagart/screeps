@@ -7,7 +7,7 @@ var PickupStrategy = require('./strategy.pickup');
 class KeeperPickupStrategy extends PickupStrategy {
     constructor(resource) {
         super(resource, function(creep){
-            return ((drop) => drop.pos.findInRange(FIND_HOSTILE_CREEPS).length === 0);
+            return ((drop) => drop.pos.findInRange(FIND_HOSTILE_CREEPS,5).length === 0);
         });
         this.PATH_TO_SOURCE_PATH = 'pickupPath';
     }
@@ -30,7 +30,10 @@ class KeeperPickupStrategy extends PickupStrategy {
     accepts(creep) {
         let oldid = creep.memory[this.PATH];
         let oldDrop = Game.getObjectById(oldid);
-        if (!oldDrop || oldDrop.pos.findInRange(FIND_HOSTILE_CREEPS, 3).length == 0) delete creep.memory[this.PATH];
+        if (!oldDrop || oldDrop.pos.findInRange(FIND_HOSTILE_CREEPS, 3).length > 0) {
+            // if (oldDrop)creep.log('giving up pickup, keeper nearby', oldDrop.pos);
+            delete creep.memory[this.PATH];
+        }
         return super.accepts(creep);
     }
 
@@ -43,7 +46,7 @@ class KeeperPickupStrategy extends PickupStrategy {
         }
         if (!path || !(path.length)  || creep.pos.getRangeTo(path[0].x,path[0].y)>1) {
             // creep.log('finding path to ', JSON.stringify(source.pos));
-            path = util.safeMoveTo(creep, source.pos);
+            path = util.moveTo(creep, source.pos,this.constructor.name+"Path");
             creep.memory[this.PATH_TO_SOURCE_PATH] = creep.memory[this.PATH_TO_SOURCE_PATH]||{};
             creep.memory[this.PATH_TO_SOURCE_PATH][source.id] = path;
         }

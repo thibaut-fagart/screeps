@@ -72,30 +72,6 @@ class RoleRemoteRoomGuard {
         }
 
         // creep.log(creep.memory.action);
-/*        if (creep.memory.action == 'go_remote_room' && creep.room.name == creep.memory.homeroom) {
-            if (!creep.memory.remoteRoom) {
-                creep.memory.remoteRoom = creep.memory.remoteRoom || creep.room.memory.remoteMining || creep.room.memory.claim || creep.room.memory.attack;
-                creep.log('no remoteMining room');
-                // this.resign(creep);
-            } else {
-
-                var exit = this.findHomeExit(creep);
-                let creeps = creep.room.lookForAt(LOOK_CREEPS, exit.x, exit.y);
-                if (creeps.length) {
-                    // creep.log('conflict ', creeps);
-                    if (!exit.x || exit.x == 49) {
-                        let number = exit.y + Math.floor(Math.random()*3)-1;
-                        // creep.log('trying ', exit.x, number);
-                        creep.moveTo(exit.x, number);
-                    } else if (!exit.y || exit.y == 49) {
-                        creep.moveTo(exit.x+ Math.floor(Math.random()*3)-1, exit.y);
-                    }
-                } else {
-                    let moveTo = creep.moveTo(exit.x, exit.y, {reusePath: 50});
-                }
-                // creep.log("moving to homeExit ", moveTo, exit.x, exit.y);
-            }
-        }*/
         if (creep.memory.action ==='defend' && creep.memory.homeroom == creep.room.name) {
             creep.memory.action = 'go_remote_room';
             // var exit = this.findHomeExit(creep);
@@ -120,41 +96,13 @@ class RoleRemoteRoomGuard {
                 // creep.log('newStrategy',util.strategyToLog(strategy));
             }
             if (strategy) {
-                // creep.log('strategy', strategy.constructor.name);
+                creep.log('strategy', strategy.constructor.name);
                 // util.setCurrentStrategy(creep, strategy);
                 delete creep.memory['fleepath'];
             } else {
                 // creep.log('no attackStrategy, moving to controller');
                 let controller = util.objectFromMemory(creep.memory, 'controller');
                 if (controller) this.regroup(creep);
-                /*
-                 if (controller.my && creep.pos.getRangeTo(controller.pos) < 5) {
-                 // creep.log('fleeing travelled points');
-                 let fleepath = util.objectFromMemory(creep.memory, 'fleepath');
-                 if (!fleepath) {
-                 let fleepoints = _.map(_.union([controller], creep.room.find(FIND_SOURCES), creep.room.find(FIND_STRUCTURES,
-                 (s)=>s.structureType === STRUCTURE_SPAWN || s.structureType == STRUCTURE_CONTAINER || s.structureType == STRUCTURE_EXTENSION))
-                 , (s)=> {return {range:10, pos:s.pos}});
-                 fleepath = PathFinder.search(creep.pos, fleepoints, {flee: true}).path;
-                 // creep.log('pathingto', fleepath.length,fleepath[fleepath.length-1]);
-                 fleepath = creep.room.findPath(creep.pos, fleepath[fleepath.length - 1]);
-                 // creep.log('fleepath', JSON.stringify(fleepath));
-
-                 creep.memory['fleepath'] = fleepath;
-                 }
-                 creep.moveByPath(fleepath);
-                 } else {
-                 // creep.log('not fleeing');
-                 if (Math.abs(controller.pos.x - creep.pos.x) > 1 || Math.abs(controller.pos.y - creep.pos.y)) {
-                 let moveTo = creep.moveTo(controller);
-                 if (moveTo !== OK && moveTo !== ERR_TIRED) {
-                 creep.log('moveTo?', moveTo);
-                 }
-                 } else {
-                 // creep.log('already at controller, idling');
-                 }
-                 }
-                 */
                 return;
             }
         }
@@ -186,7 +134,7 @@ class RoleRemoteRoomGuard {
         let inRange = creep.pos.findInRange(FIND_MY_CREEPS, 5, {filter: (c) => c.memory.role === creep.memory.role}).length;
         let room = Game.rooms[creep.memory.remoteRoom];
         // if (creep.room.name === 'E37S14') creep.log('brothers in room', inRange);
-        if (room) {
+        if (room && room.name !== creep.room.name) {
             let remoteBrothers = room.find(FIND_MY_CREEPS, {filter: (c) => c.memory.role === creep.memory.role}).length;
             // if (creep.room.name === 'E37S14') creep.log('remoteBrothers', remoteBrothers);
             inRange+=  remoteBrothers;

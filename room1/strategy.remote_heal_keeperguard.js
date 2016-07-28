@@ -26,7 +26,7 @@ class RemoteHealKeeperGuardStrategy extends RemoteHealStrategy {
         // return super.moveToAndHeal(creep, damaged); // TODO
         let rangeToDamaged = creep.pos.getRangeTo(damaged);
         if (rangeToDamaged > 1) {
-            let hostiles = damaged.pos.findInRange(FIND_HOSTILE_CREEPS);
+            let hostiles = damaged.pos.findInRange(FIND_HOSTILE_CREEPS,5);
             if (hostiles.length) {
                 let rangeTo = hostiles[0].pos.getRangeTo(creep.pos);
                 if (rangeTo === 3) {

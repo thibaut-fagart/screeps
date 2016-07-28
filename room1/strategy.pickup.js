@@ -9,7 +9,7 @@ class PickupStrategy extends BaseStrategy {
 
     /**
      * @typedef {Function} PickupPredicate
-     * @param {Creep} creep 
+     * @param {Creep} creep
      * @return {CreepPickupPredicate}
      */
     /**
@@ -20,7 +20,7 @@ class PickupStrategy extends BaseStrategy {
     /**
      *
      * @param {string} resource
-     * @param {PickupPredicate} predicate
+     * @param {PickupPredicate} [predicate]
      */
     constructor(resource, predicate) {
         super();
@@ -31,6 +31,7 @@ class PickupStrategy extends BaseStrategy {
         });
         this.PATH = PickupStrategy.PATH;
     }
+
     cancelPickup(creep) {
         PickupManager.getManager(creep.room).releaseDrop(creep, creep.memory[this.PATH]);
         delete creep.memory[this.PATH];
@@ -39,7 +40,7 @@ class PickupStrategy extends BaseStrategy {
     clearMemory(creep) {
         delete creep.memory[this.PATH];
     }
-    
+
     /** @param {Creep} creep
      * @return {boolean}**/
     accepts(creep) {
@@ -49,7 +50,7 @@ class PickupStrategy extends BaseStrategy {
         if (!source) {
             source = this.findSource(creep);
             // source = creep.pos.findClosestByRange(FIND_DROPPED_ENERGY);
-            // creep.log('reserved?', source && source.id);
+            // creep.log('reserved?', JSON.stringify(source ));
             if (source) {
                 creep.memory[this.PATH] = source.id;
             }
@@ -61,7 +62,7 @@ class PickupStrategy extends BaseStrategy {
 
             let ret = creep.pickup(source);
             if (ret == ERR_NOT_IN_RANGE) {
-                let move = this.moveTo(creep, source);
+                let move = util.moveTo(creep, source,this.constructor.name+"Path");
                 // creep.log('pickup  move?', move);
             } else if (ret == OK) {
                 delete creep.memory[this.PATH];
@@ -77,9 +78,7 @@ class PickupStrategy extends BaseStrategy {
     }
 
     findSource(creep) {
-        // if (false)
-        // if (true)
-            return PickupManager.getManager(creep.room.name).allocateDrop(creep, this.resource, this.predicate);
+        return PickupManager.getManager(creep.room.name).allocateDrop(creep, this.resource, this.predicate);
     }
 
     findDrops(creep) {
@@ -87,15 +86,6 @@ class PickupStrategy extends BaseStrategy {
         return creep.room.find(FIND_DROPPED_RESOURCES, {filter: (e)=> (!this.resource || this.resource == e.resourceType) && (e.amount > Math.max(20, creep.pos.getRangeTo(e.pos)))});
     }
 
-    moveTo(creep, source) {
-        let ret = creep.moveTo(source);
-        if (ret == ERR_NO_PATH) {
-            creep.log("no path to source");
-            delete creep.memory[this.PATH];
-            source = null;
-        }
-        return ret;
-    }
 }
 
 PickupStrategy.PATH = 'pickupSource';

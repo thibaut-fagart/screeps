@@ -9,7 +9,9 @@ var BuildStrategy = require('./strategy.build');
 class RoleBuilder {
     constructor() {
         this.loadStrategies = [
-            new LoadFromContainerStrategy(RESOURCE_ENERGY,  undefined, (creep)=>((s)=>([STRUCTURE_TOWER, STRUCTURE_SPAWN, STRUCTURE_EXTENSION].indexOf(s.structureType) < 0))),
+            new PickupStrategy(RESOURCE_ENERGY, (creep)=>((d)=>(d.pos.getRangeTo(creep)< 5))),
+            new LoadFromContainerStrategy(RESOURCE_ENERGY, undefined, (creep)=> ((s)=>s.pos.getRangeTo(creep) < 5)) ,
+            new LoadFromContainerStrategy(RESOURCE_ENERGY,  undefined /*,(creep)=>((s)=>([STRUCTURE_TOWER, STRUCTURE_SPAWN, STRUCTURE_EXTENSION].indexOf(s.structureType) < 0))*/),
             new PickupStrategy(RESOURCE_ENERGY),
             new HarvestEnergySourceStrategy()];
         this.buildStrategy = new BuildStrategy();
@@ -17,8 +19,8 @@ class RoleBuilder {
     }
 
     resign(creep) {
-        creep.log('resigning ');
-        creep.memory.role = 'upgrader';
+        creep.log('resigning ?');
+        // creep.memory.role = 'upgrader';
     }
 
 /*
@@ -45,37 +47,16 @@ class RoleBuilder {
         if (!creep.memory.building && creep.carry.energy == creep.carryCapacity) {
             creep.memory.building = true;
             delete creep.memory.source;
+            delete creep.memory.pickupSource;
+            util.setCurrentStrategy(creep, null);
+            delete creep.memory[this.buildStrategy.BUILD_TARGET];
         }
 
         if (creep.memory.building) {
             if (!this.buildStrategy.accepts(creep)) {
                 this.resign(creep);
             }
-/*            var target = this.findTarget(creep);
-            // creep.log('building',target);
-            if (!target) {
-                creep.log('target null');
-                delete creep.memory[this.BUILD_TARGET];
-                this.resign(creep);
-            } else {
-                let build = creep.build(target);
-                if (build == ERR_NOT_IN_RANGE) {
-                    let moveTo = creep.moveTo(target);
-                    if (moveTo !== OK && moveTo !== ERR_TIRED) {
-                        creep.log('moveTo?', build);
-                    }
-                } else if (build === ERR_INVALID_TARGET) {
-                    delete creep.memory[this.BUILD_TARGET];
-                } else if (build !== OK) {
-                    creep.log('build?', build);
-                }
-                if (target.progress == target.progressTotal) {
-                    creep.log('build complete', target.name);
-                    delete creep.memory[this.BUILD_TARGET];
-                }
-            }*/
-        }
-        else {
+        } else {
             let strategy = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);
 
             if (!strategy) {

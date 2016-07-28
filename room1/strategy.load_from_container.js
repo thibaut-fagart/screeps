@@ -14,6 +14,7 @@ class LoadFromContainerStrategy extends BaseStrategy {
         this.structure = structure;
         this.predicate = predicate;
         this.PATH = 'containerSource';
+        this.PATH_TO_SOURCE_PATH = 'containerPath';
     }
 
     clearMemory(creep) {
@@ -34,18 +35,6 @@ class LoadFromContainerStrategy extends BaseStrategy {
         if (source) {
             // creep.log('LoadFromContainerStrategy', 'loading',JSON.stringify(source.pos));
             // try transfering/moving
-            if (source.structureType === STRUCTURE_LINK && source.energy < neededCarry) {
-                // creep.log('using links');
-                let otherLinks = creep.room.find(FIND_STRUCTURES, {filter: (s)=> s.structureType == STRUCTURE_LINK && s.id != source.id && (s.cooldown == 0)});
-                otherLinks = _.sortBy(otherLinks, (s)=>-s.energy);
-                for (let i = 0, sum = 0; i < otherLinks.length && sum < neededCarry; i++) {
-                    let otherLink = otherLinks[i];
-                    // creep.log('otherLink', otherLink,otherLink.cooldown,otherLink.energy,neededCarry);
-                    let k = otherLink.energy;
-                    let ret = otherLink.transferEnergy(source, k);
-                    sum += (ret == 0) ? k : 0;
-                }
-            }
             if (source.transfer || source.transferEnergy) {
                 this.transferFromSource(source, creep, neededCarry);
             } else {
@@ -71,21 +60,18 @@ class LoadFromContainerStrategy extends BaseStrategy {
 
         let resource = typeof this.resource === 'function' ? this.resource(creep) : this.resource;
         switch (resource) {
-            case RESOURCE_ENERGY:
-            {
+            case RESOURCE_ENERGY: {
                 // ret = source.transferEnergy ? source.transferEnergy(creep) : source.transfer(creep, this.resource);
                 ret = creep.withdraw(source, RESOURCE_ENERGY);
                 break;
             }
-            case LoadFromContainerStrategy.ANY_MINERAL :
-            {
+            case LoadFromContainerStrategy.ANY_MINERAL : {
                 let resource = _.keys(source.store).find((r)=> (r !== RESOURCE_ENERGY && source.store[r] > 0));
                 ret = creep.withdraw(source, resource);
                 break;
 
             }
-            default:
-            {
+            default: {
                 ret = creep.withdraw(source, resource);
             }
         }
@@ -98,8 +84,9 @@ class LoadFromContainerStrategy extends BaseStrategy {
             // creep.log('transfer?', ret);
             delete creep.memory[this.PATH];
         } else if (ret === ERR_NOT_IN_RANGE) {
-            ret = creep.moveTo(source);
-            if (ret == ERR_NO_PATH) {
+            ret = util.moveTo(creep, source.pos,this.constructor.name+"Path");
+            // ret = creep.moveTo(source);
+            if (ret !== OK && ret !== ERR_TIRED) {
                 creep.log("no path to source");
                 delete creep.memory[this.PATH];
             }
@@ -187,10 +174,7 @@ class LoadFromContainerStrategy extends BaseStrategy {
         try {
             switch (resource) {
                 case  RESOURCE_ENERGY :
-                    ret = structure.store ? structure.store.energy :
-                        (structure.structureType === STRUCTURE_LINK ?
-                            _.sum(structure.room.find(FIND_STRUCTURES).filter((s)=>s.structureType === STRUCTURE_LINK && s.cooldown === 0), (s)=>s.energy)
-                            : structure.energy);
+                    ret = structure.store ? structure.store.energy : structure.energy;
                     break;
 
                 case LoadFromContainerStrategy.ANY_MINERAL :

@@ -59,7 +59,12 @@ var pos = {"x":22,"y":32,"roomName":"E38S14"}; Game.rooms[pos.roomName].createFl
     let dest = JSON.parse(Game.rooms.E38S15.memory.exit_E38S16), room = Game.rooms.E38S15; Game.rooms.E38S15.storage.pos.findPathTo(dest.x, dest.y).forEach((pos)=>  room.createFlag(pos.x, pos.y,COLOR_CYAN))
 
     require('./layout').clean('E38S14')
-
+    require('./layout').fromExitToExit('E38S14')
+    require('./layout').buildRoads('E38S17')
+    require('./layout').fromExitToSources('E35S15','E36S15')
+        ['Kaelyn'].forEach((n)=>{Game.creeps[n].memory.action = 'go_remote_room';Game.creeps[n].memory.remoteRoom= 'E38S16';})
 
     _.values(Memory.rooms).forEach((mem)=>{delete mem.exits})
     var structure = STRUCTURE_LAB; var creep = _.find(Game.creeps, (c)=>c.memory.role ==='mineralGatherer');var containerAccepts = (creep, c)=>(c.structureType === STRUCTURE_LINK && creep.carry.energy === _.sum(c.carry)) || (c.structureType !== STRUCTURE_LINK);creep.room.find(FIND_STRUCTURES, {filter: (s) =>(!structure||(s.structureType == structure)) && this.containerAccepts(creep, s)})
+
+    require('./util').safeMoveTo2(Game.creeps.Brody, new RoomPosition(14,49, 'E36S14')).forEach((pos)=>Game.rooms.E36S14.createFlag(pos.x, pos.y, undefined,COLOR_GREEN))

@@ -16,7 +16,7 @@ class MoveToSpawningKeeperLair extends BaseStrategy {
 
     accepts(creep) {
         // creep.log('moveToNextKeeperLair');
-        let lair = util.objectFromMemory(creep, this.KEEPER_PATH, (lair)=>lair.ticksToSpawn || lair.pos.findInRange(FIND_HOSTILE_CREEPS).length == 0);
+        let lair = util.objectFromMemory(creep, this.KEEPER_PATH, (lair)=>lair.ticksToSpawn || lair.pos.findInRange(FIND_HOSTILE_CREEPS, 5).length == 0);
         // creep.log('lair?', !!lair);
         if (lair) {
             // creep.log('lair', lair);

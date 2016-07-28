@@ -16,7 +16,7 @@ class RoleRecycle {
             let range = creep.pos.getRangeTo(spawn.pos);
             if (range ==1) {
                 spawn.recycleCreep(creep);
-            } else  creep.moveTo(spawn);
+            } else  util.moveTo(creep, spawn.pos, this.constructor.name+'Path');
         } else if (creep.memory.homeroom) {
             creep.log('recycle move');
             if (!creep.memory.homeroom === creep.room.name)creep.memory.action = 'go_remote_room';

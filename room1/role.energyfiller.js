@@ -10,6 +10,8 @@ class RoleEnergyFiller extends RoleCarry {
     constructor() {
         super();
         this.loadStrategies = [
+            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (creep)=> ((s)=>s.pos.getRangeTo(creep) < 2)) ,
+            new PickupStrategy(RESOURCE_ENERGY, (creep)=>((d)=>(d.pos.getRangeTo(creep)< 2))),
             new PickupStrategy(RESOURCE_ENERGY, (creep)=>(function(d){return d.amount > 50;})),
             new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_LINK, (creep)=> ((s)=>s.room.storage && (s.pos.getRangeTo(s.room.storage) < 5) && s.cooldown === 0)) ,
             new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_STORAGE),
@@ -20,6 +22,16 @@ class RoleEnergyFiller extends RoleCarry {
             new DropToEnergyStorageStrategy(STRUCTURE_SPAWN),
             new DropToContainerStrategy(RESOURCE_ENERGY,STRUCTURE_STORAGE),
         ];
+    }
+
+
+    onNoLoadStrategy(creep) {
+        // suppress logging
+        // return super.onNoLoadStrategy(creep);
+    }
+
+    onNoUnloadStrategy(creep) {
+        return super.onNoUnloadStrategy(creep);
     }
 }
 

@@ -47,7 +47,7 @@ class RoleRepair2 {
                 // creep.log('3',target.hits, target.hitsMax, target.pos);
                 let ret = creep.repair(target);
                 if (ret == ERR_NOT_IN_RANGE) {
-                    creep.moveTo(target);
+                    util.moveTo(creep, target.pos, this.constructor.name+'Path');
                 } else if (ret !== OK) {
                     creep.log('unexpected repair value', ret);
                     this.clearTarget(creep);

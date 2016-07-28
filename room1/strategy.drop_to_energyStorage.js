@@ -44,7 +44,8 @@ class DropToEnergyStorageStrategy extends BaseStrategy {
             // try transfering/moving
             let ret = creep.transfer(target, this.resource);
             if (ret == ERR_NOT_IN_RANGE && creep.fatigue == 0) {
-                ret = creep.moveTo(target);
+                // creep.log('moving', JSON.stringify(target.pos));
+                ret = util.moveTo(creep, target.pos, this.constructor.name+"Path");
                 if (ret == ERR_NO_PATH) {
                     creep.log("no path to target");
                     delete creep.memory[this.PATH];

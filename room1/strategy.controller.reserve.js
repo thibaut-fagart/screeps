@@ -41,7 +41,7 @@ class ReserveControllerStrategy extends BaseStrategy {
                     let claim = creep.reserveController(target);
                     // creep.log('transfer', claim);
                     if (claim == ERR_NOT_IN_RANGE) {
-                        let moveTo = creep.moveTo(target);
+                        let moveTo = util.moveTo(creep, target.pos, this.constructor.name+'Path');
                         // creep.log('move', moveTo);
                     } else if (claim !== OK){
                         // creep.log('claim?', claim, target.upgradeBlocked, JSON.stringify(target.reservation), JSON.stringify(target));

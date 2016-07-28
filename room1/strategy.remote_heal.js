@@ -66,8 +66,8 @@ class RemoteHealStrategy extends BaseStrategy {
             } else {
                 // creep.log('hasRangedAttack', hasRangedAttack, '!hasAttack', !hasAttack);
                 if (hasRangedAttack || !hasAttack) {
-                    if (!creep.pos.findInRange(FIND_HOSTILE_CREEPS, 5).length) {
-                        creep.log('no threat, self healing');
+                    if (!creep.pos.findInRange(FIND_HOSTILE_CREEPS, 3).length) {
+                        // creep.log('no threat, self healing');
                         let ret = creep.heal(creep);
                         if (OK !== ret) {
                             creep.log('heal?', ret);

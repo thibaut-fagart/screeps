@@ -39,7 +39,7 @@ class RoleUpgrader {
         }
         else {
             if (creep.upgradeController(creep.room.controller) == ERR_NOT_IN_RANGE) {
-                creep.moveTo(creep.room.controller);
+                util.moveTo(creep, creep.room.controller.pos, this.constructor.name+'Path');
             }
             if (creep.carry.energy == 0) {
                 creep.memory.action = this.ACTION_FILL;

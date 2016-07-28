@@ -8,10 +8,15 @@ class RegroupStrategy extends Base {
     }
 
     accepts(creep) {
+        // creep.log('regroup?');
         let regroupFlags = creep.room.find(FIND_FLAGS, {filter: {color: this.flagColor}});
         if (regroupFlags.length) {
             let flag = regroupFlags[0];
-            let memoryPath = 'regroup_' + this.flagColor;
+            if (creep.pos.isEqualTo(flag.pos)) return false;
+            // creep.log('moving to ', flag.pos);
+            util.moveTo(creep, flag.pos, 'regroup_' + this.flagColor);
+/*
+            let memoryPath = ;
             let path = util.objectFromMemory(creep.memory, memoryPath);
 
             if (!path) {
@@ -26,6 +31,7 @@ class RegroupStrategy extends Base {
             }
             creep.moveByPath(path);
             return true;
+*/
 
         }
         return false;

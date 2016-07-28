@@ -1,15 +1,28 @@
 var _ = require('lodash');
 var util = require('./util');
 var HarvestEnergySourceStrategy = require('./strategy.harvest_source');
-var HarvestEnergySourceToContainerStrategy = require('./strategy.harvest_source_to_container');
+var HarvestKeeperEnergySourceToContainerStrategy = require('./strategy.harvest_keepersource_to_container');
 var PickupStrategy = require('./strategy.pickup');
 var DropToEnergyStorage = require('./strategy.drop_to_energyStorage');
 var DropToContainerStrategy = require('./strategy.drop_to_container');
 var MoveToRoomTask = require('./task.move.toroom');
+var RegroupStrategy = require('./strategy.regroup');
+var BuildStrategy = require('./strategy.build');
 
 class RoleRemoteHarvester {
     constructor() {
-        this.loadStrategies = [new HarvestEnergySourceToContainerStrategy(RESOURCE_ENERGY), new PickupStrategy(RESOURCE_ENERGY), new HarvestEnergySourceStrategy()];
+        this.loadStrategies = [new BuildStrategy((creep)=>((cs)=>{
+            let source = util.objectFromMemory(creep.memory,'source');
+            let build = true && source && source.pos.getRangeTo(cs)==1;
+            if (build) {
+                creep.log('building my container', JSON.stringify(cs));
+            }
+            return build;
+
+        })),
+            new HarvestKeeperEnergySourceToContainerStrategy(RESOURCE_ENERGY),
+            new PickupStrategy(RESOURCE_ENERGY),
+            new HarvestEnergySourceStrategy() /*,new RegroupStrategy(COLOR_ORANGE)*/];
         this.unloadStrategies = [new DropToContainerStrategy(RESOURCE_ENERGY), new DropToEnergyStorage()];
         this.goRemoteTask = new MoveToRoomTask(undefined, 'homeroom', 'remoteRoom');
         this.goHomeTask = new MoveToRoomTask(undefined, 'remoteRoom', 'homeroom');

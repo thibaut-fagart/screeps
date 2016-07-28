@@ -93,18 +93,6 @@ class DropToContainerStrategy extends BaseStrategy {
         if (target) {
             // creep.log('target', JSON.stringify(target.pos), target.structureType);
             // try transfering/moving
-            if (target.structureType == STRUCTURE_LINK && (target.energyCapacity - target.energy) < creep.carry.energy && target.cooldown === 0) {
-                let otherLinks = creep.room.find(FIND_STRUCTURES, {filter: (s)=> s.structureType == STRUCTURE_LINK && s.id != target.id});
-                otherLinks = _.sortBy(otherLinks, (s)=>s.energy);
-                for (let i = 0, sum = 0; i < otherLinks.length && sum < creep.carry.energy; i++) {
-                    let otherLink = otherLinks[i];
-                    let k = Math.min(otherLink.carryCapacity - otherLink.energy, creep.carry.energy);
-                    // creep.log('otherLink', otherLink);
-                    let ret = target.transferEnergy(otherLink, k);
-                    sum += (ret == 0) ? k : 0;
-                    // creep.log('link =>link', ret, k);
-                }
-            }
             let ret;
             if (this.resource) {
                 // creep.log('transfer', this.resource);
@@ -144,7 +132,7 @@ class DropToContainerStrategy extends BaseStrategy {
             }
             // creep.log('transfer?', ret);
             if (ret == ERR_NOT_IN_RANGE) {
-                ret = creep.moveTo(target);
+                ret = util.moveTo(creep, target.pos, this.constructor.name+'Path');
                 if (ret == ERR_NO_PATH) {
                     creep.log("no path to target");
                     delete creep.memory.strategy[this.PATH];
@@ -168,7 +156,20 @@ class DropToContainerStrategy extends BaseStrategy {
     }
 
     containerAccepts(creep, container) {
-        return (container.structureType === STRUCTURE_LINK && creep.carry.energy > 0) || (container.structureType !== STRUCTURE_LINK);
+        let accepts = false;
+        _.keys(creep.carry).forEach((r)=> {
+            if (r === RESOURCE_ENERGY) {
+                if (container.energyCapacity && container.energy < container.energyCapacity) {
+                    accepts = true;
+                } else if (container.storeCapacity) {
+                    accepts |= container.storeCapacity - _.sum(container.store) > 0;
+                } else {
+                    accepts |= container.mineralType === r && container.mineralAmount < container.mineralCapacity;
+                }
+            }
+        });
+        return accepts;
+        // return (container.structureType === STRUCTURE_LINK && creep.carry.energy > 0) || (container.structureType !== STRUCTURE_LINK);
     }
 
     /**
@@ -183,26 +184,12 @@ class DropToContainerStrategy extends BaseStrategy {
             _.keys(creep.carry).forEach((resource)=> {
                 if (RESOURCE_ENERGY === resource) {
                     // creep.log('energy space?');
-                    if (container instanceof StructureLink) {
-                        if (container.cooldown) {
-                            let otherLinks = creep.room.find(FIND_STRUCTURES, {filter: (s)=>s.structureType === STRUCTURE_LINK && s !== container});
-                            if (otherLinks.length) {
-                                let mostEmptyLink = _.min(otherLinks, (l)=>l.energy);
-                                space += 2 * container.energyCapacity - (mostEmptyLink.energy + container.energy);
-                            } else {
-                                space += container.energyCapacity - container.energy;
-                            }
-                        }else {
-                            space += container.energyCapacity - container.energy;
-                        }
-                    } else {
-                        space += (container.energyCapacity ? container.energyCapacity- container.energy: container.storeCapacity - _.sum(container.store));
-                    }
+                    space += (container.energyCapacity ? container.energyCapacity - container.energy : container.storeCapacity - _.sum(container.store));
                 } else {
                     // creep.log('space?', resource);
                     space +=
                         container.mineralCapacity ?
-                            ((container.mineralType === resource || container.mineralAmount ===0)? container.mineralCapacity - container.mineralAmount:0)  // labs only accept one resourceType
+                            ((container.mineralType === resource || container.mineralAmount === 0) ? container.mineralCapacity - container.mineralAmount : 0)  // labs only accept one resourceType
                             : container.storeCapacity - _.sum(container.store);
                 }
             });
@@ -212,14 +199,6 @@ class DropToContainerStrategy extends BaseStrategy {
             if (container.store || container.mineralCapacity) {
                 return (container.store && container.storeCapacity - _.sum(container.store))
                     || (container.mineralCapacity && container.mineralCapacity - container.mineralAmount);
-            } else if (container instanceof StructureLink) {
-                let otherLinks = creep.room.find(FIND_STRUCTURES, {filter: (s)=>s.structureType === STRUCTURE_LINK && s !== container});
-                if (otherLinks.length) {
-                    let mostEmptyLink = _.min(otherLinks, (l)=>l.energy);
-                    return 2 * container.energyCapacity - (mostEmptyLink.energy + container.energy);
-                } else {
-                    return container.energyCapacity - container.energy;
-                }
             } else if (container.energyCapacity) {
                 if (creep.memory.role === 'mineralGatherer') creep.log('freeSpace?', container.energyCapacity - container.energy);
                 return container.energyCapacity - container.energy;
