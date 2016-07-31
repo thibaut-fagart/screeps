@@ -6,7 +6,7 @@ var CautiousBuidStrategy = require('./strategy.build.cautious');
 var HealStrategy = require('./strategy.remote_heal');
 var PickupStrategy = require('./strategy.pickup');
 var KeeperPickupStrategy = require('./strategy.pickup.keeper');
-var HarvestKeeperEnergySourceToContainerStrategy = require('./strategy.harvest_keepersource_to_container');
+var HarvestEnergySource = require('./strategy.harvest_source');
 var LoadFromContainerStrategy = require('./strategy.load_from_container');
 
 class RoleRemoteBuilder extends RoleBuilder {
@@ -18,7 +18,7 @@ class RoleRemoteBuilder extends RoleBuilder {
             new KeeperPickupStrategy(RESOURCE_ENERGY),
                    new LoadFromContainerStrategy(RESOURCE_ENERGY,  undefined /*,(creep)=>((s)=>([STRUCTURE_TOWER, STRUCTURE_SPAWN, STRUCTURE_EXTENSION].indexOf(s.structureType) < 0))*/),
                    new PickupStrategy(RESOURCE_ENERGY),
-                   new HarvestKeeperEnergySourceToContainerStrategy()];
+                   new HarvestEnergySource(RESOURCE_ENERGY)];
         this.fleeStrategy = new FleeToHomeRoomStrategy(3);
         this.moveTask = new MoveToRoomTask('remotebuild', 'homeroom','remoteRoom');
         this.goHomeTask = new MoveToRoomTask('remotebuild', 'remoteRoom', 'homeroom');
@@ -28,6 +28,7 @@ class RoleRemoteBuilder extends RoleBuilder {
     resign(creep) {
         // do not resign in remote room, go back home
         creep.log('resigning ??');
+        creep.memory.role = 'repair2';
         // creep.memory.building = false;
         // creep.memory.action = 'go_home_room';
 /*

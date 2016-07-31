@@ -4,7 +4,7 @@ var HarvestSourceToContainerStrategy = require('./strategy.harvest_source_to_con
 var DropToContainerStrategy = require('./strategy.drop_to_container');
 class RoleMineralHarvester {
     constructor() {
-        this.loadStrategies = [new HarvestSourceToContainerStrategy({resourceType: 'mineral', nooverflow:true})];
+        this.loadStrategies = [new HarvestSourceToContainerStrategy({resourceType: util.ANY_MINERAL, nooverflow:true})];
         this.unloadStrategies = [new DropToContainerStrategy(STRUCTURE_STORAGE)];
 
     }

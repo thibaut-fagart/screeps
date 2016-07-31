@@ -13,9 +13,9 @@ class AvoidRespawnStrategy extends BaseStrategy {
     accepts (creep) {
         // creep.log('AvoidRespawnStrategy');
         // if (creep.hits === creep.hitsMax) return false;
-        let nonDisabled = creep.pos.findInRange(FIND_HOSTILE_CREEPS, 5, {filter:(c)=>(c.pos.getRangeTo(creep) <= this.minrange) || _.filter(c.body, (b)=>b.hits > 0).length > 1});
+        let nonDisabled = creep.pos.findInRange(FIND_HOSTILE_CREEPS, 3, {filter:(c)=>(c.pos.getRangeTo(creep) <= this.minrange) || _.filter(c.body, (b)=>b.hits > 0).length > 1});
         if (nonDisabled.length>0 && this.predicate(creep)()) {
-            // creep.log('get out ');
+            // creep.log('get out ', this.minrange);
             // get the hell out !
             let fleePath = PathFinder.search(creep.pos, {pos: nonDisabled[0].pos, range: 7}, {flee:true}).path;
             creep.moveTo(fleePath[0]);
@@ -34,9 +34,10 @@ class AvoidRespawnStrategy extends BaseStrategy {
                 creep.moveTo(path[0]);
                 return true;
             } else {
-                return true;
+                return false;
             }
         }
+        // creep.log('no threat');
         return false;
     }
 }

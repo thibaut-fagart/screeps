@@ -6,7 +6,8 @@ var RegroupStrategy = require('./strategy.regroup');
 
 class RoleReserveController {
     constructor() {
-        this.loadStrategies = [new RegroupStrategy(COLOR_ORANGE), new ReserveControllerStrategy()];
+        this.loadStrategies = [new ReserveControllerStrategy(COLOR_ORANGE)];
+        this.regroupStrategy = new RegroupStrategy(COLOR_ORANGE);
         this.moveTask = new MoveToRoomTask('reserve','homeroom','remoteRoom');
 
     }
@@ -49,6 +50,7 @@ class RoleReserveController {
                 util.setCurrentStrategy(creep, strategy);
             } else {
                 // creep.log('no loadStrategy');
+                this.regroupStrategy.accepts(creep);
                 return;
             }
         }

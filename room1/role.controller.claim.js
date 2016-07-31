@@ -27,12 +27,8 @@ class RoleClaimController {
         creep.memory.remoteRoom = creep.room.memory.claim;
     }
 
-    findHomeExit(creep) {
-        return util.findExit(creep, creep.memory.remoteRoom);
-    }
-
     findRemoteExit(creep) {
-        return util.findExit(creep, creep.memory.homeroom);
+        return util.findExit(creep, creep.memory.homeroom).pos;
     }
 
     /** @param {Creep} creep **/
@@ -64,6 +60,7 @@ class RoleClaimController {
             } else if (this.goHomeTask.accepts(creep)) {
                 return ;
             } else {
+                creep.memory.previousRole= creep.memory.role;
                 creep.memory.role = 'recycle';
             }
             delete creep.memory.target;

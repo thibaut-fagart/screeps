@@ -33,18 +33,17 @@ class CloseAttackStrategy extends BaseStrategy {
                     break;
                 }
             }
-            // if(creep instanceof Creep) creep.log(target);
+            // if(creep instanceof Creep) creep.log('closeAttack target',target);
             target = target || creep.pos.findClosestByRange(hostiles);
             this.setRemoteTarget(creep, target);
-            let moveTo = creep.moveTo(target);
             let attack = creep.attack(target);
             if (attack == ERR_NOT_IN_RANGE) {
                 creep.moveTo(target);
             } else if (attack !== OK) {
-                creep.log('attack?', attack);
+                // creep.log('attack?', attack);
             }
-            creep.moveTo(target);
-            creep.log(this.constructor.name,this.range, 'attacking');
+            let moveTo = creep.moveTo(target.pos);
+            // creep.log(this.constructor.name,this.range, 'attacking', JSON.stringify(target.pos),moveTo);
         }
         return target;
     }

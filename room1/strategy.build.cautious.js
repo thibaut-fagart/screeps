@@ -11,12 +11,12 @@ class CautiousBuidStrategy extends BuildStrategy {
     }
     
     findTarget(creep) {
-        var target = util.objectFromMemory(this.BUILD_TARGET, undefined,this.predicate(creep));
+        var target = util.objectFromMemory(creep.memory, this.BUILD_TARGET, undefined,this.predicate(creep));
         if (!target) {
             // console.log("finding target for  ", creep.name);
-            var targets = creep.room.find(FIND_CONSTRUCTION_SITES, {filter:this.predicate}).sort((c)=> -(c.pos.getRangeTo(creep)));
+            var targets = creep.room.find(FIND_CONSTRUCTION_SITES, {filter:this.predicate});
             if (targets.length) {
-                target = targets[0];
+                target = creep.pos.findClosestByPath(targets)
                 creep.memory[this.BUILD_TARGET] = target.id;
             }
         }

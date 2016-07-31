@@ -68,3 +68,6 @@ var pos = {"x":22,"y":32,"roomName":"E38S14"}; Game.rooms[pos.roomName].createFl
     var structure = STRUCTURE_LAB; var creep = _.find(Game.creeps, (c)=>c.memory.role ==='mineralGatherer');var containerAccepts = (creep, c)=>(c.structureType === STRUCTURE_LINK && creep.carry.energy === _.sum(c.carry)) || (c.structureType !== STRUCTURE_LINK);creep.room.find(FIND_STRUCTURES, {filter: (s) =>(!structure||(s.structureType == structure)) && this.containerAccepts(creep, s)})
 
     require('./util').safeMoveTo2(Game.creeps.Brody, new RoomPosition(14,49, 'E36S14')).forEach((pos)=>Game.rooms.E36S14.createFlag(pos.x, pos.y, undefined,COLOR_GREEN))
+
+var flags = Game.rooms.E38S15.find(FIND_FLAGS,{filter:{color:COLOR_BROWN}});PathFinder.search(flags[0].pos,flags[1].pos,{range:1, roomCallback:require('./util').avoidCostMatrix(Game.creeps.carry_574,[],4)}).path.forEach((pos)=>pos.createFlag(undefined,COLOR_GREY))
+Game.rooms.E38S15.find(FIND_FLAGS,{filter:{color:COLOR_GREY}}).forEach((f)=>f.remove())

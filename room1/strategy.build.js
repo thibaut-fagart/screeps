@@ -6,22 +6,24 @@ var BaseStrategy = require('./strategy.base');
 class BuildStrategy extends BaseStrategy {
     constructor(predicate) {
         super();
-        this.predicate = (predicate) || ((creep)=>((cs)=>true));
+        this.predicate = (predicate) || (function(creep) {return function (cs) {return true}});
         this.BUILD_TARGET = 'buildtarget';
     }
 
     findTarget(creep) {
-        var target = util.objectFromMemory(this.BUILD_TARGET, this.predicate(creep));
+        // creep.log('predicate',this.predicate(creep)((Game.getObjectById(creep.memory[this.BUILD_TARGET]))));
+        var target = util.objectFromMemory(creep.memory, this.BUILD_TARGET, this.predicate(creep));
+        // creep.log('buildTarget', target);
         if (!target) {
             // console.log("finding target for  ", creep.name);
-            var targets = creep.room.find(FIND_CONSTRUCTION_SITES, {filter: this.predicate(creep)}).sort((c)=> -(c.progress / c.progressTotal));
+            var targets = creep.room.find(FIND_CONSTRUCTION_SITES, {filter: this.predicate(creep)});
             if (targets.length) {
                 if (targets[0].progress > 0) {
                     target = targets[0];
-                } else if (creep.carryCapacity === _.sum(creep.carry)) {
+                } else if (creep.carry.energy) {
                     target = creep.pos.findClosestByPath(targets);
                 } else {
-                    creep.memory.building = false;
+                    // creep.memory.building = false;
                     return null;
                 }
                 if (target) creep.memory[this.BUILD_TARGET] = target.id;
@@ -34,7 +36,7 @@ class BuildStrategy extends BaseStrategy {
     accepts(creep) {
 
         var target;
-        if (creep.memory.building && creep.carry.energy) {
+        if (creep.carry.energy) {
             target = this.findTarget(creep);
             // creep.log('building',target);
             if (!target) {
@@ -43,7 +45,7 @@ class BuildStrategy extends BaseStrategy {
             } else {
                 let build = creep.build(target);
                 if (build == ERR_NOT_IN_RANGE) {
-                    util.moveTo(creep, target.pos,this.constructor.name+ 'Path');
+                    util.moveTo(creep, target.pos,this.constructor.name+ 'Path', {range:3});
 /*
                     let moveTo = creep.moveTo(target);
                     if (moveTo !== OK && moveTo !== ERR_TIRED) {

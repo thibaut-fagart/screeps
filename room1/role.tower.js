@@ -6,7 +6,7 @@ class RoleTower {
     constructor() {
         this.remoteAttackStrategy = new RemoteTargetStrategy(undefined,(creep)=>{
             return function(target) {
-                return target.owner.username === 'Invader'|| creep.pos.getRangeTo(target)< 15;
+                return target.owner.username === 'Invader' || true|| creep.pos.getRangeTo(target)< 15;
             };
         });
         this.remoteHealStrategy = new RemoteHealStrategy();

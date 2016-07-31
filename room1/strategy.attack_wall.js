@@ -253,7 +253,7 @@ class AttackWallStrategy extends BaseStrategy {
             return null;
         }
         let moveTo = creep.moveByPath(path);
-        creep.log('moveTo?', moveTo);
+        // creep.log('moveTo?', moveTo);
 
         if (ERR_NO_PATH === moveTo || ERR_INVALID_TARGET === moveTo) {
             creep.log('move failed', moveTo);

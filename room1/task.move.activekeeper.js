@@ -33,7 +33,7 @@ class MoveToActiveKeeperLair extends BaseStrategy {
             delete creep.memory[this.KEEPER_PATH_PATH];
         }
         */
-        let keeper = util.objectFromMemory(creep, this.KEEPER_PATH, notDisabledPredicate); // TODO figure why this is not working !
+        let keeper = util.objectFromMemory(creep.memory, this.KEEPER_PATH, notDisabledPredicate); // TODO figure why this is not working !
         // creep.log('preivous keeper?', keeper);
         let brotherCount = creep.memory.brotherCount || 0;
         if (brotherCount < 1) return false;

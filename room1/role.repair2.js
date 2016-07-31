@@ -3,6 +3,7 @@ var util = require('./util');
 var LoadFromContainerStrategy = require('./strategy.load_from_container');
 var HarvestEnergySourceStrategy = require('./strategy.harvest_source');
 var PickupStrategy = require('./strategy.pickup');
+var BuildStrategy = require('./strategy.build');
 
 class RoleRepair2 {
     constructor() {
@@ -12,6 +13,7 @@ class RoleRepair2 {
             new HarvestEnergySourceStrategy()
         ];
         this.ACTION_FILL = 'fill';
+        this.buildStrategy = new BuildStrategy();
     }
 
     /** @param {Creep} creep **/
@@ -40,20 +42,22 @@ class RoleRepair2 {
 
         }
         else {
-            var target = this.findTarget(creep);
-            if (!target) {
-                creep.log("no repair target");
-            } else {
-                // creep.log('3',target.hits, target.hitsMax, target.pos);
-                let ret = creep.repair(target);
-                if (ret == ERR_NOT_IN_RANGE) {
-                    util.moveTo(creep, target.pos, this.constructor.name+'Path');
-                } else if (ret !== OK) {
-                    creep.log('unexpected repair value', ret);
-                    this.clearTarget(creep);
-                }
-                if (target.hits == target.hitsMax) {
-                    this.clearTarget(creep);
+            if (!this.buildStrategy.accepts(creep)) {
+                var target = this.findTarget(creep);
+                if (!target) {
+                    creep.log("no repair target");
+                } else {
+                    // creep.log('3',target.hits, target.hitsMax, target.pos);
+                    let ret = creep.repair(target);
+                    if (ret == ERR_NOT_IN_RANGE) {
+                        util.moveTo(creep, target.pos, this.constructor.name + 'Path');
+                    } else if (ret !== OK) {
+                        creep.log('unexpected repair value', ret);
+                        this.clearTarget(creep);
+                    }
+                    if (target.hits == target.hitsMax) {
+                        this.clearTarget(creep);
+                    }
                 }
             }
         }

@@ -18,6 +18,12 @@ class RoleRemoteCarry {
                 return range < 2;
             };
         });
+        this.loadFromNeighbour= new LoadFromContainerStrategy(undefined, undefined, (creep)=> {
+            return (s)=> {
+                let range = s.pos.getRangeTo(creep);
+                return range < 2 && s.energy >50;
+            };
+        });
         this.pickupStrategy = new PickupStrategy(undefined, (creep)=> {
             let availableCarry = creep.carryCapacity - _.sum(creep.carry);
             return (drop)=> {
@@ -26,9 +32,8 @@ class RoleRemoteCarry {
             };
         });
         this.loadStrategies = [
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER),
             new PickupStrategy(undefined, (creep)=> ((drop)=>drop.amount > 50)),
-            new RegroupStrategy(COLOR_ORANGE)
+            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER)
         ];
         this.unloadStrategies = [
             // new DropToEnergyStorageStrategy(STRUCTURE_TOWER),
@@ -36,6 +41,7 @@ class RoleRemoteCarry {
                 (creep)=>((s)=>([STRUCTURE_CONTAINER, STRUCTURE_STORAGE, STRUCTURE_LINK].indexOf(s.structureType) >= 0))),
             new DropToEnergyStorageStrategy()
         ];
+        this.regroupStrategy = new RegroupStrategy(COLOR_ORANGE);
         this.avoidThreadStrategy = new AvoidRespawnStrategy();
         this.ACTION_UNLOAD = 'unload';
         this.ACTION_FILL = 'load';
@@ -59,6 +65,15 @@ class RoleRemoteCarry {
         }
     }
 
+    setAction(creep, action) {
+        // creep.log('set action', action);
+        creep.memory.action = action;
+        creep.memory.tripTime = Game.time - creep.memory.startTrip;
+        delete creep.memory.startTrip;
+        util.setCurrentStrategy(creep, null);
+
+    }
+
     /** @param {Creep} creep **/
     run(creep) {
         if (!creep.memory.homeroom) {
@@ -72,54 +87,47 @@ class RoleRemoteCarry {
             this.init(creep);
         }
         // creep.log('action?', creep.memory.action);
-        this.repairAround(creep);
-        this.buildAround(creep);
-        creep.memory.startTrip = creep.memory.startTrip || Game.time; // remember when the trip started, will allow to know when need to come back
-        if (creep.memory.action == 'go_remote_room') {
-            this.travelingPickup.accepts(creep);
-            if (!this.goRemoteTask.accepts(creep)) {
-                creep.memory.action = this.ACTION_FILL;
-                creep.memory.tripTime = Game.time - creep.memory.startTrip;
-                delete creep.memory.startTrip;
-                util.setCurrentStrategy(creep, null);
-                // creep.log('reached remote room',creep.memory.action) 
-            }
-        } else if (creep.memory.action == this.ACTION_FILL && creep.room.name !== creep.memory.homeroom &&
-            (_.sum(creep.carry) > 0 // full
-            && creep.ticksToLive < (50 + creep.memory.tripTime))) { // will die soon, come back unload
-            creep.log('going home', creep.ticksToLive);
-            creep.memory.action = 'go_home_room';
-            util.setCurrentStrategy(creep, null);
-            // creep.log('full', creep.memory.action);
-        } else if (creep.memory.action == 'go_home_room') {
-            if (!this.goHomeTask.accepts(creep)) {
-                creep.memory.carry = creep.carry;
-                creep.memory.action = this.ACTION_UNLOAD;
-                delete creep.memory.strategy;
-                util.setCurrentStrategy(creep, null);
-                // creep.log('reached home room', creep.memory.action);
-            }
-        } else if (_.sum(creep.carry) == 0 && creep.memory.action !== 'go_remote_room' && creep.room.name !== creep.memory.remoteRoom) {
-            creep.log('empty, go remote');
-            if (creep.memory.carry) {
-                creep.room.memory.efficiency = creep.room.memory.efficiency || {};
-                creep.room.memory.efficiency.remoteMining = creep.room.memory.efficiency.remoteMining || {};
-                creep.room.memory.efficiency.remoteMining[creep.memory.remoteRoom] = (creep.room.memory.efficiency.remoteMining[creep.memory.remoteRoom] || 0) + _.sum(creep.memory.carry);
-                delete creep.memory.carry;
-            }
-            creep.memory.action = 'go_remote_room';
-            util.setCurrentStrategy(creep, null);
-        } else if (creep.room.name === creep.memory.remoteRoom && _.sum(creep.carry) == creep.carryCapacity) {
-            creep.memory.action = 'go_home_room';
-            util.setCurrentStrategy(creep, null);
+        if (this.repairAround(creep)) {
+            return;
         }
-
+        this.buildAround(creep);
+        if (creep.room.name !== creep.memory.remoteRoom) this.travelingPickup.accepts(creep);
+        creep.memory.startTrip = creep.memory.startTrip || Game.time; // remember when the trip started, will allow to know when need to come back
+        if (creep.memory.action === 'go_remote_room') {
+            if (_.sum(creep.carry) > 0.95 * creep.carryCapacity) {
+                this.setAction(creep, 'go_home_room');
+            } else if (!this.goRemoteTask.accepts(creep)) {
+                // creep.log('goRemote refused... remote ? ');
+                this.setAction(creep, this.ACTION_FILL);
+            }
+        } else if (creep.memory.action === 'go_home_room') {
+            if (_.sum(creep.carry) === 0) {
+                this.setAction(creep, 'go_remote_room');
+            } else if (!this.goHomeTask.accepts(creep) && creep.room.name === creep.memory.homeroom) {
+                this.setAction(creep, this.ACTION_UNLOAD);
+                creep.room.deliver(creep.memory.remoteRoom,creep.carry);
+            }
+        } else if (creep.memory.action === this.ACTION_FILL && _.sum(creep.carry) > 0.95 * creep.carryCapacity) {
+            this.setAction(creep, 'go_home_room');
+            this.goHomeTask.accepts(creep);
+        } else if (creep.memory.action === this.ACTION_UNLOAD && _.sum(creep.carry) === 0) {
+            // TODO check lifespan , will the creep live long enough to go and bakc ?
+            let timeToSources = creep.room.tripTimeToSources(creep.memory.remoteRoom);
+            if (3*timeToSources< creep.ticksToLive) {
+                this.setAction(creep, 'go_remote_room');
+                this.goRemoteTask.accepts(creep);
+            } else {
+                creep.log('ready to die, recycling', creep.ticksToLive, timeToSources);
+                creep.memory.previousRole = creep.memory.role;
+                creep.memory.role = 'recycle';
+                return false;
+            }
+        }
 
         if (creep.memory.action == this.ACTION_FILL && creep.memory.remoteRoom == creep.room.name) {
             let strategy;
             if (!this.avoidThreadStrategy.accepts(creep)) {
-
-                if (!this.pickupStrategy.accepts(creep)) {
+                if (!this.loadFromNeighbour.accepts(creep) && !this.pickupStrategy.accepts(creep)) {
                     // creep.log('no pickup');
                     strategy = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);
                     if (!strategy) {
@@ -134,6 +142,7 @@ class RoleRemoteCarry {
                     util.setCurrentStrategy(creep, strategy);
                 } else {
                     // creep.log('no loadStrategy');
+                    this.regroupStrategy.accepts(creep);
                     return false;
                 }
             }
@@ -155,20 +164,27 @@ class RoleRemoteCarry {
         }
     }
 
+    /**
+     *
+     * @param creep
+     * @return false if repair level is satisfying
+     */
     repairAround(creep) {
         let range = 3;
-        let structures = creep.room.lookForAtArea(LOOK_STRUCTURES, Math.max(0,creep.pos.y - range), Math.max(0,creep.pos.x - range),
-            Math.min(creep.pos.y + range,49), Math.min(49,creep.pos.x + range), true);
+        let structures = creep.room.lookForAtArea(LOOK_STRUCTURES, Math.max(0, creep.pos.y - range), Math.max(0, creep.pos.x - range),
+            Math.min(creep.pos.y + range, 49), Math.min(49, creep.pos.x + range), true);
         let needRepair = structures.filter((s)=>s.hits < s.hitsMax && s.ticksToDecay);
         if (needRepair.length) {
             creep.log('repairing');
             creep.repair(needRepair[0]);
+            return needRepair[0].hits < needRepair[0].hitsMax / 2;
         }
     }
+
     buildAround(creep) {
         let range = 3;
-        let sites = creep.room.lookForAtArea(LOOK_CONSTRUCTION_SITES, Math.max(0,creep.pos.y - range), Math.max(0,creep.pos.x - range),
-            Math.min(creep.pos.y + range,49), Math.min(49,creep.pos.x + range), true);
+        let sites = creep.room.lookForAtArea(LOOK_CONSTRUCTION_SITES, Math.max(0, creep.pos.y - range), Math.max(0, creep.pos.x - range),
+            Math.min(creep.pos.y + range, 49), Math.min(49, creep.pos.x + range), true);
         if (sites && sites.length) {
             // creep.log('building', JSON.stringify(sites[0]));
             creep.build(sites[0]);

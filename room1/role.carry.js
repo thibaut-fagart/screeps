@@ -15,16 +15,15 @@ class RoleCarry {
             };
         });
         this.loadStrategies = [
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (creep)=> ((s)=>s.pos.getRangeTo(creep) < 2)) ,
-            new PickupStrategy(RESOURCE_ENERGY, (creep)=>((d)=>(d.pos.getRangeTo(creep)< 2))),
+            new PickupStrategy(undefined, (creep)=>((d)=>(d.amount > 50))),
+            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (creep)=> ((s)=>s.pos.getRangeTo(creep) < 2)),
             new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_LINK, (creep)=>((s)=>( s.energy && s.room.storage && (s.pos.getRangeTo(s.room.storage) < 5)))),
             new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER),
             new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_STORAGE),
             new LoadFromContainerStrategy(LoadFromContainerStrategy.ANY_MINERAL, STRUCTURE_CONTAINER/*
              ,                (s)=>(
              (!(s.room.memory.harvestContainers) || (s.room.memory.harvestContainers && (s.room.memory.harvestContainers.indexOf(s.id) >= 0))))*/)];
-        this
-            .unloadStrategies = [
+        this.unloadStrategies = [
             new DropToEnergyStorageStrategy(STRUCTURE_TOWER),
             new DropToEnergyStorageStrategy(STRUCTURE_EXTENSION),
             new DropToEnergyStorageStrategy(STRUCTURE_SPAWN),
@@ -33,7 +32,6 @@ class RoleCarry {
             new DropToContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (creep)=> {
                 return ((s)=>( (s.room.memory.harvestContainers || []).indexOf(s.id) >= 0));
             })
-
         ];
         this.ACTION_UNLOAD = 'unload';
         this.ACTION_FILL = 'fill';
@@ -43,23 +41,23 @@ class RoleCarry {
     /** @param {Creep} creep **/
     run(creep) {
         let strategy;
-        if (_.sum(creep.carry) == 0) {
+        if (_.sum(creep.carry) == 0 && creep.memory.action != this.ACTION_FILL) {
             creep.memory.action = this.ACTION_FILL;
             delete creep.memory.source;
-            delete creep.memory.currentStrategy;
             let s = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);
             if (s) {
                 s.clearMemory(creep);
             }
             util.setCurrentStrategy(creep, null);
-        } else if (_.sum(creep.carry) == creep.carryCapacity) {
-            creep.memory.action = this.ACTION_UNLOAD;
             delete creep.memory.currentStrategy;
+        } else if (_.sum(creep.carry) == creep.carryCapacity && creep.memory.action != this.ACTION_UNLOAD) {
+            creep.memory.action = this.ACTION_UNLOAD;
             let s = util.getAndExecuteCurrentStrategy(creep, this.unloadStrategies);
             if (s) {
                 s.clearMemory(creep);
             }
             util.setCurrentStrategy(creep, null);
+            delete creep.memory.currentStrategy;
         }
         if (creep.memory.action == this.ACTION_FILL) {
             strategy = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);

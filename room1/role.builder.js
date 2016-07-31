@@ -20,7 +20,7 @@ class RoleBuilder {
 
     resign(creep) {
         creep.log('resigning ?');
-        // creep.memory.role = 'upgrader';
+        creep.memory.role = 'upgrader';
     }
 
 /*
@@ -43,6 +43,7 @@ class RoleBuilder {
     run(creep) {
         if (creep.memory.building && creep.carry.energy == 0) {
             creep.memory.building = false;
+            delete creep.memory[util.CURRENT_STRATEGY];
         }
         if (!creep.memory.building && creep.carry.energy == creep.carryCapacity) {
             creep.memory.building = true;

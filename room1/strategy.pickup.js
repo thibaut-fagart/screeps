@@ -46,7 +46,7 @@ class PickupStrategy extends BaseStrategy {
     accepts(creep) {
         if (!creep.carryCapacity || _.sum(creep.carry) == creep.carryCapacity) return false;
         /** @type Resource */
-        let source = util.objectFromMemory(creep.memory, this.PATH, (r)=>(r.amount > 0 && this.predicate(creep)(r)));
+        let source = util.objectFromMemory(creep.memory, this.PATH, (r)=>(r.amount > 0) && (this.predicate(creep)(r)));
         if (!source) {
             source = this.findSource(creep);
             // source = creep.pos.findClosestByRange(FIND_DROPPED_ENERGY);
@@ -57,12 +57,13 @@ class PickupStrategy extends BaseStrategy {
         }
         // creep.log('pickup?', source, (source?source.amount:''));
         if (source) {
+
             // try transfering/moving
             // creep.log('pickup2', source.id, source.resourceType);
 
             let ret = creep.pickup(source);
             if (ret == ERR_NOT_IN_RANGE) {
-                let move = util.moveTo(creep, source,this.constructor.name+"Path");
+                let move = util.moveTo(creep, source.pos,this.constructor.name+"Path");
                 // creep.log('pickup  move?', move);
             } else if (ret == OK) {
                 delete creep.memory[this.PATH];
@@ -78,14 +79,9 @@ class PickupStrategy extends BaseStrategy {
     }
 
     findSource(creep) {
+        delete creep.memory[this.constructor.name + "Path"];
         return PickupManager.getManager(creep.room.name).allocateDrop(creep, this.resource, this.predicate);
     }
-
-    findDrops(creep) {
-        // creep.log('findDrops',this.resource)
-        return creep.room.find(FIND_DROPPED_RESOURCES, {filter: (e)=> (!this.resource || this.resource == e.resourceType) && (e.amount > Math.max(20, creep.pos.getRangeTo(e.pos)))});
-    }
-
 }
 
 PickupStrategy.PATH = 'pickupSource';

@@ -31,6 +31,7 @@ class RoleRemoteHarvesterKeeper extends RoleRemoteHarvester {
                 delete creep.memory[this.harvestStrategy.PATH_TO_SOURCE_PATH];
             }
         } else  if (!this.fleeStrategy.accepts(creep)) {
+            // creep.log('super');
             super.run(creep);
         }
     }

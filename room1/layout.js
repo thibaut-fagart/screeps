@@ -10,12 +10,10 @@ module.exports = {
             flag = flags.find((f)=>f.color === COLOR_CYAN);
         }
         let endCheck = Game.cpu.getUsed();
-/*
         if (50 + Game.cpu.getUsed() > Game.cpuLimit) {
-            console.log('createFlag', Game.cpu.getUsed(), Game.cpu.limit);
+            // console.log('createFlag', Game.cpu.getUsed(), Game.cpu.limit);
             return;
         }
-*/
         if (!flag) {
             room.createFlag(pos.x, pos.y, undefined, COLOR_CYAN);
         } else {
@@ -24,13 +22,22 @@ module.exports = {
         let end = Game.cpu.getUsed();
         // console.log('createFlag', start, endCheck-start, end-start);
     },
-    fromStorage: function (roomname, toRoom) {
+    fromStorageToSources: function (roomname) {
+        "use strict";
+        let room = Game.rooms[roomname];
+        let sources = room.find(FIND_SOURCES).concat(room.find(FIND_STRUCTURES,  {filter:{structureType:STRUCTURE_EXTRACTOR}}));
+        sources.forEach((s)=>this.createFlags(
+            this.createFlags(this.findPath(room, room.storage.pos, s.pos), room), room));
+    },
+
+    fromStorageToExit: function (roomname, toRoom) {
         "use strict";
         let room = Game.rooms[roomname];
         let dest = JSON.parse(room.memory.exits[toRoom]);
-        room.storage.pos.findPathTo(dest.x, dest.y).forEach((pos)=> this.createFlag(room, pos));
+        this.createFlags(this.findPath(room, room.storage.pos, dest), room);
     },
-    findPath: function (room, roomname, orig, dest, range) {
+    findPath: function (room,  orig, dest, range) {
+        let roomname = room.name;
         console.log('findPath start', Game.cpu.getUsed(), orig, dest);
         range = range || 0;
         return util.safeMoveTo2({pos: orig, room: room}, dest);
@@ -42,7 +49,7 @@ module.exports = {
             pos: new RoomPosition(dest.x, dest.y, dest.roomName),
             range: range
         }, {
-            plainCost: 2, swampCost: 10, roomCallback: function (roomName) {
+            plainCost: 4, swampCost: 20, roomCallback: function (roomName) {
                 if (roomName !== roomname) return false;
                 else return matrix;
             }
@@ -50,15 +57,69 @@ module.exports = {
         console.log('findPath end pathfinding', Game.cpu.getUsed(), path.length);
         return path;
     },
+    createFlags: function (path, room) {
+        path.forEach((pos)=> this.createFlag(room, pos));
+    }, 
     fromExitToExit: function (roomname, fromRoom, toRoom) {
         "use strict";
         let room = Game.rooms[roomname];
         let orig = JSON.parse(room.memory.exits[fromRoom]);
         let dest = JSON.parse(room.memory.exits[toRoom]);
-        var path = this.findPath(room, roomname, orig, dest);
+        var path = this.findPath(room, orig, dest);
         // let path = new RoomPosition(orig.x, orig.y, room.name).findPathTo(dest.x, dest.y);
         console.log('path', path.length);
-        path.forEach((pos)=> this.createFlag(room, pos));
+        this.createFlags(path, room);
+    },
+
+    fromSourcesToSources: function(roomname) {
+        "use strict";
+        "use strict";
+        let room = Game.rooms[roomname];
+        room.memory.temp = room.memory.temp || {};
+        let startCpu = Game.cpu.getUsed();
+        let limit = Game.cpu.tickLimit;
+        console.log('start', startCpu, limit);
+        let sources = room.find(FIND_SOURCES).concat(room.find(FIND_STRUCTURES,  {filter:{structureType:STRUCTURE_EXTRACTOR}}));
+        console.log('sources found', Game.cpu.getUsed(), limit);
+        let stop = false;
+        let flagCount  = 0;
+        for (let i = 0, max = sources.length; i< max;i++) {
+            let source1 = sources[i];
+            for (let j= i; j< max;j++) {
+                let source2 = sources[j];
+
+                if (!stop) {
+                    let pathHolder = room.memory.temp[source1.id+'_'+source2.id] = room.memory.temp[source1.id+'_'+source2.id] || {};
+                    let used = Game.cpu.getUsed();
+
+                    if (!pathHolder.path && used - startCpu < limit - used) {
+                        pathHolder.path = this.findPath(room, source1.pos, source2.pos, 1);
+                        console.log('path found', Game.cpu.getUsed() - used);
+                    }
+                    used = Game.cpu.getUsed();
+                    console.log('test', !!pathHolder.path, !pathHolder.flags, pathHolder.path.length);
+                    if (pathHolder.path && !pathHolder.flags) {
+                        pathHolder.path.forEach((pos)=> {
+                            if (!stop) {
+                                console.log('test cpu', limit - Game.cpu.getUsed());
+                                if (limit - Game.cpu.getUsed() > 100) {
+                                    this.createFlag(room, pos);
+                                    flagCount++;
+                                } else {
+                                    console.log('cpu consumed', Game.cpu.getUsed());
+                                    stop = true;
+                                }
+                            }
+                        });
+                        if (!stop) pathHolder.flags = true;
+                        console.log('flags layed',flagCount,  Game.cpu.getUsed() - used);
+                    }
+                }
+
+            }
+
+        }
+
     },
     fromExitToSources: function (roomname, fromRoom) {
         "use strict";
@@ -78,7 +139,7 @@ module.exports = {
                     let used = Game.cpu.getUsed();
 
                     if (!room.memory.temp[s.id].path && used - startCpu < limit - used) {
-                        room.memory.temp[s.id].path = this.findPath(room, roomname, s.pos, orig, 1);
+                        room.memory.temp[s.id].path = this.findPath(room, s.pos, orig, 1);
                         console.log('path found', Game.cpu.getUsed() - used);
                     }
                     used = Game.cpu.getUsed();
@@ -126,6 +187,12 @@ module.exports = {
         Game.rooms[roomname].find(FIND_CONSTRUCTION_SITES).forEach((f)=> {
             f.remove();
         });
+
+    }
+    ,
+    cleanFlags: function (roomname) {
+        "use strict";
+        Game.rooms[roomname].find(FIND_FLAGS, {filter:{color:COLOR_CYAN}}).forEach((f)=> {f.remove();});
 
     }
     ,

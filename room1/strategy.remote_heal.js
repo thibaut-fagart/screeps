@@ -38,10 +38,11 @@ class RemoteHealStrategy extends BaseStrategy {
         let hasRangedAttack = creep instanceof StructureTower || (creep.getActiveBodyparts(RANGED_ATTACK) > 0);
         let damageds = this.findHealingTargets(creep);
         // if (!isTower) creep.log('damageds1',damageds.length);
-        damageds = _.sortBy(damageds, (c)=>c.hits);
+        damageds = _.sortBy(damageds, (c)=>c.pos.getRangeTo(creep));
         let damaged = (damageds.length ? damageds[0] : null);
         // if (!isTower) creep.log('damaged', damaged);
         let hasAttack = isTower ? false : (creep.getActiveBodyparts(ATTACK));
+        let hostiles = creep.room.find(FIND_HOSTILE_CREEPS)
         if (damaged && (damaged.hits + util.healingCapacity(creep) < damaged.hitsMax)) {
             // creep.log('damaged', hasRangedAttack, hasAttack, damaged.id, creep.id);
             if (creep instanceof StructureTower) {
@@ -52,17 +53,16 @@ class RemoteHealStrategy extends BaseStrategy {
                 if (hasRangedAttack && range == 1) {
                     heal = creep.heal(damaged);
                     // creep.log(`healing ${damaged.id} at (${damaged.pos.x},${damaged.pos.y}), heal ${heal}`);
-                    return false;
                 } else if (hasRangedAttack) {
                     this.moveToAndHeal(creep, damaged);
-                    return false;
+                } else if (range === 1) {
+                    heal = creep.heal(damaged);
+                } else if (!hostiles.length) {
+                    this.moveToAndHeal(creep, damaged);
                 } else {
-                    if (range === 1) heal = creep.heal(damaged);
-                    else heal = creep.rangedHeal(damaged);
-                    // creep.log(`ranged healing ${damaged.id} at (${damaged.pos.x},${damaged.pos.y}), heal ${heal}, move ${move}`);
-                    return false;
+                    heal = creep.rangedHeal(damaged);
                 }
-
+                return !hostiles.length;
             } else {
                 // creep.log('hasRangedAttack', hasRangedAttack, '!hasAttack', !hasAttack);
                 if (hasRangedAttack || !hasAttack) {
@@ -75,6 +75,9 @@ class RemoteHealStrategy extends BaseStrategy {
                     }
                     // creep.log('being hurt, pressing on');
                     return creep.pos.findInRange(FIND_HOSTILE_CREEPS, 5).length == 0;
+                } else if (!hostiles.length) {
+                    creep.heal(creep);
+                    return true;
                 }
             }
 

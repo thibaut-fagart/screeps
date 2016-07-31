@@ -30,14 +30,17 @@ class DropToEnergyStorageStrategy extends BaseStrategy {
      * @return {boolean}**/
     accepts(creep) {
         if (creep.carry.energy === 0) return null;
-        let target = util.objectFromMemory(creep.memory, this.PATH, this.isContainerFullPredicate());
+        let target = util.objectFromMemory(creep.memory, this.PATH, (c)=> (c.energy < c.energyCapacity));
+        // creep.log(this.structureType, 'target', target);
         if (!target) {
+            // if (this.structureType === STRUCTURE_EXTENSION) creep.log('finding target');
             var targets = creep.room.find(FIND_STRUCTURES)
                 .filter((structure) => ((this.structureType && this.structureType === structure.structureType) || (!this.structureType)))
-                .filter((s)=>(this.isContainerFullPredicate())(s));
-
+                .filter((c)=> (c.energy < c.energyCapacity));
             if (targets.length > 0) {
                 target = this.setTarget(creep, creep.pos.findClosestByPath(targets));
+            } else {
+                // creep.log('didn\'t finding target');
             }
         }
         if (target) {
@@ -53,13 +56,11 @@ class DropToEnergyStorageStrategy extends BaseStrategy {
                 }
             }
 
+        // } else {
+        //     creep.log('no target');
         }
         // creep.log('source', null == source);
         return (target ? this : null);
-    }
-
-    isContainerFullPredicate() {
-        return (c)=> (c.energy < c.energyCapacity);
     }
 }
 

@@ -9,23 +9,6 @@ class HarvestKeeperEnergySourceToContainerStrategy extends HarvestEnergySourceTo
     constructor(resourceType) {
         super(resourceType);
     }
-    
-
-
-    findSources(creep) {
-        let safeSources = _.filter(util.findSafeSources(creep.room, true), (s)=> {
-            switch (this.resourceType) {
-                case RESOURCE_ENERGY :
-                    return s.energy;
-                case util.ANY_MINERAL : return s.mineralAmount;
-                default: {
-                    return (this.resourceType ? this.mineralType === this.resourceType : true) && s.mineralAmount;
-                }
-            } 
-        });
-        // creep.log('safeSources', safeSources.length);
-        return safeSources;
-    }
 }
 
 module.exports = HarvestKeeperEnergySourceToContainerStrategy;

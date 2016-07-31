@@ -34,8 +34,9 @@ class RoleLabOperator {
             new DropToContainerStrategy(util.ANY_MINERAL, STRUCTURE_LAB,
                 (creep) => {
                     if (creep.memory.lab_goal && creep.memory.lab_goal.action == this.ACTION_FILL) {
+                        // creep.log('returning labfill predicate');
                         return function (s) {
-                            // creep.log('testing ', creep.memory.lab_goal.lab, s.id);
+                            // creep.log('testing ', creep.memory.lab_goal.lab, s.id, creep.memory.lab_goal && creep.memory.lab_goal.lab === s.id);
                             return creep.memory.lab_goal && creep.memory.lab_goal.lab === s.id;
                         };
                     } else if (creep.memory.lab_goal && creep.memory.lab_goal.action == this.ACTION_UNLOAD) {
@@ -65,7 +66,7 @@ class RoleLabOperator {
             creep.memory.action = this.ACTION_FILL;
             delete creep.memory.source;
             delete creep.memory.lab_goal;
-            delete creep.memory.currentStrategy;
+            delete creep.memory[util.CURRENT_STRATEGY];
             let s = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);
             if (s) {
                 s.clearMemory(creep);
@@ -127,10 +128,11 @@ class RoleLabOperator {
                 util.setCurrentStrategy(creep, strategy);
             } else {
                 delete creep.memory.lab_goal;
-                creep.log('no load strategy, clearing current goal');
+                // creep.log('no load strategy, clearing current goal');
             }
         }
         else {
+            // creep.log('unloading');
             let strategy = util.getAndExecuteCurrentStrategy(creep, this.unloadStrategies);
             if (!strategy) {
                 strategy = _.find(this.unloadStrategies, (strat)=>!(null == strat.accepts(creep)));
