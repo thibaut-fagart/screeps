@@ -71,3 +71,16 @@ var pos = {"x":22,"y":32,"roomName":"E38S14"}; Game.rooms[pos.roomName].createFl
 
 var flags = Game.rooms.E38S15.find(FIND_FLAGS,{filter:{color:COLOR_BROWN}});PathFinder.search(flags[0].pos,flags[1].pos,{range:1, roomCallback:require('./util').avoidCostMatrix(Game.creeps.carry_574,[],4)}).path.forEach((pos)=>pos.createFlag(undefined,COLOR_GREY))
 Game.rooms.E38S15.find(FIND_FLAGS,{filter:{color:COLOR_GREY}}).forEach((f)=>f.remove())
+
+var rooms = [Game.rooms.E35S15,Game.rooms.E36S15];
+    rooms.forEach((room)=> {
+        var exits = room.memory.exits;
+        _.keys(exits).forEach((k)=> {
+            let pos = JSON.parse(exits[k]);
+            if (pos.y = 6) {
+                pos.y = pos.y + 1
+            }
+            ;
+            exits[k] = JSON.stringify(pos)
+        });
+    })

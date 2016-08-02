@@ -14,6 +14,7 @@ class RoleRepair2 {
         ];
         this.ACTION_FILL = 'fill';
         this.buildStrategy = new BuildStrategy();
+        util.indexStrategies(this.loadStrategies);
     }
 
     /** @param {Creep} creep **/
@@ -45,7 +46,7 @@ class RoleRepair2 {
             if (!this.buildStrategy.accepts(creep)) {
                 var target = this.findTarget(creep);
                 if (!target) {
-                    creep.log("no repair target");
+                    // creep.log("no repair target");
                 } else {
                     // creep.log('3',target.hits, target.hitsMax, target.pos);
                     let ret = creep.repair(target);
@@ -102,10 +103,13 @@ class RoleRepair2 {
         }
         if (!target) {
             // console.log("finding target for  ", creep.name);
-            var myDamagedStructures = this.findDamagedStructures(creep);
-            var myDamagedWalls = this.findDamagedWalls(creep);
+            let myDamagedStructures = this.findDamagedStructures(creep);
+            let myDamagedWalls = this.findDamagedWalls(creep);
+            let newWalls = myDamagedWalls.filter((wall)=>wall.hits === 1);
             // first repair structures in bad shape, then walls, try getting one for each creep
-            if (myDamagedStructures.length && (myDamagedStructures[0].hits / myDamagedStructures[0].hitsMax) < 0.5) {
+            if (newWalls.length ) {
+                target = newWalls[0];
+            } else if (myDamagedStructures.length && (myDamagedStructures[0].hits / myDamagedStructures[0].hitsMax) < 0.5) {
                 let damagedContainers = _.filter(myDamagedStructures, (s)=>s.structureType == STRUCTURE_CONTAINER);
                 let sortedContainers = _.sortBy(damagedContainers, (s) => s.hits / s.hitsMax);
                 let mostDamagedContainer2 = _.find(sortedContainers, (s) => !util.isReserved(creep, s, 'repair'));

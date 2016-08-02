@@ -10,8 +10,7 @@ class RemoteHealKeeperGuardStrategy extends RemoteHealStrategy {
     findHealingTargets(creep) {
         let findHealingTargets2 = super.findHealingTargets(creep);
         // creep.log('base healing targets', findHealingTargets2.length);
-        let targets = findHealingTargets2
-            .filter((c)=> {
+        let targets = findHealingTargets2.filter((c)=> {
                 if (c.memory.role !== creep.memory.role) return (c.hits < 0.5 * c.hitsMax);
                 let ratio = c.hits / c.hitsMax;
                 return (ratio < 0.75) || (ratio < 1 && c.pos.getRangeTo(creep) == 1);

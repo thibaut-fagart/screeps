@@ -63,7 +63,7 @@ class Util {
                 // creep.log('reserved', object.id, reason);
                 return true;
             } else if (owner !== creep.id) {
-                creep.log(object.id, 'is already reserved');
+                // creep.log(object.id, 'is already reserved');
                 return false;
             } else if (owner === creep.id) {
                 return true;
@@ -155,6 +155,16 @@ class Util {
 
     /**
      *
+     * @param {[Object]} strategies
+     */
+    indexStrategies(strategies) {
+        for (let i = 0, max = strategies.length; i < max; i++) {
+            strategies[i].index = i;
+        }
+    }
+
+    /**
+     *
      * @param {Creep} creep
      * @param strategy
      */
@@ -227,25 +237,25 @@ class Util {
      * @returns {RoomPosition}
      */
     findExit(creepOrRoom, targetRoom) {
-        let roomName, logWith, roomMemory, entryPoint ;
+        let roomName, logWith, roomMemory, entryPoint;
         if (creepOrRoom.pos) {
             // creep case
             roomName = creepOrRoom.room.name;
             roomMemory = creepOrRoom.room.memory;
             logWith = creepOrRoom;
-            entryPoint = creepOrRoom.pos ;
+            entryPoint = creepOrRoom.pos;
         } else if (_.isString(creepOrRoom)) {
             // rooomName Case
             roomName = creepOrRoom;
             roomMemory = Memory.rooms[roomName];
             logWith = console;
-            entryPoint = new RoomPosition(20,20, roomName) ;
+            entryPoint = new RoomPosition(20, 20, roomName);
         } else {
             // room case
             roomName = creepOrRoom.name;
             roomMemory = creepOrRoom.memory;
             logWith = creepOrRoom;
-            entryPoint = new RoomPosition(20,20, roomName) ;
+            entryPoint = new RoomPosition(20, 20, roomName);
         }
         if (!targetRoom || (roomName === targetRoom)) {
             creepOrRoom.log('util.findExit,invalid params', roomName, targetRoom);
@@ -283,6 +293,7 @@ class Util {
                         let exitDir = roomStep.exit;
                         logWith.log('finding new exit', currentRoom, nextRoom);
                         exit = entryPoint.findClosestByPath(exitDir); // TODO cache
+                        // todo try to choose an exit which does not touch a wall to limite future pathfinding issues
                     } else {
                         exit = JSON.parse(currentExits[nextRoom]);
                     }
@@ -310,32 +321,36 @@ class Util {
     }
 
     /**
-     * 
+     *
      * @param {RoomPosition| string} exitCursor
      * @returns {RoomPosition}
      */
     nextRoom(exitCursor) {
-        let myExit = _.isString(exitCursor) ?JSON.parse(exitCursor): exitCursor;
-        
+        let myExit = _.isString(exitCursor) ? JSON.parse(exitCursor) : exitCursor;
+
         let coords = Util.ROOM_NAME_PATTERN.exec(myExit.roomName);
-        let x,y,roomName;
+        let x, y, roomName;
         coords[2] = Number(coords[2]);
         coords[4] = Number(coords[4]);
         // console.log(JSON.stringify(coords));
         if (myExit.x == 0) {
-            x = 49; y = myExit.y;
+            x = 49;
+            y = myExit.y;
             coords [2] += (coords[1] == 'E') ? -1 : 1;
         }
         else if (myExit.x == 49) {
-            x = 0; y = myExit.y;
+            x = 0;
+            y = myExit.y;
             coords[2] += (coords[1] == 'E') ? 1 : -1;
         }
         else if (myExit.y == 0) {
-            x = myExit.x; y = 49;
+            x = myExit.x;
+            y = 49;
             coords[4] += (coords[3] == 'N') ? 1 : -1;
         }
         else if (myExit.y == 49) {
-            x = myExit.x; y = 0;
+            x = myExit.x;
+            y = 0;
             coords[4] += (coords[3] == 'N') ? -1 : 1;
         }
         if (coords[2] < 0) {
@@ -348,8 +363,8 @@ class Util {
         }
         // console.log(JSON.stringify(coords));
         roomName = coords[1] + coords[2] + coords[3] + coords[4];
-        return new RoomPosition(x,y,roomName);
-        
+        return new RoomPosition(x, y, roomName);
+
     }
 
     /**
@@ -394,7 +409,7 @@ class Util {
         if (!remoteRoom) return [];
         let hostiles = remoteRoom.find(FIND_HOSTILE_CREEPS);
         let mineralsAreHarvestable = allowMinerals && remoteRoom.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_EXTRACTOR}}).length;
-        // remoteRoom.log('mineralsAreHarvestable', mineralsAreHarvestable);
+        // remoteRoom.log('mineralsAreHarvestable', mineralsAreHarvestable, 'hostiles?',!(hostiles.length));
         if (!(hostiles.length)) {
             let deposits = remoteRoom.find(FIND_SOURCES);
             if (mineralsAreHarvestable) {
@@ -437,9 +452,9 @@ class Util {
         memory = memory || 'moveInRoomPath';
         // creep.log('moveTo', Game.time);
         if (creep.memory.lastPos
-                && creep.pos.x == creep.memory.lastPos.x && creep.pos.y == creep.memory.lastPos.y) {
+            && creep.pos.x == creep.memory.lastPos.x && creep.pos.y == creep.memory.lastPos.y) {
             // creep.log('blocked ? ', creep.memory.triedMoved );
-            if ( creep.memory.triedMoved ) { // didn't move, recompute !! todo improve
+            if (creep.memory.triedMoved) { // didn't move, recompute !! todo improve
                 creep.memory.blocked = (creep.memory.blocked || 0) + 1;
                 creep.say('blocked');
                 if (creep.memory.blocked > 3) {
@@ -455,7 +470,7 @@ class Util {
         }
 
         let path = creep.memory[memory];
-        if (path && path.target && pos.isEqualTo(path.target.x,path.target.y)) {
+        if (path && path.target && pos.isEqualTo(path.target.x, path.target.y)) {
             path = path.path;
         } else {
             delete creep.memory[memory];
@@ -472,20 +487,20 @@ class Util {
             path = this.safeMoveTo2(creep, pos, options);
             // creep.log(path.length);
             path = this.pathFinderToMoveByPath(creep.pos, path);
-            creep.memory[memory] = {path:path, target:pos};
+            creep.memory[memory] = {path: path, target: pos};
         }
         if (path.length) {
             let moveTo = creep.moveByPath(path);
             if (moveTo === OK) {
-                creep.say(''+pos.x+','+ pos.y+' OK');
+                creep.say('' + pos.x + ',' + pos.y + ' OK');
                 // creep.log('move OK' , (new Error().stack));
                 creep.memory.lastPos = creep.pos;
                 creep.memory.triedMoved = true;
             } else if (moveTo !== ERR_TIRED) {
-                creep.say(''+pos.x+','+ pos.y+' KO');
+                creep.say('' + pos.x + ',' + pos.y + ' KO');
                 creep.log('move?', /*JSON.stringify(pos), JSON.stringify(path),*/ moveTo);
                 creep.memory.triedMoved = true;
-            }else {
+            } else {
                 creep.memory.triedMoved = false;
             }
             if (moveTo === ERR_NOT_FOUND) {
@@ -531,7 +546,10 @@ class Util {
     safeMoveTo2(creep, destination, options) {
         options = options || {};
         let callback = this.avoidCostMatrix(creep, creep.room.find(FIND_HOSTILE_CREEPS).concat(creep.room.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_KEEPER_LAIR}})), 4);
-            let path = PathFinder.search(creep.pos, (options.range?{pos:destination, range:options.range}:destination), _.merge({
+        let path = PathFinder.search(creep.pos, (options.range ? {
+            pos: destination,
+            range: options.range
+        } : destination), _.merge({
             plainCost: 2,
             swampCost: 10,
             roomCallback: callback
@@ -591,6 +609,16 @@ class Util {
                 let matrix = new PathFinder.CostMatrix();
                 let structures = Game.rooms[roomName].find(FIND_STRUCTURES);
                 structures.forEach((s)=> {
+                    if (s.structureType === STRUCTURE_ROAD) {
+                        matrix.set(s.pos.x, s.pos.y, 1);
+                    } else if (s.structureType === STRUCTURE_CONTAINER || (s.structureType === STRUCTURE_RAMPART && s.my)) {
+
+                    } else {
+                        matrix.set(s.pos.x, s.pos.y, 0xff);
+                    }
+                });
+                let constructionSites = Game.rooms[roomName].find(FIND_CONSTRUCTION_SITES);
+                constructionSites.forEach((s)=> {
                     if (s.structureType === STRUCTURE_ROAD) {
                         matrix.set(s.pos.x, s.pos.y, 1);
                     } else if (s.structureType === STRUCTURE_CONTAINER || (s.structureType === STRUCTURE_RAMPART && s.my)) {
@@ -675,47 +703,72 @@ class Util {
      * @return {number}
      */
     checkReachable(creep, pos, range) {
-        let area = creep.room.lookAtArea(pos.y - range, pos.x - range, pos.y + range, pos.x + range);
+        let area = creep.room.lookAtArea(Math.max(0, pos.y - range), Math.max(0, pos.x - range), Math.min(49, pos.y + range), Math.min(49, pos.x + range));
         let walkable = this.findWalkableTiles(creep.room, area);
         if (walkable && walkable.length) {
             // creep.log('walkables', JSON.stringify(walkable));
             return range;
-        }  else {
+        } else {
             // creep.log('widening', range + 1);
             return this.checkReachable(creep, pos, range + 1);
         }
 
     }
-    findWalkableTiles(room, squares) {
+
+    findWalkableTiles(room, squares,options) {
         let candidates = [];
+        options = options || {};
+        // room.log('findWalkableTiles', JSON.stringify(options), options.ignoreCreeps );
         _.keys(squares).forEach((y)=> {
             _.keys(squares[y]).forEach((x)=> {
                 let xy = squares[y][x];
                 let impassable = false;
                 xy.forEach((e)=> {
-                    impassable |= ('wall' === e.terrain || e.type === 'creep' || e.type=='source');
-                    if (!impassable && e.type === 'structure') {
-                        switch (e.structure.structureType) {
+
+                    impassable |= ('wall' === e.terrain || (e.type === 'creep' && !options.ignoreCreeps ) || e.type == 'source');
+
+                    impassable |= OBSTACLE_OBJECT_TYPES.indexOf(e.type) >= 0;
+                    if (!impassable && (e.type === 'structure' || (e.type === LOOK_CONSTRUCTION_SITES && e.constructionSite.progress >0))) {
+                        switch ((e.structure||e.constructionSite).structureType) {
                             case STRUCTURE_CONTAINER :
-                                break;
                             case STRUCTURE_ROAD:
                                 break;
                             case STRUCTURE_RAMPART:
                                 impassable |= (!e.structure.my);
                                 break;
-                            default:
-                                ;
+                            default: impassable = true ;
                         }
                     }
                 });
                 if (!impassable) {
-                    candidates.push({x: x, y: y, roomName: room.name});
+                    candidates.push(new RoomPosition(x, y, room.name));
                 }
             });
         });
         return candidates;
     }
 
+    /*
+     findWalkableTiles(room, squares) {
+     let candidates = [];
+     _.keys(squares).forEach((y)=> {
+     _.keys(squares[y]).forEach((x)=> {
+     let xy = squares[y][x];
+     let impassable = false;
+     xy.forEach((e)=> {
+     impassable |= OBSTACLE_OBJECT_TYPES.indexOf(e.type)>=0;
+     impassable |= (e.type ==='terrain' && OBSTACLE_OBJECT_TYPES.indexOf(e.terrain) );
+     impassable |= (e.type ==LOOK_CONSTRUCTION_SITES && OBSTACLE_OBJECT_TYPES.indexOf(e.structureType)>=0);
+     });
+     if (!impassable) {
+     candidates.push(new RoomPosition( x, y, room.name));
+     }
+     });
+     });
+     return candidates;
+     }
+
+     */
 }
 Util.ROOM_NAME_PATTERN = /([EW])(\d+)([NS])(\d+)/;
 module.exports = new Util();

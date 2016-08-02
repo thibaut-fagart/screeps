@@ -31,6 +31,8 @@ class RoleRemoteCarryKeeper extends RoleRemoteCarry {
                 })];
 
         this.healStrategy = new HealStrategy(2);
+        util.indexStrategies(this.loadStrategies);
+        util.indexStrategies(this.unloadStrategies);
     }
 
     healingCapacity(creep) {

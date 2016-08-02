@@ -13,7 +13,7 @@ class AvoidRespawnStrategy extends BaseStrategy {
     accepts (creep) {
         // creep.log('AvoidRespawnStrategy');
         // if (creep.hits === creep.hitsMax) return false;
-        let nonDisabled = creep.pos.findInRange(FIND_HOSTILE_CREEPS, 3, {filter:(c)=>(c.pos.getRangeTo(creep) <= this.minrange) || _.filter(c.body, (b)=>b.hits > 0).length > 1});
+        let nonDisabled = creep.pos.findInRange(FIND_HOSTILE_CREEPS, 4, {filter:(c)=>(c.pos.getRangeTo(creep) <= this.minrange) || _.filter(c.body, (b)=>b.hits > 0).length > 1});
         if (nonDisabled.length>0 && this.predicate(creep)()) {
             // creep.log('get out ', this.minrange);
             // get the hell out !

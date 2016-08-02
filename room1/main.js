@@ -9,7 +9,7 @@ var profiler = require('./screeps-profiler');
 // var RoomManager = require('./manager.room'), roomManager = new RoomManager(); // todo manager
 // This line monkey patches the global prototypes.
 // if (Game.cpu.bucket> 500)
-// profiler.enable();
+profiler.enable();
 var debugRoles = [];
 var debugRooms = [];
 var debugCreeps = [];
@@ -128,6 +128,7 @@ function innerLoop() {
             }
         });
         let roomTasksCpu = Game.cpu.getUsed() ;
+        cpu['roomTasks'] = (cpu['roomTasks']||0) +roomTasksCpu-roomStartCpu;
         // roomManager.run(room); // todo manager
         // room.prototype.sourceConsumers = {};
         if (Game.cpu.getUsed() < availableCpu - 100) {
@@ -161,12 +162,14 @@ function innerLoop() {
             roleSpawn.run(room);
         }
         let spawnCpu = Game.cpu.getUsed() ;
+        cpu['spawns'] = (cpu['spawns']||0) +spawnCpu-creepsCpu;
 
         if (!(Game.time % 10) && room.memory.labs && Game.cpu.getUsed() < availableCpu - 100) {
             // creep.log('running reactions');
             handleLabs(room);
         }
         let labsCpu = Game.cpu.getUsed();
+        cpu['labs'] = (cpu['labs']||0) +labsCpu-spawnCpu;
 
         if (Game.cpu.getUsed() < availableCpu - 100) room.updateCheapStats();
         if (Game.cpu.getUsed() < availableCpu - 100) {
@@ -174,10 +177,11 @@ function innerLoop() {
             Memory.stats["room." + room.name + ".energyDropped"] = _.sum(_.map(room.find(FIND_DROPPED_RESOURCES, {filter: (r) => r.resourceType == RESOURCE_ENERGY}), (s)=> s.amount));
             let regexp = new RegExp(`room.${room.name}.efficiency`);
             _.keys(Memory.stats).filter((k)=>regexp.exec(k)).forEach((k)=>delete Memory [k]);
-            if (room.memory.efficiency) {
-                if (room.memory.efficiency.remoteMining) {
-                    Memory.stats["room." + room.name + ".efficiency.remoteMining"] = _.sum(room.memory.efficiency.remoteMining);
-                    _.keys(room.memory.efficiency.remoteMining).forEach((r)=>Memory.stats["room." + room.name + ".efficiency.remoteMining." + r] = room.memory.efficiency.remoteMining[r]);
+            let roomEfficiency = Room.efficiency(roomName);
+            if (roomEfficiency) {
+                if (roomEfficiency.remoteMining) {
+                    Memory.stats["room." + room.name + ".efficiency.remoteMining"] = _.sum(roomEfficiency.remoteMining);
+                    _.keys(roomEfficiency.remoteMining).forEach((r)=>Memory.stats["room." + room.name + ".efficiency.remoteMining." + r] = roomEfficiency.remoteMining[r]);
                 }
             }
             // Memory.stats["room." + room.name + ".spawns.idle"] = _.sum(room.find(FIND_MY_SPAWNS),(s)=>s.memory.idle);
@@ -200,7 +204,7 @@ function innerLoop() {
             _.keys(handlers).forEach((k)=> Memory.stats["room." + room.name + ".creeps." + k] = roster[k] || 0);
         }
         let statsCpu = Game.cpu.getUsed();
-        if (Game.cpu.tickLimit < 500) room.log(roomTasksCpu-roomStartCpu, creepsCpu-roomTasksCpu,spawnCpu-creepsCpu,labsCpu-spawnCpu,statsCpu-labsCpu);
+        // if (Game.cpu.tickLimit < 500) room.log(roomTasksCpu-roomStartCpu, creepsCpu-roomTasksCpu,spawnCpu-creepsCpu,labsCpu-spawnCpu,statsCpu-labsCpu);
         roomCpu[roomName] = Game.cpu.getUsed() - roomStartCpu;
     });
     if (Game.cpu.getUsed() < availableCpu - 100) {
@@ -221,6 +225,7 @@ function innerLoop() {
     _.keys(handlers).forEach((k)=> {
         Memory.stats["cpu.roles." + k] = cpu[k] || 0;
     });
+    ['labs','spawns','roomTasks'].forEach((k)=>{ Memory.stats["cpu.roles." + k] = cpu[k] || 0;});
     _.keys(roomCpu).forEach((k)=> {
         Memory.stats["cpu.rooms." + k] = roomCpu[k] || 0;
     });
@@ -239,7 +244,10 @@ function innerLoop() {
 // RoomObject.prototype.creeps = [];
 module.exports.loop = function () {
     let mainStart = Game.cpu.getUsed()
-    if (Game.cpu.bucket > 100) innerLoop();
+    if (Game.cpu.bucket > 100) {
+        profiler.wrap(innerLoop);
+        // innerLoop();
+    }
     if (Game.cpu.tickLimit < 500) console.log(mainStart, Game.cpu.getUsed()-mainStart,Game.cpu.getUsed(), Game.cpu.bucket);
-    // profiler.wrap(innerLoop);
+
 };

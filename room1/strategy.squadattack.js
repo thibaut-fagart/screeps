@@ -230,7 +230,7 @@ class SquadAttackStrategy extends Base {
     }
 
     findLeaderTarget(leader, hostiles) {
-        let nonKeepers = hostiles.filter((c)=>c.owner.username !== 'Keeper Source');
+        let nonKeepers = hostiles.filter((c)=>c.owner.username !== 'Source Keeper');
         if (!nonKeepers.length) {
             hostiles = nonKeepers;
         }

@@ -9,7 +9,6 @@ class RoleRemoteUpgrader extends RoleUpgrader{
         this.moveTask = new MoveToRoomTask('remoteupgrade');
     }
     resign(creep) {
-        
    	}
     
     run(creep) {

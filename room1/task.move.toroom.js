@@ -56,7 +56,31 @@ class MoveToRoomTask extends BaseStrategy {
                 this.repairRoad(creep);
                 // creep.log('path', creep.memory.roomPath);
                 creep.memory.roomPathDest = JSON.stringify(exit);
-                util.moveTo(creep, exit, 'move_Task', {range: 0});
+                let moveTo = util.moveTo(creep, exit, 'move_Task', {range: 0});
+                if (moveTo !== OK && moveTo !== ERR_TIRED) {
+                    creep.log('checking collision');
+                    if (creep.pos.getRangeTo(exit) ==1) {
+                        // find another exit point
+                        let area = {top: Math.max(0,exit.y-1), left: Math.max(0,exit.x-1), bottom: Math.min(49,exit.y+1), right: Math.min(49,exit.x+1)};
+/*
+                        if (exit.x ===0 || exit.x ===49) {
+                            area.top = exit.y-1;
+                            area.bottom= exit.y+1;
+                        } else  {
+                            area.left = exit.x-1;
+                            area.right= exit.x+1;
+                        }
+*/
+                        let walkables = util.findWalkableTiles(creep.room, creep.room.lookAtArea(area.top, area.left, area.bottom, area.right));
+                        if (walkables.length) {
+                            walkables = walkables.filter((pos)=>!pos.isEqualTo(exit));
+                            let test = _.sample(walkables);
+                            creep.log('trying', JSON.stringify(test));
+                            creep.log('moved?', util.moveTo(creep, test,undefined,{range: 0}));
+
+                        }
+                    }
+                }
 
                 /*               creep.memory.roomPath = creep.memory.roomPath
                  || Room.serializePath(util.pathFinderToMoveByPath(creep.pos, util.safeMoveTo2(creep, exit)));

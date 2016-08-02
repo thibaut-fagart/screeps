@@ -8,6 +8,7 @@ var HealStrategy = require('./strategy.remote_heal');
 class RoleAttacker{
     constructor() {
         this.attackStrategies = [/*new CloseAttackStrategy(), new RemoteAttackStrategy(), new HealStrategy(), */new AttackWallStrategy()];
+        util.indexStrategies(this.attackStrategies);
     }
     
     resign(creep) {

@@ -2,18 +2,13 @@ var _ = require('lodash');
 var util = require('./util');
 var LoadFromContainerStrategy = require('./strategy.load_from_container');
 var PickupStrategy = require('./strategy.pickup');
+var ClosePickupStrategy = require('./strategy.pickup.close');
 var DropToContainerStrategy = require('./strategy.drop_to_container');
 var DropToEnergyStorageStrategy = require('./strategy.drop_to_energyStorage');
 
 class RoleCarry {
     constructor() {
-        this.pickupStrategy = new PickupStrategy(undefined, (creep)=> {
-            let availableCarry = creep.carryCapacity - _.sum(creep.carry);
-            return (drop)=> {
-                let range = drop.pos.getRangeTo(creep);
-                return range < 5 || drop.amount > availableCarry + range;
-            };
-        });
+        this.pickupStrategy = new ClosePickupStrategy(RESOURCE_ENERGY, 5);
         this.loadStrategies = [
             new PickupStrategy(undefined, (creep)=>((d)=>(d.amount > 50))),
             new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (creep)=> ((s)=>s.pos.getRangeTo(creep) < 2)),
@@ -35,6 +30,8 @@ class RoleCarry {
         ];
         this.ACTION_UNLOAD = 'unload';
         this.ACTION_FILL = 'fill';
+        util.indexStrategies(this.loadStrategies);
+        util.indexStrategies(this.unloadStrategies);
     }
 
 

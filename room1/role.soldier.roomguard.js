@@ -17,6 +17,7 @@ class RoleRemoteRoomGuard {
             new HealStrategy(), new CloseAttackStrategy()/*,new AttackStructureStrategy()*/];
         this.regroupStrategy = new RegroupStrategy(COLOR_BLUE);
         this.moveTask = new MoveToRoomTask('attack', 'homeroom', 'remoteRoom');
+        util.indexStrategies(this.attackStrategies);
     }
 
     resign(creep) {

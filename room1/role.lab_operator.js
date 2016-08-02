@@ -10,7 +10,7 @@ var DropToContainerStrategy = require('./strategy.drop_to_container');
 class RoleLabOperator {
     constructor() {
         this.loadStrategies = [
-            new PickupStrategy(util.ANY_MINERAL),
+            new PickupStrategy(),
             new LoadFromContainerStrategy((creep)=>(creep.memory.lab_goal&&creep.memory.lab_goal.mineralType), undefined,
                 (creep) => {
                     if (creep.memory.lab_goal && creep.memory.lab_goal.action == this.ACTION_FILL) {
@@ -28,7 +28,8 @@ class RoleLabOperator {
                     return (s)=>false;
                 }
             ),
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_STORAGE)
+            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_STORAGE),
+            new LoadFromContainerStrategy(LoadFromContainerStrategy.ANY_MINERAL, STRUCTURE_CONTAINER)
         ];
         this.unloadStrategies = [
             new DropToContainerStrategy(util.ANY_MINERAL, STRUCTURE_LAB,
@@ -53,6 +54,8 @@ class RoleLabOperator {
             new DropToContainerStrategy(RESOURCE_ENERGY, STRUCTURE_LAB),
             new DropToContainerStrategy(null, STRUCTURE_STORAGE)
         ];
+        util.indexStrategies(this.loadStrategies);
+        util.indexStrategies(this.unloadStrategies);
         this.ACTION_UNLOAD = 'unload';
         this.ACTION_FILL = 'fill';
     }

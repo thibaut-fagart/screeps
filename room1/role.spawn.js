@@ -8,9 +8,10 @@ let spawn = {
     patterns: {
         'harvester': {body: [MOVE, WORK, WORK, WORK, WORK, WORK,], count: 2, scale: false, memory: {role: 'harvester'}},
         'carry': {
-            body: [MOVE, CARRY, CARRY, CARRY, CARRY, MOVE, /* 300 */CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 600 */
-                CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /*/!* 900 *!/CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /!* 1200 *!/*/
-                CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, ],
+            body: [MOVE, CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, CARRY, CARRY, MOVE,
+                MOVE, CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, CARRY, CARRY, MOVE,
+                MOVE, CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, CARRY, CARRY, MOVE,
+            ],
             count: 2,
             scale: false,
             memory: {role: 'carry'}
@@ -53,13 +54,15 @@ let spawn = {
             scale: false,
             memory: {role: 'mineralHarvester'}
         },
+/* role taken by labOperator
         'mineralGatherer': {
-            body: [CARRY, MOVE, CARRY, CARRY, CARRY, MOVE, /* 300 */CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 600 */
-                CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 900 *//*CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, *//* 1200 */],
+            body: [CARRY, MOVE, CARRY, CARRY, CARRY, MOVE, /!* 300 *!/CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /!* 600 *!/
+                CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /!* 900 *!//!*CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, *!//!* 1200 *!/],
             count: 0,
             scale: false,
             memory: {role: 'mineralGatherer'}
         },
+*/
         'labOperator': {
             body: [CARRY, MOVE, CARRY, CARRY, CARRY, MOVE, /* 300 */CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /* 600 */
                 CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /*/!* 900 *!/CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, /!* 1200 *!/*/],
@@ -86,20 +89,31 @@ let spawn = {
             scale: true,
             memory: {role: 'roleSoldier', type: 'close'}
         },
-        'remoteUpgrader': {
-            body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE, MOVE, WORK, CARRY, MOVE, CARRY, WORK, MOVE, MOVE],
-            count: 0,
-            scale: true,
-            memory: {role: 'remoteUpgrader'}
-        },
         'claimer': {body: [MOVE, MOVE, CLAIM, CLAIM,], count: 0, scale: true, memory: {role: 'claimer'}},
-        'reserver': {body: [MOVE, MOVE, CLAIM, CLAIM,], count: 0, scale: true, memory: {role: 'reserver'}},
+        'reserver': {body: [MOVE, CLAIM, MOVE, CLAIM,], count: 0, scale: true, memory: {role: 'reserver'}},
         // 'remoteHarvester': {body: [CARRY, MOVE, WORK, MOVE, CARRY, MOVE, WORK, MOVE, CARRY, MOVE,WORK, MOVE, CARRY,MOVE, WORK, MOVE,MOVE,CARRY], scale:true, count: 2, memory: {role: 'remoteHarvester'}},
+        'remoteCarry': {
+            body: [MOVE, WORK,
+                CARRY, MOVE, CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, CARRY,
+                CARRY, MOVE, CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, CARRY,
+                CARRY, MOVE, CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, CARRY,
+                CARRY, MOVE, CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, CARRY,
+            ],
+            count: 0,
+            scale: false,
+            memory: {role: 'remoteCarry'}
+        },
         'remoteHarvester': {
             body: [MOVE, MOVE, MOVE, CARRY, WORK, WORK, WORK, WORK, MOVE, WORK, MOVE, WORK],
             scale: true,
             count: 0,
             memory: {role: 'remoteHarvester'}
+        },
+        'remoteUpgrader': {
+            body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE, MOVE, WORK, CARRY, MOVE, CARRY, WORK, MOVE, MOVE],
+            count: 0,
+            scale: true,
+            memory: {role: 'remoteUpgrader'}
         },
         'keeperGuard': {
             body: [MOVE, HEAL, MOVE, HEAL, MOVE, HEAL, MOVE, RANGED_ATTACK, MOVE, RANGED_ATTACK, MOVE, RANGED_ATTACK,
@@ -121,17 +135,6 @@ let spawn = {
             scale: true,
             count: 0,
             memory: {role: 'keeperHarvester'}
-        },
-        'remoteCarry': {
-            body: [MOVE, WORK,
-                CARRY, MOVE, CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, CARRY,
-                CARRY, MOVE, CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, CARRY,
-                CARRY, MOVE, CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, CARRY,
-                CARRY, MOVE, CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, CARRY, CARRY, MOVE, CARRY,
-            ],
-            count: 0,
-            scale: false,
-            memory: {role: 'remoteCarry'}
         },
         'remoteBuilder': {
             body: [WORK, MOVE, CARRY, MOVE, CARRY, MOVE, WORK, MOVE, WORK, MOVE, CARRY, MOVE, CARRY, MOVE, WORK, MOVE, HEAL],
@@ -281,7 +284,7 @@ let spawn = {
         let previousQueueLength = queue.length;
         let remoteRoom = Game.rooms[remoteRoomName];
         let tripTimeToSources = room.tripTimeToSources(remoteRoomName);
-        let remoteRoster = this.remoteRoster(remoteRoomName, ((c)=>c.ticksToLive > tripTimeToSources+50));
+        let remoteRoster = this.remoteRoster(remoteRoomName, ((c)=>tripTimeToSources?c.ticksToLive > tripTimeToSources+50:c.ticksToLive>50));
         var requiredCarry = function (safeSourcesAndMinerals) {
             let carryTransportTime = 3 * tripTimeToSources; // TODO approximate distance from exit to source
             let carryCapacityWithTransport = this.carryCapacity(room, patterns['remoteCarry']) * 1500 / carryTransportTime;
@@ -346,7 +349,7 @@ let spawn = {
                         patterns['remoteHarvester'].body = oldBody;
                         // room.log('remoteMining', remoteRoomName, 'energyReady', energyReady);
                         var requiredCarryCount = requiredCarry.call(this, safeSourcesAndMinerals);
-                        room.log(`remoteMiningCarryNeeed ${remoteRoomName}, required ${requiredCarryCount} ,current ${remoteRoster['remoteCarry']}`);
+                        // room.log(`remoteMiningCarryNeeed ${remoteRoomName}, required ${requiredCarryCount} ,current ${remoteRoster['remoteCarry']}`);
                         if (energyReady > 1000) {
                             this.queue(room, queue, 'remoteCarry', patterns, {}, remoteRoster, requiredCarryCount, {
                                 remoteRoom: remoteRoomName,
@@ -383,7 +386,7 @@ let spawn = {
                 || (remoteRoom.controller && remoteRoom.controller.reservation.ticksToEnd < 500));
                 // room.log('current reservation  ?', remoteRoom.name, JSON.stringify(remoteRoom.controller.reservation));
                 // spawn reserver if  the room is not reserved, or due to expire soon
-                if (spawnReserve) {
+                if (spawnReserve && room.energyCapacityAvailable>350) {
                     this.queue(room, queue, 'reserver', patterns, {}, remoteRoster, 1, {
                         remoteRoom: remoteRoomName,
                         action: 'go_remote_room'
@@ -391,7 +394,7 @@ let spawn = {
                 }
             } else {
                 // room.log('queueing scout for remoteMining', remoteRoomName);
-                this.queue(room, queue, 'scout', patterns, {}, remoteRoster, 1, {
+                this.queue(room, queue, 'scout', patterns, currentSplit, remoteRoster, 1, {
                     remoteRoom: remoteRoomName,
                     action: 'go_remote_room'
                 });
@@ -440,18 +443,31 @@ let spawn = {
         if (room.controller.level > 4 && room.memory.claim) {
             let rooms = _.isString(room.memory.claim) ? [room.memory.claim] : room.memory.claim;
             let remoteRoster = this.remoteRoster(room.memory.claim);
-            roooms.forEach((room)=> {
+            rooms.forEach((remoteRoomName)=> {
                 'use strict';
-                let remoteRoom = Game.rooms[room];
+                let remoteRoom = Game.rooms[remoteRoomName];
                 if (remoteRoom && remoteRoom.controller && !remoteRoom.controller.my) {
                     this.queue(room, queue, 'claimer', patterns, currentSplit, remoteRoster, 1, {
-                        remoteRoom: room,
+                        remoteRoom: remoteRoom,
                         action: 'go_remote_room'
                     });
                 } else if (remoteRoom && remoteRoom.controller && remoteRoom.controller.my && remoteRoom.controller.level < 3) {
-                    let remoteRoster = util.roster(remoteRoom, (c)=> c.ticksToLive > 100);
+                    let remoteRoster = this.remoteRoster(remoteRoom, (c)=> c.ticksToLive > 100);
+                    this.queue(room, queue, 'remoteHarvester', patterns, currentSplit, remoteRoster, 1, {
+                        remoteRoom: remoteRoom,
+                        action: 'go_remote_room'
+                    });
+                    room.log('queueing 459', 'remoteUpgrader', currentSplit['remoteUpgrader'], remoteRoster['remoteUpgrader']);
+/*
                     this.queue(room, queue, 'remoteUpgrader', patterns, currentSplit, remoteRoster, 1, {
-                        remoteRoom: room,
+                        remoteRoom: remoteRoom,
+                        action: 'go_remote_room'
+                    });
+*/
+                } else if (!remoteRoom) {
+                    //send scout
+                    this.queue(room, queue, 'scout', patterns, currentSplit, remoteRoster, 1, {
+                        remoteRoom: remoteRoom,
                         action: 'go_remote_room'
                     });
                 }
@@ -461,23 +477,31 @@ let spawn = {
             let rooms = _.isString(room.memory.remotebuild) ? [room.memory.remotebuild] : room.memory.remotebuild;
             rooms.forEach((roomName)=> {
                 'use strict';
+                let remoteRoster = this.remoteRoster(roomName, (c)=> c.ticksToLive > 100);
                 let remoteRoom = Game.rooms[roomName];
                 if (!remoteRoom) {
                     patterns['remoteBuilder'].count = 0;
                 } else {
-                    let remoteRoster = util.roster(remoteRoom, (c)=> c.ticksToLive > 100);
                     if (!(remoteRoom.controller) || (remoteRoom.controller && !remoteRoom.controller.my)) {
                         let constructionSites = remoteRoom.find(FIND_CONSTRUCTION_SITES);
                         if (constructionSites.length > 0) {
                             let wantedBuilderCount = constructionSites.find((site)=>site.structureType == STRUCTURE_SPAWN) ? 3 : 1;
                             // room.log('queueing remoteBuilders', wantedBuilderCount);
-                            this.queue(room, queue, 'remoteBuilder', patterns, currentSplit, remoteRoster, wantedBuilderCount, {
+                            this.queue(room, queue, 'remoteHarvester', patterns, {}, remoteRoster, remoteRoom.find(FIND_SOURCES).length, {
+                                remoteRoom: roomName,
+                                action: 'go_remote_room'
+                            });
+                            this.queue(room, queue, 'remoteBuilder', patterns, {}, remoteRoster, wantedBuilderCount, {
                                 remoteRoom: roomName,
                                 action: 'go_remote_room'
                             });
                         }
                     } else if (remoteRoom.controller && remoteRoom.controller.my && remoteRoom.find(FIND_MY_SPAWNS) == 0) {
                         // room.log('queueing remoteBuilders', wantedBuilderCount);
+                        this.queue(room, queue, 'remoteHarvester', patterns, {}, remoteRoster, remoteRoom.find(FIND_SOURCES).length, {
+                            remoteRoom: roomName,
+                            action: 'go_remote_room'
+                        });
                         this.queue(room, queue, 'remoteBuilder', patterns, currentSplit, remoteRoster, 3, {
                             remoteRoom: roomName,
                             action: 'go_remote_room'
@@ -515,11 +539,11 @@ let spawn = {
             if (room.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_EXTRACTOR}}).length > 0) {
                 let find = room.find(FIND_STRUCTURES, {filter: (s)=>s.structureType === STRUCTURE_CONTAINER && _.sum(s.store) > 1000 && s.store.energy !== _.sum(s.store)});
                 if (find.length) {
-                    patterns['mineralGatherer'].count = 1;
+                    patterns['labOperator'].count = 1;
                     // room.log('containers with minerals', find.length, find[0].id);
                 }
 
-                if (room.storage && room.storage.store.energy > 10000) {
+                if (room.storage /*&& room.storage.store.energy > 10000*/) {
                     let minerals = room.find(FIND_MINERALS);
                     let storedMinerals = room.storage.store;
                     minerals.forEach((m)=> {
@@ -562,7 +586,11 @@ let spawn = {
         }
         // room.log("currentSplit " , JSON.stringify(currentSplit));
         // room.log("targetSplit" , JSON.stringify(_.values(patterns).map((p)=>({role:p.memory.role, count: p.count})).filter((e)=>e.count)));
-
+        let sources = room.find(FIND_SOURCES);
+        patterns['harvester'].count = Math.min(2, sources.length);
+        patterns['carry'].count =Math.ceil(patterns['carry'].count * sources.length/2);
+        patterns['upgrader'].count =Math.ceil(patterns['upgrader'].count * sources.length/2);
+        patterns['repair2'].count =Math.ceil(patterns['repair2'].count * sources.length/2);
         _.keys(patterns)
         // .forEach((role)
         // ['harvester', 'carry', 'energyFiller', 'energyGatherer', 'builder', 'repair2', 'mineralHarvester', 'mineralGatherer', 'upgrader']
@@ -658,7 +686,7 @@ let spawn = {
             return;
         }
         let roomPatterns = _.cloneDeep(this.patterns);
-        this.updateNeeds(room, roomPatterns);
+        // this.updateNeeds(room, roomPatterns);
         this.reassignCreeps(room, roomPatterns);
 
         let myCreeps = room.find(FIND_MY_CREEPS);

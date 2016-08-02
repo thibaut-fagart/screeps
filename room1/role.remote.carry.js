@@ -3,6 +3,7 @@ var util = require('./util');
 var LoadFromContainerStrategy = require('./strategy.load_from_container');
 var HarvestEnergySourceStrategy = require('./strategy.harvest_source');
 var PickupStrategy = require('./strategy.pickup');
+var ClosePickupStrategy = require('./strategy.pickup.close');
 var DropToContainerStrategy = require('./strategy.drop_to_container');
 var DropToEnergyStorageStrategy = require('./strategy.drop_to_energyStorage');
 var AvoidRespawnStrategy = require('./strategy.avoidrespawn');
@@ -12,23 +13,18 @@ var RegroupStrategy = require('./strategy.regroup');
 class RoleRemoteCarry {
 
     constructor() {
-        this.travelingPickup = new PickupStrategy(undefined, (creep)=> {
-            return (drop)=> {
-                let range = drop.pos.getRangeTo(creep);
-                return range < 2;
-            };
-        });
+        this.travelingPickup = new ClosePickupStrategy(RESOURCE_ENERGY, 2);
         this.loadFromNeighbour= new LoadFromContainerStrategy(undefined, undefined, (creep)=> {
             return (s)=> {
                 let range = s.pos.getRangeTo(creep);
-                return range < 2 && s.energy >50;
+                return range < 2 && (_.sum(s.store)>50);
             };
         });
         this.pickupStrategy = new PickupStrategy(undefined, (creep)=> {
             let availableCarry = creep.carryCapacity - _.sum(creep.carry);
             return (drop)=> {
                 let range = drop.pos.getRangeTo(creep);
-                return range < 5 || drop.amount > availableCarry + range;
+                return drop.amount > availableCarry + range;
             };
         });
         this.loadStrategies = [
@@ -45,6 +41,8 @@ class RoleRemoteCarry {
         this.avoidThreadStrategy = new AvoidRespawnStrategy();
         this.ACTION_UNLOAD = 'unload';
         this.ACTION_FILL = 'load';
+        util.indexStrategies(this.loadStrategies);
+        util.indexStrategies(this.unloadStrategies);
 
         this.goRemoteTask = new MoveToRoomTask(undefined, 'homeroom', 'remoteRoom');
         this.goHomeTask = new MoveToRoomTask(undefined, 'remoteRoom', 'homeroom');
@@ -110,6 +108,9 @@ class RoleRemoteCarry {
         } else if (creep.memory.action === this.ACTION_FILL && _.sum(creep.carry) > 0.95 * creep.carryCapacity) {
             this.setAction(creep, 'go_home_room');
             this.goHomeTask.accepts(creep);
+        } else if (creep.memory.action === this.ACTION_FILL && creep.room.name !== creep.memory.remoteRoom) {
+            this.setAction(creep, 'go_remote_room');
+            this.goRemoteTask.accepts(creep);
         } else if (creep.memory.action === this.ACTION_UNLOAD && _.sum(creep.carry) === 0) {
             // TODO check lifespan , will the creep live long enough to go and bakc ?
             let timeToSources = creep.room.tripTimeToSources(creep.memory.remoteRoom);

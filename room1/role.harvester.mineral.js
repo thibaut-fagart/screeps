@@ -6,7 +6,8 @@ class RoleMineralHarvester {
     constructor() {
         this.loadStrategies = [new HarvestSourceToContainerStrategy({resourceType: util.ANY_MINERAL, nooverflow:true})];
         this.unloadStrategies = [new DropToContainerStrategy(STRUCTURE_STORAGE)];
-
+        util.indexStrategies(this.loadStrategies);
+        util.indexStrategies(this.unloadStrategies);
     }
 
     run(creep) {

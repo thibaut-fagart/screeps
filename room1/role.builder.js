@@ -3,41 +3,54 @@ var util = require('./util');
 var LoadFromContainerStrategy = require('./strategy.load_from_container');
 var HarvestEnergySourceStrategy = require('./strategy.harvest_source');
 var PickupStrategy = require('./strategy.pickup');
+var ClosePickupStrategy = require('./strategy.pickup.close');
 var BuildStrategy = require('./strategy.build');
 
 
 class RoleBuilder {
     constructor() {
+        this.travelingPickup = new ClosePickupStrategy(RESOURCE_ENERGY, 2);
+        this.loadFromNeighbour = new LoadFromContainerStrategy(RESOURCE_ENERGY, undefined, (creep)=> {
+            return (s)=> {
+                let range = s.pos.getRangeTo(creep);
+                return range < 2 && s.energy > 50;
+            };
+        });
         this.loadStrategies = [
-            new PickupStrategy(RESOURCE_ENERGY, (creep)=>((d)=>(d.pos.getRangeTo(creep)< 5))),
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, undefined, (creep)=> ((s)=>s.pos.getRangeTo(creep) < 5)) ,
-            new LoadFromContainerStrategy(RESOURCE_ENERGY,  undefined /*,(creep)=>((s)=>([STRUCTURE_TOWER, STRUCTURE_SPAWN, STRUCTURE_EXTENSION].indexOf(s.structureType) < 0))*/),
+            new ClosePickupStrategy(RESOURCE_ENERGY, 5),
+            new LoadFromContainerStrategy(RESOURCE_ENERGY, undefined, (creep)=> ((s)=>s.pos.getRangeTo(creep) < 5)),
+            new LoadFromContainerStrategy(RESOURCE_ENERGY, undefined /*,(creep)=>((s)=>([STRUCTURE_TOWER, STRUCTURE_SPAWN, STRUCTURE_EXTENSION].indexOf(s.structureType) < 0))*/),
             new PickupStrategy(RESOURCE_ENERGY),
             new HarvestEnergySourceStrategy()];
         this.buildStrategy = new BuildStrategy();
         this.BUILD_TARGET = 'buildtarget';
+        util.indexStrategies(this.loadStrategies);
     }
 
     resign(creep) {
         creep.log('resigning ?');
-        creep.memory.role = 'upgrader';
+        // creep.memory.role = 'upgrader';
     }
 
-/*
-    findTarget(creep) {
-        var target = util.objectFromMemory(this.BUILD_TARGET);
-        if (!target) {
-            // console.log("finding target for  ", creep.name);
-            var targets = creep.room.find(FIND_CONSTRUCTION_SITES).sort((c)=> -(c.progress / c.progressTotal));
-            if (targets.length) {
-                target = targets[0];
+    /*
+     findTarget(creep) {
+     var target = util.objectFromMemory(this.BUILD_TARGET);
+     if (!target) {
+     // console.log("finding target for  ", creep.name);
+     var targets = creep.room.find(FIND_CONSTRUCTION_SITES).sort((c)=> -(c.progress / c.progressTotal));
+     if (targets.length) {
+     target = targets[0];
 
-                creep.memory[this.BUILD_TARGET] = target.id;
-            }
-        }
-        return target;
+     creep.memory[this.BUILD_TARGET] = target.id;
+     }
+     }
+     return target;
+     }
+     */
+
+    onNoLoadStrategy(creep) {
+
     }
-*/
 
     /** @param {Creep} creep **/
     run(creep) {
@@ -58,6 +71,8 @@ class RoleBuilder {
                 this.resign(creep);
             }
         } else {
+            this.travelingPickup.accepts(creep);
+            this.loadFromNeighbour.accepts(creep);
             let strategy = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);
 
             if (!strategy) {
@@ -68,6 +83,7 @@ class RoleBuilder {
                 util.setCurrentStrategy(creep, strategy);
                 // creep.log('strategy ', strategy.constructor.name);
             } else {
+                this.onNoLoadStrategy(creep);
                 // creep.log('no loadStrategy');
             }
         }

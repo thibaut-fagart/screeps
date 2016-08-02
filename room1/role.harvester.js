@@ -9,6 +9,8 @@ class RoleHarvester {
         this.loadStrategies = [new HarvestEnergySourceToContainerStrategy(RESOURCE_ENERGY), new HarvestEnergySourceStrategy(RESOURCE_ENERGY)];
         this.unloadStrategies = [new DropToEnergyStorage(STRUCTURE_EXTENSION), new DropToEnergyStorage(STRUCTURE_SPAWN),
             new DropToContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER), new DropToContainerStrategy(RESOURCE_ENERGY, STRUCTURE_STORAGE)];
+        util.indexStrategies(this.loadStrategies);
+        util.indexStrategies(this.unloadStrategies);
 
     }
 

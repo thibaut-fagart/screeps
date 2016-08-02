@@ -87,7 +87,9 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
         /*if (creep.memory.role =='remoteHarvester') {
          creep.log(source,container, undefined === source || undefined === container)
          }*/
-        return (undefined !== source/* && undefined !== container */);
+        let returnValue = (source && !util.isReserved(creep,source)/* && undefined !== container */)
+        // creep.log('success?', returnValue, source);
+        return returnValue;
 
     }
 
@@ -112,7 +114,7 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
             if (!source) {
                 /** @type {Source[]| Mineral[]} */
                 let sources = _.filter(this.findSources(creep), (s)=>!util.isReserved(creep, s, 'harvest'));
-                // creep.log('sources', sources.length);
+                // creep.log('sources', this.resourceType, sources.length, JSON.stringify(sources.map((s)=>s.pos)));
 
                 // Source => [Source|Mineral, Container[]]
                 let sourcesWithNearbyNonReservedContainers = _.map(
@@ -206,7 +208,9 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
     }
 
     findSources(creep) {
-        let safeSources = _.filter(util.findSafeSources(creep.room, true), (s)=> {
+        let sources = util.findSafeSources(creep.room, RESOURCE_ENERGY !==this.resourceType);
+        // creep.log('util.safeSources', sources.length, JSON.stringify(sources.map((s)=>s.pos)));
+        let safeSources = _.filter(sources, (s)=> {
             switch (this.resourceType) {
                 case RESOURCE_ENERGY :
                     return s.energy;
@@ -216,7 +220,8 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
                 }
             }
         });
-        // creep.log('safeSources1', safeSources.length);
+        // creep.log('safeSources1', safeSources.length, JSON.stringify(safeSources.map((s)=>s.pos)));
+
         return safeSources;
     }
 

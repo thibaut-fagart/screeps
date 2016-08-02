@@ -26,27 +26,57 @@ Room.prototype.operateLinks = function () {
     let otherLinks = links.filter((l)=> (!storageLink || (storageLink && l.id !== storageLink.id)) && (!controllerLink || (controllerLink && l.id !== controllerLink.id)));
     otherLinks = _.sortBy(otherLinks.filter((l)=>l.cooldown === 0), (l)=> -l.energy);
     let actioned = [];
-    let linkAcceptsEnergy = (l)=> l && l.energy < l.energyCapacity;
-    if (linkAcceptsEnergy(controllerLink)) {
-        if (otherLinks.length && otherLinks[0].energy > 0) {
-            otherLinks[0].transferEnergy(controllerLink);
-            actioned.push(otherLinks[0].id);
-            // this.log(this.name, 'link transfer other to controller', otherLinks[0].id, otherLinks[0].energy);
-        } else if (storageLink && storageLink.energy > 0 && storageLink.cooldown === 0) {
-            storageLink.transferEnergy(controllerLink);
-            actioned.push(storageLink.id);
-            // this.log(this.name, 'link transfer storage to controller', storageLink.energy);
+    let linkAccepts = (link, amount) => link && !link.cooldown && link.energy + amount < link.energyCapacity;
+    let chooseTargetLink = (amount, l1, l2)=> {
+        if (linkAccepts(l1, amount)) {
+            return l1;
+        } else if (linkAccepts(l2, amount)) {
+            return l2;
+        } else if (!l1 || !l2) {
+            return l1 ? l1 : l2;
+        } else if (l1.energy < l2.energy) {
+            return l1;
+        } else {
+            return l2;
         }
-    }
+    };
+    /*
+     if (linkAccepts(controllerLink)) {
+     if (otherLinks.length && otherLinks[0].energy > 0) {
+     otherLinks[0].transferEnergy(controllerLink);
+     actioned.push(otherLinks[0].id);
+     // this.log(this.name, 'link transfer other to controller', otherLinks[0].id, otherLinks[0].energy);
+     } else if (storageLink && storageLink.energy > 0 && storageLink.cooldown === 0) {
+     storageLink.transferEnergy(controllerLink);
+     actioned.push(storageLink.id);
+     // this.log(this.name, 'link transfer storage to controller', storageLink.energy);
+     }
+     }
+     */
     otherLinks.forEach((l)=> {
         "use strict";
-        if (actioned.indexOf(l.id) < 0 && linkAcceptsEnergy(storageLink)) {
-            if (l.energy > 0) {
-                l.transferEnergy(storageLink);
-                // this.log(this.name, 'link transfer other to storage', l.id, l.energy);
-            }
-        }
-    })
+        let target = chooseTargetLink(l.energy, controllerLink, storageLink);
+        if (target) l.transferEnergy(target);
+    });
+    let target = chooseTargetLink(storageLink.energy, controllerLink, undefined);
+    if (target) {
+        storageLink.transferEnergy(target);
+    }
+};
+Room.prototype.harvestPositions = function () {
+    "use strict";
+    // if (!this.memory.harvestPositions) {
+    this.log('harvestPositions');
+        let sources = this.find(FIND_SOURCES);
+        this.log('sources', sources.length);
+        this.memory.harvestPositions = sources.reduce((previous, s)=> {
+            let myTiles = util.findWalkableTiles(this, this.lookAtArea(s.pos.y - 1, s.pos.x - 1, s.pos.y + 1, s.pos.x + 1), {ignoreCreeps: true});
+            this.log('walkable ', myTiles.length);
+            return (previous.concat(myTiles));
+        }, []);
+    // }
+    return this.memory.harvestPositions.map((p)=>new RoomPosition(p.x, p.y, p.roomName));
+
 };
 Room.prototype.expectedMineralType = function (lab) {
     return (this.memory.labs || [])[lab.id];
@@ -92,10 +122,7 @@ Room.prototype.assessThreat = function () {
     this.memory.threatAssessment.harvestRate = (this.memory.threatAssessment.harvested) / (Game.time - this.memory.threatAssessment.lastInvadersAt);
 };
 Room.prototype.deliver = function (fromRoom, carry) {
-    this.memory.efficiency = this.memory.efficiency || {date:Game.time};
-    if (!this.memory.efficiency.date || this.memory.efficiency.date + 3000<Game.time){
-        this.memory.efficiency = {date: Game.time};
-    }
+    this.memory.efficiency = this.memory.efficiency || {date: Game.time};
     this.memory.efficiency.remoteMining = this.memory.efficiency.remoteMining || {};
     this.memory.efficiency.remoteMining[fromRoom] = (this.memory.efficiency.remoteMining[fromRoom] || 0) + _.sum(carry);
     this.log('delivered', _.sum(carry));
@@ -145,20 +172,31 @@ Room.prototype.gc = function () {
             }
         }
     }
-    /*
-     if (this.memory.reserved) {
-     if (this.memory.reserved.harvest) {
-     _.keys(this.memory.reserved.harvest).forEach((id)=> {
-     let object =Game.getObjectById(id);
-     let owner = Game.getObjectById(this.memory.reserved.harvest[id]);
-     if (!object || !owner || !owner.memory.locks || owner.memory.locks.indexOf(object)< 0) {
-     this.log('gcing', object, owner);
-     delete this.memory.reserved.harvest[id];
-     }
-     })
-     }
-     }
-     */
+    if (this.memory.efficiency || !Game.time % 3000) {
+        this.memory.oldEfficiencies = this.memory.oldEfficiencies || [];
+        if (this.memory.oldEfficiencies.length > 10) {
+            this.memory.oldEfficiencies.pop();
+            this.memory.oldEfficiencies.unshift(this.memory.efficiency);
+        }
+        this.memory.efficiency = {date: Game.time};
+    }
+};
+Room.efficiency = function (roomName) {
+    let roomMem = Memory.rooms[roomName].efficiency || {};
+    // [{remoteMining: {room:value}]
+    let oldMems = Memory.rooms[roomName].oldEfficiencies || [];
+    let result = _.cloneDeep(roomMem);
+    oldMems.reduce((previous, current)=> {
+        _.keys(current).forEach((type)=> {
+            "use strict";
+            _.keys(current[type]).forEach((remoteRoom)=> {
+                previous[type] = previous[type] || {};
+                previous[type][remoteRoom] = (previous[type][remoteRoom] || 0) + current[type][remoteRoom];
+            })
+        });
+    }, result);
+    return result;
+
 };
 Room.prototype.tripTimeToSources = function (toRoom) {
     "use strict";
@@ -170,9 +208,12 @@ Room.prototype.tripTimeToSources = function (toRoom) {
     Memory.rooms[this.name].cache = Memory.rooms[this.name].cache || {};
     Memory.rooms[this.name].cache.remoteMining = Memory.rooms[this.name].cache.remoteMining || {};
     // console.log('tripTime',JSON.stringify(Memory.rooms[this.name].cache.remoteMining));
+    let cache = Memory.rooms[this.name].cache.remoteMining;
 
-    if (!Memory.rooms[this.name].cache.remoteMining.tripTimeToSources || true/*Memory.rooms[this.name].cache.remoteMining.tripTimeToSources.time < Game.time*//*refresh time*/) {
-        Memory.rooms[this.name].cache.remoteMining.tripTimeToSources = {time: Game.time};
+    if (!cache.tripTimeToSources || !cache.tripTimeToSources[toRoom] || (cache.tripTimeToSources.time + 3000 < Game.time + 100 * Math.random())/*refresh time, random so that not all rooms timeout at the same time*/) {
+        this.log('tripTimeToSources not cached');
+        cache.tripTimeToSources = cache.tripTimeToSources || {};
+        cache.tripTimeToSources.time = Game.time;
         // console.log('tripTime computing');
         let roomCursor = this.name, startPoint;
         let tripTime = 0;
@@ -201,9 +242,11 @@ Room.prototype.tripTimeToSources = function (toRoom) {
             tripTime += 20;
         }
         // console.log('tripTime', this.name, toRoom, tripTime);
-        Memory.rooms[this.name].cache.remoteMining.tripTimeToSources.trip = tripTime;
+        cache.tripTimeToSources[toRoom] = tripTime;
+    } else {
+        // this.log('tripTimeToSources cached');
     }
-    return Memory.rooms[this.name].cache.remoteMining.tripTimeToSources.trip;
+    return cache.tripTimeToSources[toRoom];
 };
 Room.prototype.updateCheapStats = function () {
 
@@ -243,6 +286,55 @@ Room.prototype.updateCheapStats = function () {
     // this.log('spawnStats', JSON.stringify(spawnStats));
     _.keys(spawnStats).forEach((k)=>Memory.stats["room." + this.name + ".spawns." + k] = spawnStats[k]);
 };
+/**
+ *
+ * @param {string} type
+ * @param {RoomPosition} pos
+ * @param {number} range
+ * @param {boolean} [asarray]
+ * @returns {*}
+ */
+Room.prototype.glanceForAround = function (type, pos, range, asarray) {
+    return this.lookForAtArea(type,
+        Math.max(0, pos.y-range),
+        Math.max(0, pos.x-range),
+        Math.min(49, pos.y+range),
+        Math.min(49, pos.x+range),
+        asarray
+    );
+};
+/**
+ *
+ * @param {RoomPosition} pos
+ * @param {number} range
+ * @param {boolean} [asarray]
+ * @returns {*}
+ */
+Room.prototype.glanceAround = function (pos, range, asarray) {
+    return this.lookAtArea(type,
+        Math.max(0, pos.y-range),
+        Math.max(0, pos.x-range),
+        Math.min(49, pos.y+range),
+        Math.min(49, pos.x+range),
+        asarray
+    );
+};
+var Cache = {
+    get: function (memory, path, fetcher, ttl) {
+        if (!(memory[path] && memory[path].expires && memory[path].expires  < Game.time)) {
+            memory[path] = {value : fetcher(), expires: Game.time +ttl };
+        }
+        return memory[path].value;
+    }
+};
+
+Room.prototype.findContainers = function() {
+    this.memory.cache = this.memory.cache || {};
+    this.memory.cache.containers = this.memory.cache.containers || {};
+    let containerIds = Cache.get(this.memory.cache, 'containers', ()=>(this.find(FIND_STRUCTURES).filter((s)=> (s.storeCapacity || s.energyCapacity)).map((s)=>s.id)), 50);
+    return containerIds.map((id)=> Game.getObjectById(id));
+};
+
 /*
  Room.prototype._find = Room.prototype.find;
  Room.prototype.find = function (type, opts) {

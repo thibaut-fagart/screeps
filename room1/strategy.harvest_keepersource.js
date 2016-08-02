@@ -1,13 +1,12 @@
 var _ = require('lodash');
 var util = require('./util');
-var HarvestKeeperSourceStrategy = require('./strategy.harvest_keepersource');
+var HarvestEnergySourceStrategy = require('./strategy.harvest_source');
 /**
  * finds a non-empty  energy source, chooses at random to spread the load
  */
 class HarvestKeeperSourceStrategy extends HarvestEnergySourceStrategy {
     constructor() {
         super();
-        this.loadStrategies = [new HarvestKeeperSourceStrategy()];
         this.PATH = 'source2';
     }
 

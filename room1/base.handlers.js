@@ -41,6 +41,7 @@ let handlers = {
     'builder': new Handler('builder', './role.builder'),
     'scout': new Handler('scout', './role.scout'),
     'remoteBuilder': new Handler('remoteBuilder', './role.builder.remote'),
+    'remoteUpgrader': new Handler('remoteUpgrader', './role.remote.upgrader'),
     'attacker': new Handler('attacker', './role.soldier.attacker'),
     'remoteHarvester': new Handler('remoteHarvester', './role.remote_harvester'),
     'roleRemoteGuard': new Handler('roleRemoteGuard', './role.soldier.roomguard'),

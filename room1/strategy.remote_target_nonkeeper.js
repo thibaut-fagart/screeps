@@ -10,7 +10,7 @@ class RemoteTargetNonKeeperStrategy extends RemoteTargetStrategy {
 
 
     findTargets(creep) {
-        return super.findTargets(creep).filter((c)=>c.owner.username !=='Keeper Source');
+        return super.findTargets(creep).filter((c)=>c.owner.username !=='Source Keeper');
     }
 }
 

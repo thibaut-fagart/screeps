@@ -22,6 +22,8 @@ class RoleEnergyFiller extends RoleCarry {
             new DropToEnergyStorageStrategy(STRUCTURE_SPAWN),
             new DropToContainerStrategy(RESOURCE_ENERGY,STRUCTURE_STORAGE),
         ];
+        util.indexStrategies(this.loadStrategies);
+        util.indexStrategies(this.unloadStrategies);
     }
 
 

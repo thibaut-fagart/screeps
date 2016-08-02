@@ -31,11 +31,11 @@ class PickupManager {
      */
     updateState(room) {
         if (!room.memory.pickupManager) room.memory.pickupManager = {};
-        if (Game.time !== room.memory.pickupManager.tick) {
+        // room.log('PickupManager#update', Game.time, room.memory.pickupManager.tick);
+        if (!this.state || Game.time > 10+  room.memory.pickupManager.tick) {
             // let start = Game.cpu.getUsed();
-            // this.log('updating state', Game.time,room.memory.pickupManager.tick);
-            this.state = room.memory.pickupManager.state || {};
-            room.memory.pickupManager.state = this.state;
+            this.log('updating state', Game.time,room.memory.pickupManager.tick);
+            room.memory.pickupManager.state = this.state = room.memory.pickupManager.state || {};
 
             let dropIds = room.find(FIND_DROPPED_RESOURCES).map((d)=>d.id);
             dropIds.forEach((dropid)=> {
@@ -88,28 +88,47 @@ class PickupManager {
      * @returns {Resource|undefined}
      */
     allocateDrop(creep, resourceType, predicate) {
-        let map = _.keys(this.freeDropAmounts).map((id)=>Game.getObjectById(id)).filter((d)=>!!d);
+
+        if (!this.state) {
+            this.updateState(Game.rooms[this.roomName]);
+        }
+        let map = this.cachedDrops();
         // creep.log('pickupManager', 'all', map.length);
-        map = map.filter((drop)=>this.freeAmount(drop.id) > 0);
+        map = map.filter((drop)=>drop.amount> 0);
         // creep.log('pickupManager', 'available', map.length);
         let availableDrops = map
             .filter((drop)=> /*drop.amount > 50 && */(this.typeMatches(drop, resourceType, predicate(creep))));
         // creep.log('typeMatches', resourceType, availableDrops.length);
         if (availableDrops.length) {
             let freeCapacity = creep.carryCapacity - _.sum(creep.carry);
-            let sortedDrops = _.sortBy(availableDrops, (d) => (Math.min(this.freeAmount(d), freeCapacity)) * -1 + 4 * creep.pos.getRangeTo(d));
+            let sortedDrops = _.sortBy(availableDrops, (d) => (Math.min(this.freeAmount(d.id), freeCapacity)) * -1 + 4 * creep.pos.getRangeTo(d));
 
             let chosen = sortedDrops[0];
             // creep.log('chosen', chosen);
-            if (!this.state) {
-                this.updateState(Game.rooms[this.roomName]);
-            }
-            this.state[chosen.id] = this.state[chosen.id] || {};
-            this.state[chosen.id][creep.id] = Math.min(freeCapacity, chosen.amount);
-            this.freeAmount[chosen.id] = this.freeAmount(chosen.id) - freeCapacity;
+            this.reserve(creep, chosen, freeCapacity);
             // creep.log('allocateDrop', JSON.stringify(chosen.pos), chosen.amount, freeCapacity, this.freeAmount(chosen.id));
             return chosen;
         }
+    }
+
+    cachedDrops() {
+        return _.keys(this.freeDropAmounts).map((id)=>Game.getObjectById(id)).filter((d)=>!!d);
+    }
+
+    /***
+     *
+     * @param {Creep} creep
+     * @param {Resource} resource
+     * @param {number} [freeCapacity]
+     */
+    reserve(creep, resource, freeCapacity) {
+        if (!this.state) {
+            this.updateState(Game.rooms[this.roomName]);
+        }
+        freeCapacity = freeCapacity || creep.carryCapacity - _.sum(creep.carry);
+        this.state[resource.id] = this.state[resource.id] || {};
+        this.state[resource.id][creep.id] = Math.min(freeCapacity, resource.amount);
+        this.freeAmount[resource.id] = this.freeAmount(resource.id) - freeCapacity;
     }
 
     releaseDrop(creep, dropid) {
@@ -127,6 +146,9 @@ class PickupManager {
      * @returns {*}
      */
     freeAmount(dropid) {
+        if (!_.isString(dropid)) {
+            throw new Error('ERROR dropid not a string');
+        }
         // console.log(JSON.stringify('freeDropAmounts', this.freeDropAmounts), this.freeDropAmounts[drop.id], this.freeDropAmounts[drop.id] || drop.amount);
         if (!this.freeDropAmounts) {
             this.freeDropAmounts = {};

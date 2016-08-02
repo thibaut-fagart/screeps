@@ -22,7 +22,7 @@ class DisableTargetStrategy extends StrategyRemoteTarget {
         // creep.log('performAttack');
         let isLeader = (!creep.memory.leader) || creep.memory.leader === creep.name;
         let brotherCount = creep.memory.brotherCount||0;
-        if (target.owner.username !=='Keeper Source' || _.filter(target.body, (b)=>b.hits > 0).length > 1) {
+        if (target.owner.username !=='Source Keeper' || _.filter(target.body, (b)=>b.hits > 0).length > 1) {
             return creep.rangedAttack(target);
         } else  if (target.hits < brotherCount * this.getDamage(creep) && !isLeader) {
             let shouldDisable = target.findInRange(FIND_FLAGS, 5, {filer:{color:COLOR_ORANGE}}).length;
