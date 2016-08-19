@@ -20,21 +20,28 @@ class ClosePickupStrategy extends PickupStrategy{
     /**
      *
      * @param {string} resource
+     * @param {number} range
      * @param {PickupPredicate} [predicate]
      */
     constructor(resource, range, predicate) {
-        super(resource, predicate);
+        super(resource, predicate || ((creep)=> { return (drop)=>creep.pos.getRangeTo(drop.pos)<=(range || 2);}));
         this.range = range || 2;
+        this.PATH = 'closePickup';
+    }
+
+    clearMemory(creep) {
+        delete creep.memory [this.PATH];
+        return super.clearMemory(creep);
     }
 
     findSource(creep) {
         delete creep.memory[this.constructor.name + "Path"];
-        let resources = [];
-        // creep.room.glanceForAround(LOOK_RESOURCES, creep.pos, this.range , true).map((r)=>r.resource);
+        delete creep.memory[this.PATH];
+        let resources =  creep.room.glanceForAround(LOOK_RESOURCES, creep.pos, this.range , true).map((r)=>r.resource);
         if (resources.length) {
             // todo find the biggest we can consume completely
             let resource = resources.find((r)=>true);
-            PickupManager.getManager(creep.room.name).reserve(creep, resource);
+            // PickupManager.getManager(creep.room.name).reserve(creep, resource);
 
             return resource;
         }

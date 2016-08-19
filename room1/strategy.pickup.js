@@ -29,7 +29,7 @@ class PickupStrategy extends BaseStrategy {
         this.predicate = (predicate || function (creep) {
             return ((drop)=> true);
         });
-        this.PATH = PickupStrategy.PATH;
+        this.PATH = 'pickupSource';
     }
 
     cancelPickup(creep) {
@@ -39,6 +39,7 @@ class PickupStrategy extends BaseStrategy {
 
     clearMemory(creep) {
         delete creep.memory[this.PATH];
+        delete creep.memory[this.constructor.name + "Path"];
     }
 
     /** @param {Creep} creep
@@ -46,7 +47,7 @@ class PickupStrategy extends BaseStrategy {
     accepts(creep) {
         if (!creep.carryCapacity || _.sum(creep.carry) == creep.carryCapacity) return false;
         /** @type Resource */
-        let source = util.objectFromMemory(creep.memory, this.PATH, (r)=>(r.amount > 0) && (this.predicate(creep)(r)));
+        let source = util.objectFromMemory(creep.memory, this.PATH, (r)=>(this.acceptsResource(r.resourceType) && r.amount > 0) && (this.predicate(creep)(r)));
         if (!source) {
             source = this.findSource(creep);
             // source = creep.pos.findClosestByRange(FIND_DROPPED_ENERGY);
@@ -56,7 +57,7 @@ class PickupStrategy extends BaseStrategy {
             }
         }
         // creep.log('pickup?', source, (source?source.amount:''));
-        if (source) {
+        if (source && source.room.name ===creep.room.name) {
 
             // try transfering/moving
             // creep.log('pickup2', source.id, source.resourceType);
@@ -72,17 +73,23 @@ class PickupStrategy extends BaseStrategy {
 
             }
         }
-        // creep.log("pickup ? ", true && source);
-        return (source ? this : null);
+        // creep.log("pickup ? ", !!source);
+        let accepted = !!(creep.memory[this.PATH] && source && source.room.name ===creep.room.name);
+        if (!accepted) this.clearMemory(creep);
+        return accepted;
 
 
     }
 
     findSource(creep) {
         delete creep.memory[this.constructor.name + "Path"];
+        delete creep.memory[this.PATH ];
         return PickupManager.getManager(creep.room.name).allocateDrop(creep, this.resource, this.predicate);
+    }
+
+    acceptsResource(resourceType) {
+        return !this.resource || (this.resource === util.ANY_MINERAL && resourceType !== RESOURCE_ENERGY) || this.resource === resourceType;
     }
 }
 
-PickupStrategy.PATH = 'pickupSource';
 module.exports = PickupStrategy;

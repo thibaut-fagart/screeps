@@ -20,13 +20,51 @@ class RoleBuilder {
             new ClosePickupStrategy(RESOURCE_ENERGY, 5),
             new LoadFromContainerStrategy(RESOURCE_ENERGY, undefined, (creep)=> ((s)=>s.pos.getRangeTo(creep) < 5)),
             new LoadFromContainerStrategy(RESOURCE_ENERGY, undefined /*,(creep)=>((s)=>([STRUCTURE_TOWER, STRUCTURE_SPAWN, STRUCTURE_EXTENSION].indexOf(s.structureType) < 0))*/),
-            new PickupStrategy(RESOURCE_ENERGY),
-            new HarvestEnergySourceStrategy()];
+            new PickupStrategy(RESOURCE_ENERGY)/*,
+            new HarvestEnergySourceStrategy()*/];
         this.buildStrategy = new BuildStrategy();
         this.BUILD_TARGET = 'buildtarget';
         util.indexStrategies(this.loadStrategies);
     }
+/**
+     *
+     * @param creep
+     * @returns {boolean} true if looking for boost, false if it's all good
+     */
+    seekBoosts(creep) {
+        // creep.log('seekBoosts');
+        if (creep.memory.boosted) return false;
+        let workParts = _.filter(creep.body, (p)=>p.type === WORK);
+        if (workParts.length) {
+            let neededBoosts = workParts.length - workParts.filter((p)=>p.boost).length;
+            if (!neededBoosts) return false;
+            let labs = creep.room.find(FIND_STRUCTURES, {filter: (s)=>s.structureType === STRUCTURE_LAB && s.mineralType === 'LH'});
+            labs = labs.filter((l)=>l.mineralAmount >= neededBoosts * 30 && l.energy >= 20 * neededBoosts);
+            // creep.log('boosting?', attackParts.length, neededBoosts, labs.length);
+            if (labs.length && neededBoosts) {
+                // creep.log('labs', JSON.stringify(labs));
+                let lab = creep.pos.findClosestByRange(labs);
+                // creep.log('lab', JSON.stringify(lab));
+                if (!lab) {
+//                    creep.log('NO LAB???', JSON.stringify(labs));
+                    creep.memory.boosted  =true;
+                    return false;
+                }
+                let boosted = lab.boostCreep(creep);
+                if (boosted == ERR_NOT_IN_RANGE) {
+                    creep.log('moving to lab', JSON.stringify(lab.pos));
+                    creep.moveTo(lab);
+                    return true;
+                } else if (boosted == OK) {
+                    creep.memory.boosted = true;
+                    return false;
+                }
 
+            }
+        }
+        return false;
+
+    }
     resign(creep) {
         creep.log('resigning ?');
         // creep.memory.role = 'upgrader';
@@ -54,6 +92,7 @@ class RoleBuilder {
 
     /** @param {Creep} creep **/
     run(creep) {
+        if (this.seekBoosts(creep)) return;
         if (creep.memory.building && creep.carry.energy == 0) {
             creep.memory.building = false;
             delete creep.memory[util.CURRENT_STRATEGY];

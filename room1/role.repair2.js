@@ -9,16 +9,57 @@ class RoleRepair2 {
     constructor() {
         this.loadStrategies = [
             new LoadFromContainerStrategy(RESOURCE_ENERGY, undefined, (creep)=>((s)=>(s.structureType !== STRUCTURE_TOWER ))),
-            new PickupStrategy(RESOURCE_ENERGY),
-            new HarvestEnergySourceStrategy()
+            new PickupStrategy(RESOURCE_ENERGY)/*,
+             new HarvestEnergySourceStrategy()*/
         ];
         this.ACTION_FILL = 'fill';
         this.buildStrategy = new BuildStrategy();
         util.indexStrategies(this.loadStrategies);
     }
 
+    /**
+     *
+     * @param creep
+     * @returns {boolean} true if looking for boost, false if it's all good
+     */
+    seekBoosts(creep) {
+        // creep.log('seekBoosts');
+        if (creep.memory.boosted) return false;
+        let workParts = _.filter(creep.body, (p)=>p.type === WORK);
+        if (workParts.length) {
+            let neededBoosts = workParts.length - workParts.filter((p)=>p.boost).length;
+            if (!neededBoosts) return false;
+            let labs = creep.room.find(FIND_STRUCTURES, {filter: (s)=>s.structureType === STRUCTURE_LAB && s.mineralType === 'LH'});
+            labs = labs.filter((l)=>l.mineralAmount >= neededBoosts * 30 && l.energy >= 20 * neededBoosts);
+            // creep.log('boosting?', attackParts.length, neededBoosts, labs.length);
+            if (labs.length && neededBoosts) {
+                // creep.log('labs', JSON.stringify(labs));
+                let lab = creep.pos.findClosestByRange(labs);
+                // creep.log('lab', JSON.stringify(lab));
+                if (!lab) {
+//                    creep.log('NO LAB???', JSON.stringify(labs));
+                    creep.memory.boosted = true;
+                    return false;
+                }
+                let boosted = lab.boostCreep(creep);
+                if (boosted == ERR_NOT_IN_RANGE) {
+                    creep.log('moving to lab', JSON.stringify(lab.pos));
+                    creep.moveTo(lab);
+                    return true;
+                } else if (boosted == OK) {
+                    creep.memory.boosted = true;
+                    return false;
+                }
+
+            }
+        }
+        return false;
+
+    }
+
     /** @param {Creep} creep **/
     run(creep) {
+        if (this.seekBoosts(creep)) return;
         if (creep.carry.energy == 0) {
             creep.memory.action = this.ACTION_FILL;
             this.clearTarget(creep);
@@ -43,7 +84,7 @@ class RoleRepair2 {
 
         }
         else {
-            if (!this.buildStrategy.accepts(creep)) {
+            if (/*!this.buildStrategy.accepts(creep)*/true) {
                 var target = this.findTarget(creep);
                 if (!target) {
                     // creep.log("no repair target");
@@ -79,18 +120,24 @@ class RoleRepair2 {
     findDamagedStructures(creep) {
         return _.sortBy(creep.room.find(FIND_STRUCTURES, {
             filter: function (structure) {
-                // return this.markedTargets.indexOf(structure) <0 && // marked for dismantle
                 return ([STRUCTURE_ROAD, STRUCTURE_CONTAINER].indexOf(structure.structureType) >= 0
-                    || structure.structureType === STRUCTURE_RAMPART && structure.hits < 1000)
+                    || ((structure.structureType === STRUCTURE_RAMPART || structure.structureType === STRUCTURE_WALL) && structure.hits < 1000))
                     && structure.hits < structure.hitsMax;
             }
         }), (s) => s.hits);
     }
 
     findDamagedWalls(creep) {
+        let currentRoomEnergy = (creep.room.storage ? creep.room.storage.energy || 0 : 0)
         return _.sortBy(creep.room.find(FIND_STRUCTURES, {
-            filter: (s)=> (s.structureType == STRUCTURE_WALL || s.structureType == STRUCTURE_RAMPART) && s.hits < s.hitsMax
-        }), (w)=>w.hits);
+                filter: (s)=> ((s.structureType == STRUCTURE_WALL || (s.structureType == STRUCTURE_RAMPART && s.my)) &&
+                (currentRoomEnergy < 10000 && s.hits < 100000
+                || currentRoomEnergy < 50000 && s.hits < 1000000
+                || currentRoomEnergy > 50000) && s.hits < s.hitsMax)
+            }),
+            (w)=>w.hits
+        )
+            ;
     }
 
     findTarget(creep) {
@@ -107,7 +154,7 @@ class RoleRepair2 {
             let myDamagedWalls = this.findDamagedWalls(creep);
             let newWalls = myDamagedWalls.filter((wall)=>wall.hits === 1);
             // first repair structures in bad shape, then walls, try getting one for each creep
-            if (newWalls.length ) {
+            if (newWalls.length) {
                 target = newWalls[0];
             } else if (myDamagedStructures.length && (myDamagedStructures[0].hits / myDamagedStructures[0].hitsMax) < 0.5) {
                 let damagedContainers = _.filter(myDamagedStructures, (s)=>s.structureType == STRUCTURE_CONTAINER);

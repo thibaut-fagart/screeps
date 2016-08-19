@@ -84,8 +84,14 @@ function hookUpPrototypes() {
 
 function profileObjectFunctions(object, label) {
   let objectToWrap = object.prototype ? object.prototype :object;
+  let keys ;
+  if ('object' === typeof object) {
+    keys = Object.getOwnPropertyNames(Object.getPrototypeOf(object));
+  } else {
+    keys = Object.keys(objectToWrap);
+  }
 
-    let keys = Object.keys(objectToWrap);
+
   if (!keys.length) {
     if (!object.prototype) objectToWrap = object.constructor;
     keys = Object.keys(objectToWrap);
@@ -103,14 +109,15 @@ function profileObjectFunctions(object, label) {
     }
   }
   keys.forEach(functionName => {
-    const extendedLabel = `${label}.${functionName}`;
     try {
       if (typeof objectToWrap[functionName] === 'function' && functionName !== 'getUsed') {
+        const extendedLabel = `${label}.${functionName}`;
         const originalFunction = objectToWrap[functionName];
         objectToWrap[functionName] = profileFunction(originalFunction, extendedLabel);
       }
     } catch (e) { } /* eslint no-empty:0 */
   });
+
   return objectToWrap;
 }
 
@@ -170,7 +177,6 @@ const Profiler = {
     return lines;
   },
 
-
   prototypes: [
     { name: 'Game', val: Game },
     { name: 'Room', val: Room },
@@ -192,6 +198,7 @@ const Profiler = {
 {name:'RoleMineralHarvester',val:require('./role.harvester.mineral')},
 {name:'RoleLabOperator',val:require('./role.lab_operator')},
 {name:'RoleMineralGatherer',val:require('./role.mineralgatherer')},
+{name:'RoleMineralTransporter',val:require('./role.mineral.transporter')},
 {name:'RoleRecycle',val:require('./role.recycle')},
 {name:'RoleRemoteCarry',val:require('./role.remote.carry')},
 {name:'RoleRemoteCarryKeeper',val:require('./role.remote.carrykeeper')},

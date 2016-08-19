@@ -30,35 +30,42 @@ class MoveToRoomTask extends BaseStrategy {
         if (creep.memory.move_previousRoom && creep.memory.move_previousRoom != creep.room.name) {
             // creep.log('changed room', creep.memory.roomPath);
             delete creep.memory.move_Task;
-            delete creep.memory.roomPathDest;
         }
         creep.memory.move_previousRoom = creep.room.name;
         // creep.log('moveTask',creep.memory.action, creep.memory[this.CREEP_HOME_PATH], creep.memory[this.CREEP_REMOTE_PATH],creep.room.name);
         if (creep.room.name != creep.memory[this.CREEP_REMOTE_PATH]) {
-            var exit = util.findExit(creep, creep.memory[this.CREEP_REMOTE_PATH]);
+            let exit ;
+            if (this.isRoomTooFar(creep.room.name, creep.memory[this.CREEP_REMOTE_PATH])) {
+                let portals = creep.room.find(FIND_STRUCTURES, {filter: {structureType :STRUCTURE_PORTAL}});
+                if (portals) {
+                    creep.log('took the portal !');
+                    creep.log('stepping back into ',creep.moveTo(portals[0]));
+                    return;
+
+                }
+            } else {
+                exit = util.findExit(creep, creep.memory[this.CREEP_REMOTE_PATH]);
+            }
             if (!exit || null === exit) {
                 creep.log('ERROR , no exit', creep.memory[this.CREEP_REMOTE_PATH]);
                 return false;
             }
             // creep.log('exit', JSON.stringify(exit), creep.pos.isEqualTo(exit));
-            if (JSON.stringify(exit) != creep.memory.roomPathDest) {
+            if (creep.memory.move_Task && !(exit.x== creep.memory.move_Task.x && exit.y===creep.memory.move_Task.y && exit.roomName ===creep.memory.move_Task.roomName)) {
                 // destination changed
                 delete creep.memory.move_Task;
-                delete creep.memory.roomPathDest;
             }
             if (exit.x === creep.pos.x && exit.y === creep.pos.y && exit.roomName == creep.room.name) {
                 // creep.log('waiting room change');
                 delete creep.memory.move_Task;
-                delete creep.memory.roomPathDest;
                 return false;
                 // wait for room change
             } else if (creep.room.name === exit.roomName) {
                 this.repairRoad(creep);
-                // creep.log('path', creep.memory.roomPath);
-                creep.memory.roomPathDest = JSON.stringify(exit);
+                // creep.log('path', creep.memory.move_Task);
                 let moveTo = util.moveTo(creep, exit, 'move_Task', {range: 0});
                 if (moveTo !== OK && moveTo !== ERR_TIRED) {
-                    creep.log('checking collision');
+                    // creep.log('checking collision');
                     if (creep.pos.getRangeTo(exit) ==1) {
                         // find another exit point
                         let area = {top: Math.max(0,exit.y-1), left: Math.max(0,exit.x-1), bottom: Math.min(49,exit.y+1), right: Math.min(49,exit.x+1)};
@@ -80,52 +87,21 @@ class MoveToRoomTask extends BaseStrategy {
 
                         }
                     }
+                } else if (OK === moveTo || ERR_TIRED === moveTo) {
+                    return true;
                 }
 
-                /*               creep.memory.roomPath = creep.memory.roomPath
-                 || Room.serializePath(util.pathFinderToMoveByPath(creep.pos, util.safeMoveTo2(creep, exit)));
-
-                 if (creep.pos === creep.memory.lastPos && creep.memory.moved) {
-                 let path = Room.deserialize(creep.memory.roomPath);
-                 for (let i = 0, max = path.length; i < max; i++) {
-                 let pos = path[i];
-                 if (pos.x === creep.pos.x && pos.y === creep.pos.y) {
-                 let creeps = creep.room.lookForAt(LOOK_CREEPS, path[i + 1].x, path[i + 1].y);
-                 if (creeps && creeps.length) {
-                 let blocker = creeps[0];
-                 creep.log('forcing move', blocker.name);
-                 blocker.moveTo(creep.pos.x, creep.pos.y, {noPathFinding: true});
-                 }
-                 }
-                 }
-                 }
-
-                 let moveTo = creep.moveByPath(creep.memory.roomPath);
-                 if ([OK, ERR_TIRED].indexOf(moveTo) < 0) {
-                 if (ERR_NOT_FOUND === moveTo) {
-                 creep.log('discarding path', creep.memory.roomPath);
-                 delete creep.memory.roomPath;
-                 delete creep.memory.roomPathDest;
-                 }
-                 // creep.log('moved?', moveTo, exit.x, exit.y);
-                 return true;
-                 } else if (OK === moveTo) {
-                 creep.memory.lastPos = creep.pos;
-                 // creep.log('moved ok ');
-                 return true;
-                 }*/
                 // }
-                // creep.log("should not reach ");
+                creep.log("should not reach ");
                 return true;
             } else {
-                // creep.log('unexpected');
+                creep.log('unexpected',JSON.stringify(exit));
             }
         } else if (creep.room.name == creep.memory[this.CREEP_REMOTE_PATH]) {
             delete creep.memory.move_Task;
-            delete creep.memory.roomPathDest;
             return this.moveIn(creep);
         }
-        // creep.log('should not reach ....');
+        creep.log('should not reach ....');
         return true;
     }
 
@@ -229,7 +205,9 @@ class MoveToRoomTask extends BaseStrategy {
 
 
     }
-}
-MoveToRoomTask.avoidEntryMatrix = new PathFinder.CostMatrix();
 
+    isRoomTooFar(room1, room2) {
+        return Game.map.getRoomLinearDistance(room1,room2)> 10;
+    }
+}
 module.exports = MoveToRoomTask;

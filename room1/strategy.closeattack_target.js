@@ -3,9 +3,10 @@ var BaseStrategy = require('./strategy.base');
 var util = require('./util');
 
 class CloseAttackStrategy extends BaseStrategy {
-    constructor(range) {
+    constructor(range,predicate) {
         super();
         this.range = range;
+        this.predicate = predicate || (function(creep){return (target)=>true;})
         this.path = 'attacking';
     }
 
@@ -23,6 +24,7 @@ class CloseAttackStrategy extends BaseStrategy {
         // order by type (heal > *)  and distance
         let target = this.getRemoteTarget(creep);
         let hostiles = (this.range) ? creep.pos.findInRange(FIND_HOSTILE_CREEPS, this.range) : creep.room.find(FIND_HOSTILE_CREEPS);
+        hostiles = hostiles.filter(this.predicate(creep));
         // if(creep instanceof Creep) creep.log('hostiles', hostiles.length);
         if (hostiles.length) {
             // choose target
@@ -30,6 +32,7 @@ class CloseAttackStrategy extends BaseStrategy {
             for (var part in attackerPriorities) {
                 target = creep.pos.findClosestByRange(hostiles, {filter: (c)=>c.getActiveBodyparts(part) != 0});
                 if (target) {
+                    creep.log('foundtarget with ', part);
                     break;
                 }
             }

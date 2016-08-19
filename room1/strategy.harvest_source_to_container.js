@@ -59,7 +59,14 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
                 }
                 // creep.log("transfer ? ", ret, ", ", container.store[this.resource]);
             } else {
+                if (creep.pos.getRangeTo(container.pos) == 1) {
+                    let obstacleCreeps = container.pos.lookFor(LOOK_CREEPS);
+                    if (obstacleCreeps.length && ! obstacleCreeps[0].memory.role ===creep.memory.role) {
+                        obstacleCreeps[0].moveTo(creep.pos);
+                    }
+                }
                 let moveTo = util.moveTo(creep, container.pos,this.constructor.name+"Path", {range:0});
+
                 // creep.log('moveTo?', moveTo);
             }
             // try transfering/moving
@@ -209,8 +216,9 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
 
     findSources(creep) {
         let sources = util.findSafeSources(creep.room, RESOURCE_ENERGY !==this.resourceType);
-        // creep.log('util.safeSources', sources.length, JSON.stringify(sources.map((s)=>s.pos)));
-        let safeSources = _.filter(sources, (s)=> {
+        // creep.log('util.safeSources',RESOURCE_ENERGY !==this.resourceType, this.resourceType, sources.length, JSON.stringify(sources.map((s)=>s.pos)));
+        let safeSources = sources.filter((s)=> {
+            // if (!this.resourceType) return true;
             switch (this.resourceType) {
                 case RESOURCE_ENERGY :
                     return s.energy;
@@ -229,9 +237,6 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
         return source instanceof Source ? source.energy == source.energyCapacity : source.mineralAmount > 0;
     }
 
-    noHostiles() {
-        return (s)=> 0 === s.pos.findInRange(FIND_HOSTILE_CREEPS, 5).length;
-    }
 }
 
 module.exports = HarvestEnergySourceToContainerStrategy;

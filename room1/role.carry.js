@@ -5,6 +5,7 @@ var PickupStrategy = require('./strategy.pickup');
 var ClosePickupStrategy = require('./strategy.pickup.close');
 var DropToContainerStrategy = require('./strategy.drop_to_container');
 var DropToEnergyStorageStrategy = require('./strategy.drop_to_energyStorage');
+var RegroupStrategy = require('./strategy.regroup');
 
 class RoleCarry {
     constructor() {
@@ -20,9 +21,9 @@ class RoleCarry {
              (!(s.room.memory.harvestContainers) || (s.room.memory.harvestContainers && (s.room.memory.harvestContainers.indexOf(s.id) >= 0))))*/)];
         this.unloadStrategies = [
             new DropToEnergyStorageStrategy(STRUCTURE_TOWER),
-            new DropToEnergyStorageStrategy(STRUCTURE_EXTENSION),
             new DropToEnergyStorageStrategy(STRUCTURE_SPAWN),
-            new DropToContainerStrategy(null, STRUCTURE_STORAGE),
+            new DropToEnergyStorageStrategy(STRUCTURE_EXTENSION),
+            new DropToContainerStrategy(undefined, STRUCTURE_STORAGE),
             // new DropToContainerStrategy(RESOURCE_ENERGY,STRUCTURE_LINK),
             new DropToContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (creep)=> {
                 return ((s)=>( (s.room.memory.harvestContainers || []).indexOf(s.id) >= 0));
@@ -30,6 +31,7 @@ class RoleCarry {
         ];
         this.ACTION_UNLOAD = 'unload';
         this.ACTION_FILL = 'fill';
+        this.regroupStrategy = new RegroupStrategy(COLOR_GREY);
         util.indexStrategies(this.loadStrategies);
         util.indexStrategies(this.unloadStrategies);
     }
@@ -59,7 +61,7 @@ class RoleCarry {
         if (creep.memory.action == this.ACTION_FILL) {
             strategy = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);
             if (!strategy) {
-                strategy = _.find(this.loadStrategies, (strat)=>!(null == strat.accepts(creep)));
+                strategy = _.find(this.loadStrategies, (strat)=>(strat.accepts(creep)));
             }
             if (strategy) {
                 util.setCurrentStrategy(creep, strategy);
@@ -71,14 +73,14 @@ class RoleCarry {
         else {
             let strategy = util.getAndExecuteCurrentStrategy(creep, this.unloadStrategies);
             if (!strategy) {
-                strategy = _.find(this.unloadStrategies, (strat)=>!(null == strat.accepts(creep)));
+                strategy = _.find(this.unloadStrategies, (strat)=>(strat.accepts(creep)));
             }
             // creep.log(util.strategyToLog(strategy));
             if (strategy) {
                 util.setCurrentStrategy(creep, strategy);
             } else {
                 this.onNoUnloadStrategy(creep);
-                creep.log('no unloadStrategy');
+                // creep.log('no unloadStrategy');
                 return;
             }
             delete creep.memory['unload_container'];
@@ -86,12 +88,12 @@ class RoleCarry {
     }
 
     onNoLoadStrategy(creep) {
-        creep.log('no load strategy');
+        // creep.log('no load strategy');
 
     }
 
     onNoUnloadStrategy(creep) {
-
+        this.regroupStrategy.accepts(creep);
     }
 }
 

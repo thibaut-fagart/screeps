@@ -20,7 +20,7 @@ class RoleRemoteBuilder extends RoleBuilder {
                    new LoadFromContainerStrategy(RESOURCE_ENERGY,  undefined /*,(creep)=>((s)=>([STRUCTURE_TOWER, STRUCTURE_SPAWN, STRUCTURE_EXTENSION].indexOf(s.structureType) < 0))*/),
                    new PickupStrategy(RESOURCE_ENERGY),
                    new HarvestKeeperSourceStrategy()];
-        this.fleeStrategy = new FleeToHomeRoomStrategy(3);
+        this.fleeStrategy = new FleeToHomeRoomStrategy(4);
         this.moveTask = new MoveToRoomTask('remotebuild', 'homeroom','remoteRoom');
         this.goHomeTask = new MoveToRoomTask('remotebuild', 'remoteRoom', 'homeroom');
         this.healStrategy = new HealStrategy(3);
@@ -29,7 +29,7 @@ class RoleRemoteBuilder extends RoleBuilder {
     }
 
     onNoLoadStrategy(creep) {
-        creep.memory.action = 'go_home_room';
+        // creep.memory.action = 'go_home_room';
     }
     resign(creep) {
         // do not resign in remote room, go back home
@@ -50,6 +50,7 @@ class RoleRemoteBuilder extends RoleBuilder {
     }
 
     run(creep) {
+        if (this.seekBoosts(creep)) return;
         if (this.fleeStrategy.accepts(creep))return;
         this.healStrategy.accepts(creep);
         if (!creep.memory.action) creep.memory.action = 'go_remote_room;';
@@ -72,6 +73,8 @@ class RoleRemoteBuilder extends RoleBuilder {
             } else  if (!this.goHomeTask.accepts(creep)) {
                 creep.memory.action = 'LOAD';
             }
+        } else if (creep.room.name !== creep.memory.remoteRoom) {
+            creep.memory.action = 'go_remote_room';
         } else {
             super.run(creep);
         }

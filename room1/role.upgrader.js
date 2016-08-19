@@ -8,8 +8,8 @@ class RoleUpgrader {
     constructor() {
         this.loadStrategies = [
             new LoadFromContainerStrategy(RESOURCE_ENERGY, undefined, (creep)=>((s)=>(s.structureType !== STRUCTURE_TOWER ))),
-            new PickupStrategy(RESOURCE_ENERGY),
-            new HarvestEnergySourceStrategy()];
+            new PickupStrategy(RESOURCE_ENERGY)/*,
+            new HarvestEnergySourceStrategy()*/];
         this.ACTION_FILL = 'fill';
     }
 
@@ -39,7 +39,7 @@ class RoleUpgrader {
         }
         else {
             if (creep.upgradeController(creep.room.controller) == ERR_NOT_IN_RANGE) {
-                util.moveTo(creep, creep.room.controller.pos, this.constructor.name+'Path');
+                util.moveTo(creep, creep.room.controller.pos, this.constructor.name+'Path', {range:3});
             }
             if (creep.carry.energy == 0) {
                 creep.memory.action = this.ACTION_FILL;

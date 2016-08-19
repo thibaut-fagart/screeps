@@ -34,7 +34,7 @@ class PickupManager {
         // room.log('PickupManager#update', Game.time, room.memory.pickupManager.tick);
         if (!this.state || Game.time > 10+  room.memory.pickupManager.tick) {
             // let start = Game.cpu.getUsed();
-            this.log('updating state', Game.time,room.memory.pickupManager.tick);
+            // this.log('updating state', Game.time,room.memory.pickupManager.tick);
             room.memory.pickupManager.state = this.state = room.memory.pickupManager.state || {};
 
             let dropIds = room.find(FIND_DROPPED_RESOURCES).map((d)=>d.id);
@@ -157,10 +157,20 @@ class PickupManager {
         // console.log('freeAmount', drop.pos.roomName, dropid);
         return this.freeDropAmounts[dropid];
     }
+    gc() {
+        _.keys(this.freeDropAmounts).forEach((resourceid)=> {
+            if (!Game.getObjectById(resourceid)) delete this.freeDropAmounts[resourceid];
+        });
+    }
 }
 
 PickupManager
     .managers = {};
+/**
+ *
+ * @param {string|Room}roomName
+ * @returns {*}
+ */
 PickupManager.getManager = function (roomName) {
     'use strict';
     let room = ('string' === typeof roomName) ? Game.rooms[roomName] : roomName;

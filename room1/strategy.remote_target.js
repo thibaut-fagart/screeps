@@ -59,7 +59,7 @@ class RemoteTargetStrategy extends BaseStrategy {
 
     findTargets(creep) {
         let targetPredicate = this.predicate(creep);
-        return this.range?creep.pos.findInRange(FIND_HOSTILE_CREEPS, this.range,{filter:(c)=>targetPredicate(c)}): creep.room.find(FIND_HOSTILE_CREEPS,{filter: (c)=> targetPredicate(c)});
+        return this.range?creep.pos.findInRange(FIND_HOSTILE_CREEPS, this.range,{filter:targetPredicate}): creep.room.find(FIND_HOSTILE_CREEPS,{filter: targetPredicate});
     }
 
     performAttack(creep, target) {

@@ -60,14 +60,11 @@ class DropToContainerStrategy extends BaseStrategy {
             // creep.log('2allCOntainers has links?', allContainers.find((c)=>c.structureType === STRUCTURE_LINK));
             // creep.log('2allCOntainers has labs?', this.structure, allContainers.find((c)=>c.structureType === STRUCTURE_LAB));
             allContainers = allContainers.filter((s)=> this.containerFreeSpace(creep, s) > 0// !full
-            && !this.isHarvestContainer(s));
+                && !this.isHarvestContainer(s));
             // creep.log('allContainers has storage ?', this.structure,allContainers.find((c)=>c.structureType === STRUCTURE_STORAGE));
             // creep.log('allCOntainers has links?', allContainers.find((c)=>c.structureType === STRUCTURE_LINK));
-/*
-            if (this.structure === STRUCTURE_LAB) {
-                creep.log('allContainers has lab ?', allContainers.find((c)=>c.structureType === STRUCTURE_LAB));
-            }
-*/
+            // creep.log('allContainers has lab ?', allContainers.find((c)=>c.structureType === STRUCTURE_LAB));
+
             var emptyEnoughContainers = _.filter(allContainers, (s) => this.containerFreeSpace(creep, s) >= (this.resource) ? creep.carry[this.resource] : _.sum(creep.carry));
 
             /*
@@ -166,7 +163,7 @@ class DropToContainerStrategy extends BaseStrategy {
                 accepts |= (container.storeCapacity - _.sum(container.store)) > 0;
             } else {
                 // creep.log('lab', (!container.mineralType || container.mineralType === r), container.mineralAmount < container.mineralCapacity)
-                accepts |= (container.mineralType === r) && container.mineralAmount < container.mineralCapacity;
+                accepts |= (container.mineralType === r) && container.mineralAmount < container.mineralCapacity || (container.room.memory['labs'] && container.room.memory['labs'][container.id] === r);
             }
 
         });
@@ -182,17 +179,18 @@ class DropToContainerStrategy extends BaseStrategy {
      */
     containerFreeSpace(creep, container) {
         let space = 0;
+        // creep.log('freeSpace for ', container);
         if (creep.carry) {
             _.keys(creep.carry).forEach((resource)=> {
                 if (RESOURCE_ENERGY === resource) {
                     // creep.log('energy space?');
                     space += (container.energyCapacity ? container.energyCapacity - container.energy : container.storeCapacity - _.sum(container.store));
                 } else {
-                    // creep.log('space?', resource);
                     space +=
                         container.mineralCapacity ?
                             ((container.mineralType === resource || container.mineralAmount === 0) ? container.mineralCapacity - container.mineralAmount : 0)  // labs only accept one resourceType
                             : container.storeCapacity - _.sum(container.store);
+                    // creep.log('space?', resource);
                 }
             });
             // creep.log('freeSpace', container, space);

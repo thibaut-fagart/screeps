@@ -14,7 +14,7 @@ class RoleEnergyGatherer extends RoleCarry {
             new ClosePickupStrategy(RESOURCE_ENERGY, 2),
             new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (creep)=>((c)=>(!c.room.memory.harvestContainers || c.room.memory.harvestContainers.indexOf(c.id) >= 0)))];
         this.unloadStrategies = [
-            new DropToContainerStrategy(RESOURCE_ENERGY, STRUCTURE_STORAGE),
+            new DropToContainerStrategy(undefined, STRUCTURE_STORAGE),
             // new DropToEnergyStorageStrategy(STRUCTURE_EXTENSION),
             // new DropToEnergyStorageStrategy(STRUCTURE_SPAWN)
         ];

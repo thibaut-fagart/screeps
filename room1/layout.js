@@ -15,7 +15,18 @@ module.exports = {
             return;
         }
         if (!flag) {
-            room.createFlag(pos.x, pos.y, undefined, COLOR_CYAN);
+            let flagName;
+            if (Memory.temp.flagId) {
+                Memory.temp.flagId = Memory.temp.flagId+1;
+                flagName='flag'+Memory.temp.flagId ;
+            }
+            flagName = room.createFlag(pos.x, pos.y, flagName, COLOR_CYAN);
+            if (_.isString(flagName)) {
+                let match = /flag(\d+)/.exec(flagName);
+                room.log('flag',flagName,JSON.stringify(match));
+                if (match) Memory.temp.flagId = Number(match[1]);
+            }
+
         } else {
             console.log('flag present');
         }
@@ -24,10 +35,25 @@ module.exports = {
     },
     fromStorageToSources: function (roomname) {
         "use strict";
-        let room = Game.rooms[roomname];
+        this.fromSourcesTo(room.storage);
+    },
+    fromSourcesTo: function (object) {
+        "use strict";
+        let room = object.room;
         let sources = room.find(FIND_SOURCES).concat(room.find(FIND_STRUCTURES,  {filter:{structureType:STRUCTURE_EXTRACTOR}}));
-        sources.forEach((s)=>this.createFlags(
-            this.createFlags(this.findPath(room, room.storage.pos, s.pos), room), room));
+        sources.forEach((s)=> this.createFlags(this.findPath(room, object.pos, s.pos, 1), room), room);
+    },
+    fromMineralTo: function (object) {
+        "use strict";
+        let room = object.room;
+        let sources = room.find(FIND_MINERALS);
+        sources.forEach((s)=> this.createFlags(this.findPath(room, object.pos, s.pos, 1), room), room);
+    },
+    fromObjectToExit: function (object,toRoom) {
+        "use strict";
+        let room = object.room;
+        let dest = JSON.parse(room.memory.exits[toRoom]);
+        this.createFlags(this.findPath(room, object.pos, dest.pos, 1), room);
     },
 
     fromStorageToExit: function (roomname, toRoom) {
@@ -40,15 +66,14 @@ module.exports = {
         let roomname = room.name;
         console.log('findPath start', Game.cpu.getUsed(), orig, dest);
         range = range || 0;
-        return util.safeMoveTo2({pos: orig, room: room}, dest);
-        let matrix = new PathFinder.CostMatrix();
+        // return util.safeMoveTo2({pos: orig, room: room}, dest);
+        let matrix = this.costMatrix(roomname);
         this.findRoadFlags(roomname).forEach((f)=>matrix.set(f.pos.x, f.pos.y, 1));
-        room.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_ROAD}}).forEach((f)=>matrix.set(f.pos.x, f.pos.y, 1));
         console.log('findPath start pathfinding', Game.cpu.getUsed());
         let path = PathFinder.search(new RoomPosition(orig.x, orig.y, orig.roomName), {
             pos: new RoomPosition(dest.x, dest.y, dest.roomName),
             range: range
-        }, {
+        }, {ignoreCreep:true,
             plainCost: 4, swampCost: 20, roomCallback: function (roomName) {
                 if (roomName !== roomname) return false;
                 else return matrix;
@@ -57,6 +82,38 @@ module.exports = {
         console.log('findPath end pathfinding', Game.cpu.getUsed(), path.length);
         return path;
     },
+    costMatrix: function (roomName) {
+        "use strict";
+        let matrix = new PathFinder.CostMatrix();
+        let structures = Game.rooms[roomName].find(FIND_STRUCTURES);
+        structures.forEach((s)=> {
+            if (s.structureType === STRUCTURE_ROAD) {
+                matrix.set(s.pos.x, s.pos.y, 1);
+            } else if (s.structureType === STRUCTURE_CONTAINER  || (s.structureType === STRUCTURE_RAMPART && s.my)) {
+            } else if (s.structureType === STRUCTURE_PORTAL) {
+                matrix.set(s.pos.x, s.pos.y, 0xff);
+            } else {
+                matrix.set(s.pos.x, s.pos.y, 0xff);
+            }
+        });
+        let constructionSites = Game.rooms[roomName].find(FIND_CONSTRUCTION_SITES);
+        constructionSites.forEach((s)=> {
+            if (s.structureType === STRUCTURE_ROAD) {
+                matrix.set(s.pos.x, s.pos.y, 1);
+            } else if (s.structureType === STRUCTURE_CONTAINER || (s.structureType === STRUCTURE_RAMPART && s.my)) {
+
+            } else {
+                matrix.set(s.pos.x, s.pos.y, 0xff);
+            }
+        });
+        let room = Game.rooms[roomName];
+        let set = (x, y, cost)=> {
+            if (!room.lookForAt(LOOK_TERRAIN, x, y).find((t)=>t === 'wall'))  matrix.set(x, y, cost);
+        };
+        return matrix;
+
+    },
+
     createFlags: function (path, room) {
         path.forEach((pos)=> this.createFlag(room, pos));
     }, 

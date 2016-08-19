@@ -3,9 +3,10 @@ var RegroupStrategy = require('./strategy.regroup');
 var util = require('./util');
 
 class SquadAttackStrategy extends Base {
-    constructor(range) {
+    constructor(range, predicate) {
         super();
         this.range = range || 3;
+        this.predicate = predicate || (function(creep){return (target)=>true;})
         this.MOVE_PATH = 'movePath';
     }
 
@@ -28,7 +29,7 @@ class SquadAttackStrategy extends Base {
 
         let leader = _.sortBy(squad, (b)=>b.name)[0];
         // creep.log(JSON.stringify(_.sortBy(squad, (b)=>b.name).map((c)=> c.name)))
-        let isLeader = leader.name === creep.name;
+        let isLeader = (!leader||leader.name === creep.name);
         // creep.log("leader?", isLeader);
         let brotherFurthestToLeader = _.sortBy(squad, (c)=>-c.pos.getRangeTo(leader))[0];
         let maxDistanceToLeader = brotherFurthestToLeader.pos.getRangeTo(leader);
@@ -92,7 +93,8 @@ class SquadAttackStrategy extends Base {
             }
 */
         }
-        let hostiles = creep.room.find(FIND_HOSTILE_CREEPS);
+        let hostiles = creep.room.find(FIND_HOSTILE_CREEPS).filter(this.predicate(creep));
+
         if (!hostiles.length) {
             this.setPreviousClosest(creep);
             if (myDistanceToLeader > squad.length - 1) {
@@ -111,6 +113,7 @@ class SquadAttackStrategy extends Base {
         // choose target
         let closestEnemy = this.findLeaderTarget(leader, hostiles);
         // and move to it, squad manner
+        if (!closestEnemy) {return;}
         let myRange = closestEnemy.pos.getRangeTo(creep);
         // if (isLeader) creep.log('hostiles', hostiles.length, myRange, JSON.stringify(closestEnemy.pos));
         let rangeToLeader = leader.pos.getRangeTo(closestEnemy);
@@ -225,7 +228,7 @@ class SquadAttackStrategy extends Base {
             // creep.log('count2', creep.room.memory.squad.members.length);
         }
         // creep.log('getSquad', creep.room.memory.squad.members.length, creep.room.memory.squad.members);
-        return creep.room.memory.squad.members.map((id)=>Game.getObjectById(id));
+        return creep.room.memory.squad.members.map((id)=>Game.getObjectById(id)).filter((creep)=>creep);
 
     }
 

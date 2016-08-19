@@ -15,17 +15,12 @@ class HarvestKeeperSourceStrategy extends HarvestEnergySourceStrategy {
     }
 
     findSource(creep, source) {
-        let sources = creep.room.find(FIND_SOURCES).sort((s)=>-s.energy);
+        let sources = creep.room.find(FIND_SOURCES).filter((s)=>s.pos.findInRange(FIND_HOSTILE_CREEPS, 4).length ===0);
+        // creep.log(sources.length);
         if (sources.length) {
-            let max = sources[0].energy;
-            sources = creep.pos.findClosestByRange(_.filter(sources, (s)=> s.energy == max));
-            if (sources && sources[0] && (sources[0].energy > creep.carryCapacity - _.sum(creep.carry))) {
-                source = sources[0];
-                // } else {
-                //     source = creep.pos.findClosestByPath(FIND_SOURCES_ACTIVE);
+            return creep.pos.findClosestByRange(sources);
             }
-        }
-        return source;
+        return false;
     }
 }
 

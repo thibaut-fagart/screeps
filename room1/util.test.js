@@ -195,7 +195,42 @@ describe('util', function () {
 
         });
     });
+    it("should be profileable", function () {
+        "use strict";
+        let f = (object)=>object.prototype ? object.prototype :(Object.getPrototypeOf(object)?Object.getPrototypeOf(object):object);
+        console.log(JSON.stringify(Object.keys(f(util))));
+        console.log(Object.getPrototypeOf(util) == util.prototype);
+        console.log(Object.getPrototypeOf(util) == util.constructor);
+        console.log(Object.getPrototypeOf(util));
+        console.log(JSON.stringify(Object.getOwnPropertyNames(util)));
+        // console.log(JSON.stringify(Object.keys(util.prototype)));
+        console.log(JSON.stringify(Object.keys(util.constructor)));
+        console.log(JSON.stringify(Object.keys(Object.getPrototypeOf(util))));
+        console.log(JSON.stringify(Object.getOwnPropertyNames(Object.getPrototypeOf(util))));
+        // console.log(JSON.stringify(Object.getOwnPropertyNames(Object.getPrototypeOf(util))));
+
+    });
 });
+
+describe('reactions', function() {
+    "use strict";
+    let constants = require('../lib/mocks/constants');
+    it("should work", function () {
+        function reverseReactions() {
+            'use strict';
+            let result = {};
+            _.keys(constants.REACTIONS).forEach((min1)=> {
+                let temp = constants.REACTIONS[min1];
+                _.keys(temp).forEach((min2)=> {
+                    result[temp[min2]] = [min1, min2];
+                });
+            });
+            return result;
+        };
+        console.log(JSON.stringify(reverseReactions()));
+    });
+
+})
 /*
  let ProcessTable = require('./process.table'), processTable = new  ProcessTable();
 
