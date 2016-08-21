@@ -40,26 +40,28 @@ module.exports = {
     fromSourcesTo: function (object) {
         "use strict";
         let room = object.room;
-        let sources = room.find(FIND_SOURCES).concat(room.find(FIND_STRUCTURES,  {filter:{structureType:STRUCTURE_EXTRACTOR}}));
+        let sources = room.find(FIND_SOURCES).concat(room.find(FIND_MINERALS).filter((m)=>m.pos.lookFor(LOOK_STRUCTURES).length>0));
+        if (room.memory.sources) sources = sources.filter((s)=>room.memory.sources.indexOf(s.id) >= 0);
         sources.forEach((s)=> this.createFlags(this.findPath(room, object.pos, s.pos, 1), room), room);
     },
     fromMineralTo: function (object) {
         "use strict";
         let room = object.room;
         let sources = room.find(FIND_MINERALS);
+        if (room.memory.sources) sources = sources.filter((s)=>room.memory.sources.indexOf(s.id) >= 0);
         sources.forEach((s)=> this.createFlags(this.findPath(room, object.pos, s.pos, 1), room), room);
     },
     fromObjectToExit: function (object,toRoom) {
         "use strict";
         let room = object.room;
-        let dest = JSON.parse(room.memory.exits[toRoom]);
+        let dest = room.getExitTo(toRoom);
         this.createFlags(this.findPath(room, object.pos, dest.pos, 1), room);
     },
 
     fromStorageToExit: function (roomname, toRoom) {
         "use strict";
         let room = Game.rooms[roomname];
-        let dest = JSON.parse(room.memory.exits[toRoom]);
+        let dest = room.getExitTo(toRoom);
         this.createFlags(this.findPath(room, room.storage.pos, dest), room);
     },
     findPath: function (room,  orig, dest, range) {
@@ -120,8 +122,8 @@ module.exports = {
     fromExitToExit: function (roomname, fromRoom, toRoom) {
         "use strict";
         let room = Game.rooms[roomname];
-        let orig = JSON.parse(room.memory.exits[fromRoom]);
-        let dest = JSON.parse(room.memory.exits[toRoom]);
+        let orig = room.getExitTo(fromRoom);
+        let dest = room.getExitTo(toRoom);
         var path = this.findPath(room, orig, dest);
         // let path = new RoomPosition(orig.x, orig.y, room.name).findPathTo(dest.x, dest.y);
         console.log('path', path.length);
@@ -136,7 +138,8 @@ module.exports = {
         let startCpu = Game.cpu.getUsed();
         let limit = Game.cpu.tickLimit;
         console.log('start', startCpu, limit);
-        let sources = room.find(FIND_SOURCES).concat(room.find(FIND_STRUCTURES,  {filter:{structureType:STRUCTURE_EXTRACTOR}}));
+        let sources = room.find(FIND_SOURCES).concat(room.find(FIND_MINERALS).filter((s)=>s.pos.lookFor(LOOK_STRUCTURES).length>0));
+        if (room.memory.sources) sources = sources.filter((s)=>room.memory.sources.indexOf(s.id) >= 0);
         console.log('sources found', Game.cpu.getUsed(), limit);
         let stop = false;
         let flagCount  = 0;
@@ -182,7 +185,9 @@ module.exports = {
         "use strict";
         let room = Game.rooms[roomname];
         room.memory.temp = room.memory.temp || {};
-        let orig = JSON.parse(room.memory.exits[fromRoom]);
+        let orig = room.getExitTo(fromRoom);
+        this.fromSourcesTo({pos:orig, room:room});
+/*
         let startCpu = Game.cpu.getUsed();
         let limit = Math.min(Game.cpuLimit, Game.cpu.bucket);
         console.log('start', startCpu, limit);
@@ -221,6 +226,7 @@ module.exports = {
             }
         )
         ;
+*/
     },
     findRoadFlags: function (roomname) {
         return Game.rooms[roomname].find(FIND_FLAGS, {filter: {color: COLOR_CYAN}});
@@ -276,7 +282,7 @@ module.exports = {
     buildSourceContainers: function (roomname, fromroom) {
         "use strict";
         let room = Game.rooms[roomname];
-        let pos = JSON.parse(room.memory.exits[fromroom]);
+        let pos = room.getExitTo(fromroom);
         pos = new RoomPosition(pos.x, pos.y, roomname);
         if (room) {
             room.find(FIND_SOURCES).forEach((source)=> {

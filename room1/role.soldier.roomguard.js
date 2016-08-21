@@ -24,8 +24,9 @@ class RoleRemoteRoomGuard {
                 return ()=>true;
             }
         };
+        this.healStrategy = new RemoteHealKeeperGuardStrategy(5);
         this.attackStrategies = [
-            new RemoteHealKeeperGuardStrategy(5), new RemoteAttackStrategy(5, toleratePredicate), new SquadAttackStrategy(3, toleratePredicate), new RemoteAttackStrategy(undefined, toleratePredicate),
+            this.healStrategy, new RegroupStrategy(COLOR_WHITE), new RemoteAttackStrategy(5, toleratePredicate), new SquadAttackStrategy(3, toleratePredicate), new RemoteAttackStrategy(undefined, toleratePredicate),
             new HealStrategy(), new CloseAttackStrategy(undefined, toleratePredicate)/*,new AttackStructureStrategy()*/];
         this.regroupStrategy = new RegroupStrategy(COLOR_BLUE);
         this.moveTask = new MoveToRoomTask('attack', 'homeroom', 'remoteRoom');
@@ -53,6 +54,7 @@ class RoleRemoteRoomGuard {
         if (!creep.memory.action) {
             this.init(creep);
         }
+        if (!this.healStrategy.accepts(creep) && new RegroupStrategy(COLOR_WHITE).accepts(creep)) return;
         if (creep.room.name === creep.memory.homeroom) {
             let seeking = this.seekBoosts(creep);
             // creep.log('seeking ? ', seeking);
@@ -71,10 +73,21 @@ class RoleRemoteRoomGuard {
                     this.regroup(creep);
                 }
             }
+        } else if (creep.room.name !== creep.memory.remoteRoom && creep.room.name !== creep.memory.homeroom) {
+            creep.memory.action = 'go_remote_room';
         }
+
         if (creep.memory.action == 'go_remote_room') {
             if (!this.moveTask.accepts(creep)) {
                 creep.memory.action = 'defend';
+                creep.memory.controller = (creep.room.controller ? creep.room.controller.id : 'none');
+                // creep.log('reached remote room',creep.memory.action)
+            } else {
+                return;
+            }
+        } else if (creep.memory.action == 'go_home_room') {
+            if (!new MoveToRoomTask(undefined, 'remoteRoom', 'homeroom').accepts(creep)) {
+                creep.memory.action = 'stop';
                 creep.memory.controller = (creep.room.controller ? creep.room.controller.id : 'none');
                 // creep.log('reached remote room',creep.memory.action)
             } else {
@@ -146,49 +159,62 @@ class RoleRemoteRoomGuard {
      */
     seekBoosts(creep) {
         // creep.log('seekBoosts');
-        _.keys(RoleRemoteRoomGuard.WANTED_BOOSTS).forEach((partType) => {
-            let parts = _.filter(creep.body, (p)=>p.type === partType && !p.boost);
-            if (parts.length && this.boostPartType(creep, parts)) {
-                return true;
-            }
-        });
-
-
     }
 
     boostPartType(creep, parts) {
         let part_type = parts[0].type;
-        let labs = room.memory.labs.map((id)=>Game.getObjectById(id));
-        labs = RoleRemoteRoomGuard.WANTED_BOOSTS[part_type].map((min)=>labs.filter((lab)=>lab.mineralType && lab.mineralType === min && lab.mineralAmount > 10)).find((labs)=>labs.length);
-
+        let labs = creep.room.memory.labs;
+//        creep.log('labs?', JSON.stringify(labs));
+        if (!labs) return false;
+        labs = _.keys(labs).map((id)=>Game.getObjectById(id));
+        let lab;
+        for (let i = 0; i < RoleRemoteRoomGuard.WANTED_BOOSTS[part_type].length && !lab; i++) {
+            let boost = RoleRemoteRoomGuard.WANTED_BOOSTS[part_type][i];
+            // creep.log('testing ', boost);
+            lab = labs.find((lab)=> {
+                return lab.mineralType && boost == lab.mineralType && lab.mineralAmount > 10;
+            });
+            // creep.log('found', lab);
+            if (lab) break;
+        }
+        // creep.log('boosting with ', lab);
+        /*
+         labs = labs.filter((lab)=>{
+         // creep.log('testing ', JSON.stringify(RoleRemoteRoomGuard.WANTED_BOOSTS[part_type]), lab.mineralType, lab.mineralAmount, lab.mineralType && RoleRemoteRoomGuard.WANTED_BOOSTS[part_type].indexOf(lab.mineralType)>=0 && lab.mineralAmount > 10);
+         return lab.mineralType && RoleRemoteRoomGuard.WANTED_BOOSTS[part_type].indexOf(lab.mineralType)>=0 && lab.mineralAmount > 10;
+         });
+         */
+        // creep.log('boosting labs for',RoleRemoteRoomGuard.WANTED_BOOSTS[part_type],JSON.stringify(labs));
         // let labs = creep.room.find(FIND_STRUCTURES, {filter: (s)=>s.structureType === STRUCTURE_LAB && s.mineralType === 'UH'});
         // labs = labs.filter((l)=>l.mineralAmount >= neededBoosts * 30 && l.energy >= 20 * neededBoosts);
         // creep.log('boosting?', attackParts.length, neededBoosts, labs.length);
-        if (labs.length) {
-            // creep.log('labs', JSON.stringify(labs));
-            let lab = creep.pos.findClosestByRange(labs);
-            // creep.log('lab', JSON.stringify(lab));
-            if (!lab) {
-                creep.log('NO LAB???', JSON.stringify(labs));
-                return false;
-            }
-            let boosted = lab.boostCreep(creep);
-            if (boosted == ERR_NOT_IN_RANGE) {
-                // creep.log('moving to lab', JSON.stringify(lab.pos));
-                creep.moveTo(lab);
-                return true;
-            } else if (boosted == OK) {
-                return false;
-            }
-
+        // if (labs.length) {
+        // creep.log('labs', JSON.stringify(labs));
+        // let lab = creep.pos.findClosestByRange(labs);
+        // creep.log('lab', JSON.stringify(lab));
+        if (!lab) {
+            creep.log('NO LAB???', JSON.stringify(labs));
+            return false;
         }
+        let boosted = lab.boostCreep(creep);
+        // creep.log('boosted', boosted);
+        if (boosted == ERR_NOT_IN_RANGE) {
+            // creep.log('moving to lab', JSON.stringify(lab.pos));
+            util.moveTo(creep, lab.pos,'labMove');
+            return true;
+        } else if (boosted == OK) {
+            return false;
+        }
+
+        // }
 
     }
 }
-RoleRemoteRoomGuard.WANTED_BOOSTS = {
-    ATTACK: [RESOURCE_CATALYZED_UTRIUM_ACID, RESOURCE_UTRIUM_ACID, RESOURCE_UTRIUM_HYDRIDE],
-    RANGED_ATTACK: [RESOURCE_CATALYZED_KEANIUM_ALKALIDE, RESOURCE_KEANIUM_ALKALIDE, RESOURCE_KEANIUM_OXIDE],
-    HEAL: [RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE, RESOURCE_LEMERGIUM_ALKALIDE, RESOURCE_LEMERGIUM_OXIDE],
-};
+RoleRemoteRoomGuard.WANTED_BOOSTS = {};
+RoleRemoteRoomGuard.WANTED_BOOSTS[ATTACK] = [RESOURCE_CATALYZED_UTRIUM_ACID, RESOURCE_UTRIUM_ACID, RESOURCE_UTRIUM_HYDRIDE];
+RoleRemoteRoomGuard.WANTED_BOOSTS[RANGED_ATTACK] = [RESOURCE_CATALYZED_KEANIUM_ALKALIDE, RESOURCE_KEANIUM_ALKALIDE, RESOURCE_KEANIUM_OXIDE];
+RoleRemoteRoomGuard.WANTED_BOOSTS[HEAL] = [RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE, RESOURCE_LEMERGIUM_ALKALIDE, RESOURCE_LEMERGIUM_OXIDE];
+RoleRemoteRoomGuard.WANTED_BOOSTS[MOVE] = [RESOURCE_CATALYZED_ZYNTHIUM_ALKALIDE, RESOURCE_ZYNTHIUM_ALKALIDE, RESOURCE_ZYNTHIUM_OXIDE];
+
 
 module.exports = RoleRemoteRoomGuard;

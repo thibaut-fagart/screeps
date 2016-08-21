@@ -27,9 +27,6 @@ class RoleClaimController {
         creep.memory.remoteRoom = creep.room.memory.claim;
     }
 
-    findRemoteExit(creep) {
-        return util.findExit(creep, creep.memory.homeroom).pos;
-    }
 
     /** @param {Creep} creep **/
     run(creep) {
@@ -69,17 +66,6 @@ class RoleClaimController {
         }
 
         // creep.log(creep.memory.action);
-/*
-        if (creep.memory.action == 'go_remote_room' && creep.room.name == creep.memory.homeroom) {
-            if (!creep.memory.remoteRoom) {
-                creep.log("no remote room");
-            } else {
-                let exit = this.findHomeExit(creep);
-                creep.moveTo(exit.x, exit.y, {reusePath: 50});
-                // console.log("moving to homeExit ", );
-            }
-        }
-*/
 
         if (creep.memory.action == 'load' && creep.memory.remoteRoom == creep.room.name) {
             let strategy = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);
@@ -96,32 +82,6 @@ class RoleClaimController {
                 return;
             }
         }
-/*
-        if (creep.memory.action == 'go_home_room') {
-            if (creep.room.name != creep.memory.homeroom) {
-                var exit = this.findRemoteExit(creep);
-                if (exit) {
-                    creep.moveTo(exit.x, exit.y, {reusePath: 50});
-                } else {
-                    creep.log("no exit ?", creep.pos);
-                }
-
-                // console.log("moving to remoteExit ", );
-            } else if (roomAlreadyClaimed) {
-
-                let spawn = util.objectFromMemory(creep.memory, 'target');
-                if (!spawn) {
-                    spawn = creep.pos.findClosestByRange(FIND_MY_SPAWNS);
-                    creep.memory.target = spawn.id;
-                }
-
-
-                if (creep.pos.getRangeTo(spawn) < 5) {
-                    creep.moveTo(spawn);
-                }
-            }
-        }
-*/
 
     }
 }

@@ -31,6 +31,7 @@ let handlers = {
     'claimer': new Handler('claimer', './role.controller.claim'),
     'carry': new Handler('carry', './role.carry'),
     'keeperHarvester': new Handler('keeperHarvester', './role.remote_harvester.keeper'),
+    'keeperMineralHarvester': new Handler('keeperMineralHarvester', './role.remote_mineralharvester.keeper'),
     'energyFiller': new Handler('energyFiller', './role.energyfiller'),
     'energyGatherer': new Handler('energyGatherer', './role.energygatherer'),
     'mineralGatherer': new Handler('mineralGatherer', './role.mineralgatherer'),

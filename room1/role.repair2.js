@@ -121,23 +121,14 @@ class RoleRepair2 {
         return _.sortBy(creep.room.find(FIND_STRUCTURES, {
             filter: function (structure) {
                 return ([STRUCTURE_ROAD, STRUCTURE_CONTAINER].indexOf(structure.structureType) >= 0
-                    || ((structure.structureType === STRUCTURE_RAMPART || structure.structureType === STRUCTURE_WALL) && structure.hits < 1000))
+                    || (structure.my && structure.ticksToDecay && structure.hits < 1000))
                     && structure.hits < structure.hitsMax;
             }
         }), (s) => s.hits);
     }
 
     findDamagedWalls(creep) {
-        let currentRoomEnergy = (creep.room.storage ? creep.room.storage.energy || 0 : 0)
-        return _.sortBy(creep.room.find(FIND_STRUCTURES, {
-                filter: (s)=> ((s.structureType == STRUCTURE_WALL || (s.structureType == STRUCTURE_RAMPART && s.my)) &&
-                (currentRoomEnergy < 10000 && s.hits < 100000
-                || currentRoomEnergy < 50000 && s.hits < 1000000
-                || currentRoomEnergy > 50000) && s.hits < s.hitsMax)
-            }),
-            (w)=>w.hits
-        )
-            ;
+        return creep.room.wallsRequiringRepair();
     }
 
     findTarget(creep) {
@@ -154,9 +145,7 @@ class RoleRepair2 {
             let myDamagedWalls = this.findDamagedWalls(creep);
             let newWalls = myDamagedWalls.filter((wall)=>wall.hits === 1);
             // first repair structures in bad shape, then walls, try getting one for each creep
-            if (newWalls.length) {
-                target = newWalls[0];
-            } else if (myDamagedStructures.length && (myDamagedStructures[0].hits / myDamagedStructures[0].hitsMax) < 0.5) {
+            if (myDamagedStructures.length && (myDamagedStructures[0].hits / myDamagedStructures[0].hitsMax) < 0.5) {
                 let damagedContainers = _.filter(myDamagedStructures, (s)=>s.structureType == STRUCTURE_CONTAINER);
                 let sortedContainers = _.sortBy(damagedContainers, (s) => s.hits / s.hitsMax);
                 let mostDamagedContainer2 = _.find(sortedContainers, (s) => !util.isReserved(creep, s, 'repair'));

@@ -17,6 +17,9 @@ class DismantleStrategy extends BaseStrategy {
         if (!target) {
             // console.log("finding target for  ", creep.name);
             var targets = creep.room.find(FIND_HOSTILE_STRUCTURES, {filter: this.predicate(creep)});
+            if (!targets.length) {
+                targets = creep.room.dismantleTargets();
+            }
             if (targets.length) {
                 target = creep.pos.findClosestByPath(targets);
                 if (target) creep.memory[this.DISMANTLE_TARGET] = target.id;
@@ -35,6 +38,7 @@ class DismantleStrategy extends BaseStrategy {
                 // creep.log('target null');
                 delete creep.memory[this.DISMANTLE_TARGET];
             } else {
+                creep.log('dismantling', target.structureType);
                 let dismantle= creep.dismantle(target);
                 if (dismantle == ERR_NOT_IN_RANGE) {
                     util.moveTo(creep, target.pos,this.constructor.name+ 'Path', {range:1});

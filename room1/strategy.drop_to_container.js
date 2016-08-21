@@ -55,15 +55,15 @@ class DropToContainerStrategy extends BaseStrategy {
             // creep.log('1allCOntainers has links?', allContainers.find((c)=>c.structureType === STRUCTURE_LINK));
             // creep.log('1allCOntainers has labs?', this.structure, allContainers.length, allContainers.find((c)=>c.structureType === STRUCTURE_LAB));
             let containersWithCapacity = allContainers.filter((s)=> s.energyCapacity || s.storeCapacity || s.mineralCapacity);
-            // creep.log('1.5allCOntainers has labs?', this.structure, containersWithCapacity.find((c)=>c.structureType === STRUCTURE_LAB));
+            // creep.log('1.5allCOntainers has labs?', this.structure, containersWithCapacity.filter((c)=>c.structureType === STRUCTURE_LAB).length);
             allContainers = containersWithCapacity.filter((s) =>this.containerAccepts(creep, s) && excludedContainers.indexOf(s.id) < 0);// all containers
             // creep.log('2allCOntainers has links?', allContainers.find((c)=>c.structureType === STRUCTURE_LINK));
-            // creep.log('2allCOntainers has labs?', this.structure, allContainers.find((c)=>c.structureType === STRUCTURE_LAB));
+            // creep.log('2allCOntainers has labs?', this.structure, allContainers.filter((c)=>c.structureType === STRUCTURE_LAB).length);
             allContainers = allContainers.filter((s)=> this.containerFreeSpace(creep, s) > 0// !full
                 && !this.isHarvestContainer(s));
             // creep.log('allContainers has storage ?', this.structure,allContainers.find((c)=>c.structureType === STRUCTURE_STORAGE));
             // creep.log('allCOntainers has links?', allContainers.find((c)=>c.structureType === STRUCTURE_LINK));
-            // creep.log('allContainers has lab ?', allContainers.find((c)=>c.structureType === STRUCTURE_LAB));
+            // creep.log('allContainers has lab ?', allContainers.filter((c)=>c.structureType === STRUCTURE_LAB).length);
 
             var emptyEnoughContainers = _.filter(allContainers, (s) => this.containerFreeSpace(creep, s) >= (this.resource) ? creep.carry[this.resource] : _.sum(creep.carry));
 
@@ -79,7 +79,7 @@ class DropToContainerStrategy extends BaseStrategy {
              }
              */
             // creep.log('emptyEnoughContainers has lab ?', emptyEnoughContainers.find((c)=>c.structureType === STRUCTURE_LAB));
-            // creep.log('allContainers has lab ?', allContainers.find((c)=>c.structureType === STRUCTURE_LAB));
+            // creep.log('emptyEnoughContainers has lab ?', emptyEnoughContainers.filter((c)=>c.structureType === STRUCTURE_LAB).length);
             var targets = emptyEnoughContainers.length > 0 ? emptyEnoughContainers : allContainers;
             target = creep.pos.findClosestByRange(targets);
             if (target) {
@@ -171,6 +171,11 @@ class DropToContainerStrategy extends BaseStrategy {
         return accepts;
     }
 
+    isAllowed(resource) {
+        return !this.resource
+            || this.resource === util.ANY_MINERAL && resource !== RESOURCE_ENERGY
+            || this.resource === resource;
+    }
     /**
      *
      * @param creep
@@ -179,9 +184,9 @@ class DropToContainerStrategy extends BaseStrategy {
      */
     containerFreeSpace(creep, container) {
         let space = 0;
-        // creep.log('freeSpace for ', container);
+        // creep.log('freeSpace for ', container, this.resource);
         if (creep.carry) {
-            _.keys(creep.carry).forEach((resource)=> {
+            _.keys(creep.carry).filter((r)=>this.isAllowed(r)).forEach((resource)=> {
                 if (RESOURCE_ENERGY === resource) {
                     // creep.log('energy space?');
                     space += (container.energyCapacity ? container.energyCapacity - container.energy : container.storeCapacity - _.sum(container.store));

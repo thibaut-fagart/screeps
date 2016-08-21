@@ -34,9 +34,6 @@ class SquadAttackStrategy extends Base {
         let brotherFurthestToLeader = _.sortBy(squad, (c)=>-c.pos.getRangeTo(leader))[0];
         let maxDistanceToLeader = brotherFurthestToLeader.pos.getRangeTo(leader);
         let myDistanceToLeader = creep.pos.getRangeTo(leader);
-        // do not prevent coming in
-        // let exitToHome = util.findExit(creep, creep.memory.homeroom);
-        // if (creep.pos.getRangeTo(exitToHome.x, exitToHome.y)< 3) return false;
         // if roster is not enough, regroup to exit
         // keep the squad together
         // creep.log('squad.length', squad.length, Game.rooms[creep.memory.homeroom].memory.attack_min);
@@ -47,7 +44,7 @@ class SquadAttackStrategy extends Base {
 /*
             if (isLeader) {
                 // creep.log('wait for reinforcements');
-                let exitToHome = util.findExit(creep, creep.memory.homeroom);
+                let exitToHome = creep.room.getExitTo(creep.memory.homeroom);
                 // creep.log('exitToHome', JSON.stringify(exitToHome));
                 let exitDist = creep.pos.getRangeTo(exitToHome.x, exitToHome.y);
                 // creep.log('exit at?', exitDist);
@@ -158,13 +155,13 @@ class SquadAttackStrategy extends Base {
                     let path = creep.memory.path[closestEnemy.id];
                     if (!path || path.length ===0) {
                         if (stoppedCounter < 3) {
-                            creep.log('moving to ennemy');
-                            path = creep.memory.path[closestEnemy.id] || util.safeMoveTo(creep, closestEnemy.pos);
+                            // creep.log('moving to ennemy');
+                            path = creep.memory.path[closestEnemy.id] || util.safeMoveTo(creep, closestEnemy.pos, {avoidCreeps:false});
                             creep.memory.path[closestEnemy.id] = path;
                             return true;
                         } else {
-                            creep.log('moving to ennemy2');
-                            creep.memory.path[closestEnemy.id] = util.safeMoveTo(creep, closestEnemy.pos)
+                            // creep.log('moving to ennemy2');
+                            creep.memory.path[closestEnemy.id] = util.safeMoveTo(creep, closestEnemy.pos, {avoidCreeps: false});
                             path = creep.memory.path[closestEnemy.id];
                             return true;
                         }

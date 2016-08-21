@@ -5,8 +5,9 @@ var BaseStrategy = require('./strategy.base');
  * finds a non-empty  energy source, chooses at random to spread the load
  */
 class HarvestEnergySourceStrategy extends BaseStrategy {
-    constructor() {
+    constructor(resource) {
         super();
+        this.resource = resource;
         this.PATH = 'source2';
     }
 
@@ -21,7 +22,7 @@ class HarvestEnergySourceStrategy extends BaseStrategy {
         let source;
         if (creep.getActiveBodyparts(WORK)>0) {
             // creep.log('body ok');
-            if (creep.carryCapacity > 0 && creep.carry.energy == creep.carryCapacity) {
+            if (this.isFull(creep)) {
                 // creep.log('full');
                 delete creep.memory[this.PATH];
             } else {
@@ -50,6 +51,10 @@ class HarvestEnergySourceStrategy extends BaseStrategy {
             }
         }
         return !!source;
+    }
+
+    isFull(creep) {
+        return creep.carryCapacity > 0 && creep.carry.energy == creep.carryCapacity;
     }
 
     findSource(creep) {

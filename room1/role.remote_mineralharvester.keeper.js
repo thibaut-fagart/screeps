@@ -6,12 +6,12 @@ var HarvestKeeperSourceToContainerStrategy = require('./strategy.harvest_keepers
 var HarvestKeeperSourceStrategy = require('./strategy.harvest_keepersource');
 var AvoidRespawnStrategy = require('./strategy.avoidrespawn');
 
-class RoleRemoteHarvesterKeeper extends RoleRemoteHarvester {
+class RoleRemoteMineralHarvesterKeeper extends RoleRemoteHarvester {
     constructor() {
         super();
         this.fleeStrategy = new AvoidRespawnStrategy(-1);
         this.healStrategy = new RemoteHealStrategy(1/*, (creep)=>((c)=>(creep.id ===c.id && creep.hits +this.healingCapacity(creep) < creep.hitsMax)) || creep.id !==c.id */);
-        this.harvestStrategy = new HarvestKeeperSourceToContainerStrategy(RESOURCE_ENERGY);
+        this.harvestStrategy = new HarvestKeeperSourceToContainerStrategy(util.ANY_MINERAL);
         //this.harvestStrategy = new HarvestKeeperSourceStrategy();
         this.loadStrategies = [this.harvestStrategy ];
         util.indexStrategies(this.loadStrategies);
@@ -41,4 +41,4 @@ class RoleRemoteHarvesterKeeper extends RoleRemoteHarvester {
 
 }
 
-module.exports = RoleRemoteHarvesterKeeper;
+module.exports = RoleRemoteMineralHarvesterKeeper;

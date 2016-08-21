@@ -3,7 +3,6 @@ var util = require('./util');
 var handlers = require('./base.handlers');
 var PickupManager = require('./util.manager.pickup');
 
-
 Room.prototype.findLabWith = function (resource) {
     let pairs = _.pairs(this.memory.labs);
     // creep.log('pairs', JSON.stringify(pairs));
@@ -18,8 +17,24 @@ Room.prototype.findLabWith = function (resource) {
     }
 
 };
-Room.prototype.operateLabs = function() {
-    "use strict";
+Room.prototype.wallsRequiringRepair = function () {
+    'use strict';
+    let currentRoomEnergy = (this.storage ? this.storage.energy || 0 : 0);
+    return _.sortBy(
+        this.find(FIND_STRUCTURES, {
+            filter: (s)=>
+                ((s.structureType == STRUCTURE_WALL || (s.structureType == STRUCTURE_RAMPART && s.my)) &&
+                ((currentRoomEnergy < 10000 && s.hits < 100000)
+                || (currentRoomEnergy < 50000 && s.hits < 1000000)
+                || currentRoomEnergy > 50000)
+                && s.hits < s.hitsMax)
+        }),
+        (w)=>w.hits
+    );
+
+};
+Room.prototype.operateLabs = function () {
+    'use strict';
     _.keys(this.memory.labs).forEach((labid)=> {
         let lab = Game.getObjectById(labid);
         if (!lab.cooldown) {
@@ -36,29 +51,29 @@ Room.prototype.operateLabs = function() {
 
                         // console.log('running with ', JSON.stringify(sourceLabs.map((lab)=>lab.id)));
                         let result = lab.runReaction(sourceLabs[0], sourceLabs[1]);
-                        // console.log('run?', lab.mineralType, result);
+                        if (result !== OK) this.log('run reaction?', lab.mineralType, result);
                     }
                 }
             }
 
         }
-    })
-
-}
+    });
+};
 Room.prototype.hasKeeperLairs = function () {
     let coords = /([EW])(\d+)([NS])(\d+)/.exec(this.name);
-    return (Math.abs(coords[2] % 10 - 5) == 1 && Math.abs(coords[4] % 10 - 5) == 1  );
+    let x = Math.abs(coords[2] % 10 - 5);
+    let y = Math.abs(coords[4] % 10 - 5);
+    return (x <= 1 && y <= 1 && !(x == 0 && y == 0));
     // this.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_KEEPER_LAIR}})
 };
 Room.prototype.operateLinks = function () {
     let links = this.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_LINK}});
     if (!links.length) return;
     let storageLink = (this.storage) && links.find((l)=> l.pos.getRangeTo(this.storage) < 4);
-    let controllerLink = links.find((l)=> l.pos.getRangeTo(this.controller.pos) < 4);
+    let controllerLink = links.find((l)=> l.pos.getRangeTo(this.controller.pos) < 5);
     let otherLinks = links.filter((l)=> (!storageLink || (storageLink && l.id !== storageLink.id)) && (!controllerLink || (controllerLink && l.id !== controllerLink.id)));
     otherLinks = _.sortBy(otherLinks.filter((l)=>l.cooldown === 0), (l)=> -l.energy);
-    let actioned = [];
-    let linkAccepts = (link, amount) => link && !link.cooldown && link.energy + amount < link.energyCapacity;
+    let linkAccepts = (link, amount) => link && /*!link.cooldown && */link.energy + amount < link.energyCapacity;
     let chooseTargetLink = (amount, l1, l2)=> {
         if (linkAccepts(l1, amount)) {
             return l1;
@@ -72,31 +87,19 @@ Room.prototype.operateLinks = function () {
             return l2;
         }
     };
-    /*
-     if (linkAccepts(controllerLink)) {
-     if (otherLinks.length && otherLinks[0].energy > 0) {
-     otherLinks[0].transferEnergy(controllerLink);
-     actioned.push(otherLinks[0].id);
-     // this.log(this.name, 'link transfer other to controller', otherLinks[0].id, otherLinks[0].energy);
-     } else if (storageLink && storageLink.energy > 0 && storageLink.cooldown === 0) {
-     storageLink.transferEnergy(controllerLink);
-     actioned.push(storageLink.id);
-     // this.log(this.name, 'link transfer storage to controller', storageLink.energy);
-     }
-     }
-     */
+
     otherLinks.forEach((l)=> {
-        "use strict";
+        'use strict';
         let target = chooseTargetLink(l.energy, controllerLink, storageLink);
         if (target) l.transferEnergy(target);
     });
-    let target = chooseTargetLink(storageLink.energy, controllerLink, undefined);
+    let target = storageLink ? chooseTargetLink(storageLink.energy, controllerLink, undefined) : undefined;
     if (target) {
         storageLink.transferEnergy(target);
     }
 };
 Room.prototype.harvestPositions = function () {
-    "use strict";
+    'use strict';
     // if (!this.memory.harvestPositions) {
     this.log('harvestPositions');
     let sources = this.find(FIND_SOURCES);
@@ -115,7 +118,7 @@ Room.prototype.expectedMineralType = function (lab) {
     return (this.memory.labs || [])[lab.id];
 };
 Room.prototype.assessThreat = function () {
-    "use strict";
+    'use strict';
     if (!this.memory.threatAssessment) {
         this.memory.threatAssessment = {sources: {}, harvested: 0};
     }
@@ -138,7 +141,7 @@ Room.prototype.assessThreat = function () {
         this.memory.threatAssessment.sources = {};
     }
     this.find(FIND_SOURCES).forEach((source)=> {
-        "use strict";
+        'use strict';
         // keep track of mined energy
         // on each tick, compare current energy to previous one. if  decrease, increment monitored harvested, else reset
         let sourceMem = this.memory.threatAssessment.sources[source.id] = this.memory.threatAssessment.sources[source.id] || {};
@@ -161,7 +164,7 @@ Room.efficiency = function (roomName) {
         if (roomMem.date + 1500 < Game.time) {
             oldMems.push(roomMem);
             if (oldMems.length > 10) oldMems.shift();
-            Memory.rooms[roomName].efficiency = {date: Game.time};
+            roomMem = Memory.rooms[roomName].efficiency = {date: Game.time};
         }
         // [{remoteMining: {room:value}]
         let result = _.cloneDeep(roomMem);
@@ -169,7 +172,7 @@ Room.efficiency = function (roomName) {
         oldMems.reduce((previous, current)=> {
             // console.log('previous', JSON.stringify(previous), 'current', JSON.stringify(current));
             _.keys(current).forEach((type)=> {
-                "use strict";
+                'use strict';
                 // console.log('oldmems','type', type);
                 _.keys(current[type]).forEach((remoteRoom)=> {
                     // console.log('oldmems','previous[type]', previous[type]);
@@ -194,15 +197,15 @@ Room.prototype.deliver = function (fromRoom, carry) {
 
 };
 Room.prototype.updateLocks = function () {
-    "use strict";
+    'use strict';
     let locks = _.pairs(this.memory.reserved);
     // this.log('updating locks');
     locks.forEach((p)=> {
         let reason = p[0];
-        let sublocks = p[1]
+        let sublocks = p[1];
         if (!_.isString(sublocks)) {
             _.pairs(sublocks).forEach((q)=> {
-                "use strict";
+                'use strict';
                 let ownerid = q[1];
                 let ownee = q[0];
                 if (!Game.getObjectById(ownerid)) {
@@ -219,19 +222,21 @@ Room.prototype.updateLocks = function () {
 Room.prototype.operateTowers = function () {
     this.memory.towersCache = this.memory.towersCache || {date: 0};
     if (this.memory.towersCache.date + 500 < Game.time) {
-        this.memory.towersCache.towers = this.find(FIND_MY_STRUCTURES, {filter: (s) => s instanceof StructureTower}).map((s) => s.id);
+        this.memory.towersCache.towers = this.find(FIND_MY_STRUCTURES, {filter: (s) => s.structureType == STRUCTURE_TOWER}).map((s) => s.id);
     }
     this.memory.towersCache.towers.forEach((towerid)=> {
         let tower = Game.getObjectById(towerid);
         if (tower) handlers['tower'].run(tower);
-        else this.memory.towersCache.towers = this.find(FIND_MY_STRUCTURES, {filter: (s) => s instanceof StructureTower}).map((s) => s.id);
+        else this.memory.towersCache.towers = this.find(FIND_MY_STRUCTURES, {filter: (s) => s.structureType == STRUCTURE_TOWER}).map((s) => s.id);
     });
 };
 Room.prototype.gc = function () {
-    "use strict";
+    'use strict';
     let structuresMemory = this.memory.structures;
     if (structuresMemory) {
-        for (var id in structuresMemory) {
+        let ids = _.keys(structuresMemory);
+        for (let i = 0; i < ids.length; i++) {
+            let id = ids[i];
             if (!Game.getObjectById(id)) {
                 delete this.memory.structures.id;
             }
@@ -242,13 +247,138 @@ Room.prototype.gc = function () {
         PickupManager.getManager(this.name).gc();
     }
 };
+
+/**
+ * only called when exit doesn't exist
+ * computes all missing exits from room to targetRoom
+ *
+ * @param {Room} room
+ * @param {string} targetRoom
+ * @returns nothing
+ */
+function findExit(room, targetRoom) {
+    let roomName, roomMemory, entryPoint;
+    // room case
+    roomName = room.name;
+    roomMemory = room.memory;
+    entryPoint = new RoomPosition(20, 20, roomName);
+    if (!targetRoom || (roomName === targetRoom)) {
+        room.log('findExit,invalid params', roomName, targetRoom);
+        throw new Error('findExit,invalid params ' + room + ',' + targetRoom);
+    }
+    // room.log('findExit', targetRoom, roomMemoryName);
+    let exit;
+    // room.log('known?',!!roomMemory[roomMemoryName]);
+    let mirror = (x)=>x === 0 || x === 49 ? 49 - x : x;
+    // logWith.log('finding exit', roomName, targetRoom);
+    let route = Game.map.findRoute(roomName, targetRoom, {
+        routeCallback: function (roomName, fromRoomName) {
+            if (Game.rooms[roomName]) {
+                return 1;
+            } else if (Memory.rooms[fromRoomName] && Memory.rooms[fromRoomName].exits && Memory.rooms[fromRoomName].exits[roomName] && !Memory.rooms[roomName].avoid) {
+                return 2;
+            } else if (!Memory.rooms[roomName].avoid) {
+                return 3;
+            } else {
+                return 0xff;
+            }
+        }
+    });
+    if (!route) {
+        room.log('ERROR no route from', roomName, 'to', targetRoom);
+    }
+    roomMemory.roomDistance = roomMemory.roomDistance || {};
+    roomMemory.roomDistance [targetRoom] = route.length;
+    // logWith.log('route before unshift', route.length, JSON.stringify(route));
+    route.unshift({room: roomName});
+    // logWith.log('route', route.length, JSON.stringify(route));
+    if (route.length > 1) {
+        for (let i = 1, max = route.length; i < max; i++) {
+            let currentRoom = route[i - 1].room;
+            let roomStep = route[i];
+            let nextRoom = roomStep.room;
+            let theRoom = Game.rooms[currentRoom];
+            if (!theRoom) {
+                room.log('unknown room', currentRoom);
+                continue;
+            }
+            // logWith.log('map step', nextRoom);
+            let currentExit = !Room.getExitTo(currentRoom,nextRoom,true);
+            if (currentExit) {
+                let exitDir = roomStep.exit;
+                room.log('finding new exit', currentRoom, nextRoom);
+                exit = entryPoint.findClosestByPath(exitDir); // TODO cache
+                // todo try to choose an exit which does not touch a wall to limite future pathfinding issues
+            } else {
+                exit = currentExit;
+            }
+            // store the path from every step in the route
+            for (let j = i, maxj = route.length; j < maxj; j++) {
+                Room.setExitTo(currentRoom, route[j].room, exit);
+            }
+            entryPoint = new RoomPosition(mirror(exit.x), mirror(exit.y), nextRoom);
+            for (let j = i; j > 0; j--) {
+                Room.setExitTo(nextRoom, route[j - 1].room, entryPoint);
+            }
+        }
+    } else {
+        room.log('ERROR : no route', roomName, targetRoom);
+    }
+}
+
+Room.prototype.getExitTo = function (toRoom, failIfAbsent) {
+    'use strict';
+    return Room.getExitTo(this.name, toRoom, failIfAbsent);
+};
+Room.getExitTo = function (fromRoom, toRoom, failIfAbsent) {
+    'use strict';
+    let roomMemory = Memory.rooms[fromRoom] = Memory.rooms[fromRoom] || {};
+    let exits = roomMemory.exits = (roomMemory.exits || {});
+    let cached = exits[toRoom];
+    if (!cached) {
+        let room = Game.rooms[fromRoom];
+        if (room &&!failIfAbsent) {
+            cached = findExit(room, toRoom);
+            room.setExitTo(toRoom, cached);
+            return cached;
+        } else {
+            return undefined;
+        }
+    }
+    if (cached && _.isString(cached) && cached[0]=='{') {
+        // old way, update
+        cached = JSON.parse(cached);
+        Room.setExitTo(fromRoom, toRoom, cached);
+    } else {
+        let x = Number.parseInt(cached.substring(0,2));
+        let y = Number.parseInt(cached.substring(2,4));
+        return cached = new RoomPosition(x, y, fromRoom);
+    }
+    return cached;
+};
+/**
+ *
+ * @param {string}toRoom
+ * @param {RoomPosition} pos
+ */
+Room.prototype.setExitTo = function (toRoom, pos) {
+    'use strict';
+    Room.setExitTo(this.name, toRoom, pos);
+};
+Room.setExitTo = function (fromRoom, toRoom, pos) {
+    'use strict';
+    let roomMemory = Memory.rooms[fromRoom] = Memory.rooms[fromRoom] || {};
+    let exits = roomMemory.exits = (roomMemory.exits || {});
+    let pad = (i)=> (i<10? '0'+i.toString():i.toString());
+    exits[toRoom] = pad(pos.x) + pad(pos.y);
+};
 /**
  *
  * @param {string} toRoom
  * @returns {number}
  */
 Room.prototype.tripTimeToSources = function (toRoom) {
-    "use strict";
+    'use strict';
     /**
      * fromRoom to exit
      * [from exit to exit]
@@ -266,50 +396,56 @@ Room.prototype.tripTimeToSources = function (toRoom) {
         // console.log('tripTime computing');
         let roomCursor = this.name, startPoint;
         let tripTime = 0;
-        let startRoom = this;
-        let candidateStartingPoints = startRoom.find(FIND_STRUCTURES, {filter: (s)=> [STRUCTURE_LINK, STRUCTURE_STORAGE, STRUCTURE_SPAWN].indexOf(s.structureType) >= 0});
-        startPoint = util.findExit(startRoom, toRoom).findClosestByPath(candidateStartingPoints);
+        startPoint = this.storage ? this.storage.pos : this.controller.pos;
         // startRoom.log('tripTime using ', startPoint, ' as drop point');
-
         do {
-            let exit = util.findExit(roomCursor, toRoom);
-            console.log('tripTime exit', roomCursor, toRoom, JSON.stringify(exit));
+            let exit = this.getExitTo(roomCursor, toRoom);
+            // this.log('tripTime exit', roomCursor, toRoom, JSON.stringify(exit));
             // let path = PathFn;
             if (!exit) {
                 return undefined;
             }
-            tripTime += exit.getRangeTo(startPoint);// todo path.length;
+            if (Game.rooms[roomCursor]) {
+                tripTime += util.safeMoveTo2({pos: startPoint, room: this}, exit, {range: 0}).length;
+            } else {
+                tripTime += Math.floor(exit.getRangeTo(startPoint * 1.5));
+            }
             startPoint = util.nextRoom(exit);
             roomCursor = startPoint.roomName;
-            // console.log('tripTime',roomCursor, tripTime);
+            //this.log('tripTime',this.name, roomCursor, tripTime);
         } while (roomCursor !== toRoom);
         let targetRoom = Game.rooms[toRoom];
 
         if (targetRoom) {
             let temp = 0;
             let sources = targetRoom.find(FIND_SOURCES);
-            sources.forEach((s)=>temp += s.pos.getRangeTo(startPoint));
+            sources.forEach((s)=>temp += util.safeMoveTo2({
+                pos: startPoint,
+                room: targetRoom
+            }, s.pos, {range: 2}).length);
+            // this.log('average trip to sources', roomCursor, startPoint, temp);
             tripTime += temp / sources.length;
         } else {
-            tripTime += 20;
+            tripTime += 50;
         }
-        // console.log('tripTime', this.name, toRoom, tripTime);
+        // this.log('tripTime', this.name, toRoom, tripTime);
         cache.tripTimeToSources[toRoom] = tripTime;
     } else {
         // this.log('tripTimeToSources cached');
     }
     return cache.tripTimeToSources[toRoom];
 };
+
 Room.prototype.updateCheapStats = function () {
 
     Memory.stats['room.' + this.name + '.spawns.queueLength'] = this.memory.queueLength;
     let building = this.memory.building;
-    let buildingRoles = building?_.countBy(_.values(building).map((spec)=>spec.memory.role)):{};
+    let buildingRoles = building ? _.countBy(_.values(building).map((spec)=>spec.memory.role)) : {};
     let queuePrefix = 'room.' + this.name + '.spawns.queue.';
     let buildingPrefix = 'room.' + this.name + '.spawns.building.';
     _.keys(handlers).forEach((role)=> {
         if (this.memory.queue && this.memory.queue[role]) {
-            Memory.stats[queuePrefix+ role] = this.memory.queue[role];
+            Memory.stats[queuePrefix + role] = this.memory.queue[role];
         } else {
             delete Memory.stats[queuePrefix + role];
         }
@@ -321,27 +457,33 @@ Room.prototype.updateCheapStats = function () {
         }
 
     });
-    Memory.stats["room." + this.name + ".energyAvailable"] = this.energyAvailable;
-    Memory.stats["room." + this.name + ".energyCapacityAvailable"] = this.energyCapacityAvailable;
-    Memory.stats["room." + this.name + ".threats.harvested"] = this.memory.threatAssessment.harvested;
-    Memory.stats["room." + this.name + ".reservedCount"] = _.size(this.memory.reserved);
-    Memory.stats["room." + this.name + ".energyInSources"] = _.sum(_.map(this.find(FIND_SOURCES_ACTIVE), (s)=> s.energy));
+    if (this.storage) {
+        _.keys(this.storage.store).forEach((min)=>Memory.stats[`room.${this.name}.resources.storage.${min}`] = this.storage.store[min]);
+    }
+    if (this.terminal) {
+        _.keys(this.terminal.store).forEach((min)=>Memory.stats[`room.${this.name}.resources.terminal.${min}`] = this.terminal.store[min]);
+    }
+    Memory.stats['room.' + this.name + '.energyAvailable'] = this.energyAvailable;
+    Memory.stats['room.' + this.name + '.energyCapacityAvailable'] = this.energyCapacityAvailable;
+    Memory.stats['room.' + this.name + '.threats.harvested'] = this.memory.threatAssessment.harvested;
+    Memory.stats['room.' + this.name + '.reservedCount'] = _.size(this.memory.reserved);
+    Memory.stats['room.' + this.name + '.energyInSources'] = _.sum(_.map(this.find(FIND_SOURCES_ACTIVE), (s)=> s.energy));
     if (this.controller && this.controller.my) {
-        Memory.stats["room." + this.name + ".controller.progress"] = this.controller.progress;
-        Memory.stats["room." + this.name + ".controller.progressTotal"] = this.controller.progressTotal;
-        Memory.stats["room." + this.name + ".controller.ProgressRatio"] = 100 * this.controller.progress / this.controller.progressTotal;
+        Memory.stats['room.' + this.name + '.controller.progress'] = this.controller.progress;
+        Memory.stats['room.' + this.name + '.controller.progressTotal'] = this.controller.progressTotal;
+        Memory.stats['room.' + this.name + '.controller.ProgressRatio'] = 100 * this.controller.progress / this.controller.progressTotal;
     }
 
     let spawnStats = this.find(FIND_MY_SPAWNS)
-        .reduce((sum, spawn)=> {
+        .reduce(
+            (sum, spawn)=> {
                 _.keys(spawn.memory.spawns).forEach((k)=> {
                     if (!(/.*Bits/.exec(k))) {
                         sum[k] = (sum[k] || 0) + spawn.memory.spawns[k];
                     }
                 });
                 return sum;
-            },
-            {});
+            }, {});
     // this.log('spawnStats', JSON.stringify(spawnStats));
     let spawnPrefix = 'room.' + this.name + '.spawns.';
     _.keys(spawnStats).forEach((k)=> {
@@ -375,7 +517,7 @@ Room.prototype.glanceForAround = function (type, pos, range, asarray) {
  * @returns {*}
  */
 Room.prototype.glanceAround = function (pos, range, asarray) {
-    return this.lookAtArea(type,
+    return this.lookAtArea(
         Math.max(0, pos.y - range),
         Math.max(0, pos.x - range),
         Math.min(49, pos.y + range),
@@ -395,7 +537,24 @@ var Cache = {
         return memory[path].value;
     }
 };
-
+Room.prototype.dismantleTargets = function () {
+    'use strict';
+    let targets = this.memory.dismantle || [];
+    if (_.isString(targets)) {
+        targets = [targets];
+    }
+    let ret = [];
+    let newids = [];
+    targets.forEach((id)=> {
+        let o = Game.getObjectById(id);
+        if (o) {
+            ret.push(o);
+            newids.push(id);
+        }
+    });
+    this.memory.dismantle = newids;
+    return ret;
+};
 Room.prototype.findContainers = function () {
     this.memory.cache = this.memory.cache || {};
     this.memory.cache.containers = this.memory.cache.containers || {};
@@ -403,24 +562,48 @@ Room.prototype.findContainers = function () {
     return containerIds.map((id)=> Game.getObjectById(id)).filter((s)=>!!s);
 };
 
-/*
- Room.prototype._find = Room.prototype.find;
- Room.prototype.find = function (type, opts) {
- "use strict";
- if (opts) {
- return this._find(type, opts);
- } else {
- this.cache = (this.cache && this.cache.time === Game.time)? this.cache: {time:Game.time};
- if (this.cache[type]) {
- return this.cache[type];
- } else {
- let find = this._find(type, opts);
- this.cache[type] = find;
- return find;
- }
+Room.prototype.buildTower = function () {
+    'use strict';
+    if (this.controller && this.controller.my && this.controller.level >= 3 && this.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_TOWER}}).length == 0) {
+        let towerFlags = this.find(FIND_FLAGS, {filter: {color: COLOR_PURPLE}}).filter((f)=>f.secondaryColor = COLOR_PURPLE);
+        if (towerFlags.length > 0) {
+            let lookFor = towerFlags[0].pos.lookFor(LOOK_CONSTRUCTION_SITES);
+            if (!lookFor.length) {
+                this.createConstructionSite(towerFlags[0].pos, STRUCTURE_TOWER);
+            }
+        }
+    }
+    if (this.controller && this.controller.my) {
+        let currentExtensionCount = this.find(FIND_STRUCTURES).filter((s)=>s.structureType === STRUCTURE_EXTENSION).length;
+        this.log('currentExtensionCount', currentExtensionCount, CONTROLLER_STRUCTURES[STRUCTURE_EXTENSION][this.controller.level]);
+        if (CONTROLLER_STRUCTURES[STRUCTURE_EXTENSION][this.controller.level] > currentExtensionCount) {
+            let extensionFlags = this.find(FIND_FLAGS, {filter: {color: COLOR_PURPLE}}).filter((f)=>f.secondaryColor = COLOR_ORANGE);
+            this.log('marks', extensionFlags.length);
+            extensionFlags = extensionFlags.filter((f)=>f.pos.lookFor(LOOK_CONSTRUCTION_SITES).length === 0);
+            this.log('non built marks', extensionFlags.length);
+            extensionFlags.forEach((f)=>this.createConstructionSite(f.pos, STRUCTURE_EXTENSION));
+        }
+    }
 
- }
- };
+};
+Room.prototype.availableBoosts = function() {
+    'use strict';
+    let labs = this.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_LAB}});
+    let minerals = labs.filter((lab)=>lab.mineralAmount && lab.mineralAmount > 50).map((lab)=>lab.mineralType);
+    return minerals;
+};
+
+/**
+ *
+ * @param {string} part
+ * @param {string} feature
  */
-
+Room.prototype.maxBoost = function (part, feature) {
+    let labs = this.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_LAB}});
+    let minerals = labs.map((lab)=>lab.mineralType);
+    if (!minerals) return 1;
+    else return _.max(_.keys(BOOSTS[part])
+        .filter((boost)=>minerals.indexOf(boost) >= 0) // available in the room
+        .map((boost)=>BOOSTS[part][boost][feature])); // bonus
+};
 module.exports = Room.prototype;

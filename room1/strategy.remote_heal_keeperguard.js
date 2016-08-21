@@ -23,9 +23,10 @@ class RemoteHealKeeperGuardStrategy extends RemoteHealStrategy {
 
     }
 
+/*
     moveToAndHeal(creep, damaged) {
-         // creep.log('moveToAndHeal');
-        // return super.moveToAndHeal(creep, damaged); // TODO
+         creep.log('moveToAndHeal', damaged.name);
+        return super.moveToAndHeal(creep, damaged); // TODO
         let rangeToDamaged = creep.pos.getRangeTo(damaged);
         if (rangeToDamaged > 1) {
             let hostiles = damaged.pos.findInRange(FIND_HOSTILE_CREEPS, 5);
@@ -54,13 +55,8 @@ class RemoteHealKeeperGuardStrategy extends RemoteHealStrategy {
         } else {
             creep.heal(damaged);
         }
-
     }
-
-    accepts(creep) {
-        // creep.log('sub');
-        super.accepts(creep);
-    }
+*/
 }
 
 module.exports = RemoteHealKeeperGuardStrategy;

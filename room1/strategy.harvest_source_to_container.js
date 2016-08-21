@@ -73,6 +73,7 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
         }
 
         else if (source) {
+            // creep.log('source but no container', JSON.stringify(source.pos));
             if (creep.pos.getRangeTo(source) == 1) {
                 let ret = creep.harvest(source);
                 /*
@@ -84,7 +85,7 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
                     creep.log('harvest?', ret);
                 }
             } else {
-                if (ERR_NOT_FOUND ===util.moveTo(creep, source.pos,this.constructor.name+"Path")) {
+                if (ERR_NOT_FOUND ===util.moveTo(creep, source.pos,this.constructor.name+"Path",{range:1})) {
                     creep.log('discarding path');
                     delete creep.memory[this.PATH_TO_SOURCE_PATH];
                 }
@@ -215,7 +216,7 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
     }
 
     findSources(creep) {
-        let sources = util.findSafeSources(creep.room, RESOURCE_ENERGY !==this.resourceType);
+        let sources = util.findSafeSources(creep.room, (!this.resourceType) || (RESOURCE_ENERGY !==this.resourceType));
         // creep.log('util.safeSources',RESOURCE_ENERGY !==this.resourceType, this.resourceType, sources.length, JSON.stringify(sources.map((s)=>s.pos)));
         let safeSources = sources.filter((s)=> {
             // if (!this.resourceType) return true;
@@ -224,7 +225,7 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
                     return s.energy;
                 case util.ANY_MINERAL : return s.mineralAmount;
                 default: {
-                    return (this.resourceType ? this.mineralType === this.resourceType : true) && s.mineralAmount;
+                    return (this.resourceType ? this.mineralType === this.resourceType : true) && (s.mineralAmount||s.energyCapacity);
                 }
             }
         });

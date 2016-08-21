@@ -4,9 +4,14 @@ let RemoteHealStrategy = require('./strategy.remote_heal');
 // let RemoteRepairStrategy = require('./strategy.remote_repair');
 class RoleTower {
     constructor() {
-        this.remoteAttackStrategy = new RemoteTargetStrategy(undefined,(creep)=>{
+        this.remoteAttackStrategy = new RemoteTargetStrategy(undefined,(tower)=>{
             return function(target) {
-                return target.owner.username === 'Invader' || true|| creep.pos.getRangeTo(target)< 15;
+                let ignoredStructures = [STRUCTURE_ROAD, STRUCTURE_EXTRACTOR, STRUCTURE_LINK];
+                let endangeredStructures = tower.room.glanceForAround(LOOK_STRUCTURES, target.pos, 3, true).filter((s)=>ignoredStructures.indexOf(s.structure.structureType)<0 );
+                let endangeredCreeps = tower.room.glanceForAround(LOOK_CREEPS, target.pos, 3, true).filter((c)=>c.my );
+                tower.log(`target ${JSON.stringify(target.pos)}, ${target.owner.username} endangeredStructures ${endangeredStructures.length}, endangeredCreeps ${endangeredCreeps.length}`);
+                
+                return target.owner.username === 'Invader' ||  true || tower.pos.getRangeTo(target)< 15 && tower.room.glanceForAround(LOOK_STRUCTURES);
             };
         });
         this.remoteHealStrategy = new RemoteHealStrategy();

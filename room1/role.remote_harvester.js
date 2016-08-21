@@ -54,10 +54,6 @@ class RoleRemoteHarvester {
 
     }
 
-    findRemoteExit(creep) {
-        return util.findExit(creep, creep.memory.homeroom);
-    }
-
     /** @param {Creep} creep **/
     run(creep) {
         if (!creep.memory.homeroom) {
@@ -89,22 +85,20 @@ class RoleRemoteHarvester {
             // creep.log('reached remoteRoom');
         }
         if (creep.memory.action == 'load') {
-            // creep.log('finding strategy');
-            if (/*!this.buildStrategy.accepts(creep)*/true) {
-                let strategy = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);
-                // creep.log('previousStrategy',util.strategyToLog(strategy));
-                if (!strategy) {
-                    strategy = _.find(this.loadStrategies, (strat)=>strat.accepts(creep));
-                    // creep.log('newStrategy',util.strategyToLog(strategy));
-                }
-                if (strategy) {
-                    // creep.log('strategy', strategy.constructor.name);
-                    util.setCurrentStrategy(creep, strategy);
-                } else {
-                    // creep.log('no loadStrategy');
-                    this.regroupStrategy.accepts(creep);
-                    return;
-                }
+            // creep.log('finding strategy', this.loadStrategies.length);
+            let strategy = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);
+            // creep.log('previousStrategy',util.strategyToLog(strategy));
+            if (!strategy) {
+                strategy = _.find(this.loadStrategies, (strat)=>strat.accepts(creep));
+                // creep.log('newStrategy',util.strategyToLog(strategy));
+            }
+            if (strategy) {
+                // creep.log('strategy', strategy.constructor.name);
+                util.setCurrentStrategy(creep, strategy);
+            } else {
+                // creep.log('no loadStrategy');
+                this.regroupStrategy.accepts(creep);
+                return;
             }
         } else if (creep.memory.action == 'unload') {
             let strategy = util.getAndExecuteCurrentStrategy(creep, this.unloadStrategies);

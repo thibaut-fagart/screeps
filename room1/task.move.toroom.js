@@ -44,7 +44,7 @@ class MoveToRoomTask extends BaseStrategy {
 
                 }
             } else {
-                exit = util.findExit(creep, creep.memory[this.CREEP_REMOTE_PATH]);
+                exit = creep.room.getExitTo(creep.memory[this.CREEP_REMOTE_PATH]);
             }
             if (!exit || null === exit) {
                 creep.log('ERROR , no exit', creep.memory[this.CREEP_REMOTE_PATH]);
@@ -62,7 +62,7 @@ class MoveToRoomTask extends BaseStrategy {
                 // wait for room change
             } else if (creep.room.name === exit.roomName) {
                 this.repairRoad(creep);
-                // creep.log('path', creep.memory.move_Task);
+                // creep.log('moveTo', exit);
                 let moveTo = util.moveTo(creep, exit, 'move_Task', {range: 0});
                 if (moveTo !== OK && moveTo !== ERR_TIRED) {
                     // creep.log('checking collision');
@@ -82,9 +82,12 @@ class MoveToRoomTask extends BaseStrategy {
                         if (walkables.length) {
                             walkables = walkables.filter((pos)=>!pos.isEqualTo(exit));
                             let test = _.sample(walkables);
-                            creep.log('trying', JSON.stringify(test));
-                            creep.log('moved?', util.moveTo(creep, test,undefined,{range: 0}));
-
+                            if (!test) return true;
+                            // creep.log('trying', JSON.stringify(test));
+                            moveTo = util.moveTo(creep, test, 'move_Task', {range: 0});
+                            if (moveTo !== OK && moveTo !== ERR_TIRED) {
+                                creep.log('moved after jam ?', moveTo);
+                            }
                         }
                     }
                 } else if (OK === moveTo || ERR_TIRED === moveTo) {

@@ -59,32 +59,6 @@ function wrapPathFinder() {
         return basePathFinderSearch.apply(this, arguments);
     };
 }
-var handleLabs = function (room) {
-    _.keys(room.memory.labs).forEach((labid)=> {
-        let lab = Game.getObjectById(labid);
-        if (!lab.cooldown) {
-            // creep.log('testing ', labid);
-            let reaction = room.expectedMineralType(lab);
-            //room.log('using ', reaction);
-            if (reaction) {
-                let ingredients = handlers['labOperator'].class().reactions [reaction];
-                // creep.log('searching labs with ingredients', ingredients, !!ingredients);
-
-                if (ingredients) {
-                    let sourceLabs = ingredients.map((i)=>room.findLabWith(i));
-                    if (sourceLabs[0] && sourceLabs[1]) {
-
-                        // console.log('running with ', JSON.stringify(sourceLabs.map((lab)=>lab.id)));
-                        let result = lab.runReaction(sourceLabs[0], sourceLabs[1]);
-                        // console.log('run?', lab.mineralType, result);
-                    }
-                }
-            }
-
-        }
-    });
-};
-
 let roomTasks = {
     operateTowers: (r)=> r.operateTowers(),
     operateLinks: (r)=>r.operateLinks(),
@@ -98,6 +72,7 @@ let roomTasks = {
     assessThreat: (r)=> {
         if (Game.cpu.bucket > 200) r.assessThreat();
     },
+    labs: (r)=> { if (!(Game.time % 10) && r.memory.labs) r.operateLabs();},
 
 };
 
@@ -110,11 +85,11 @@ function innerLoop() {
     let oldSeenTick = Game.time || (Memory.counters && Memory.counters.seenTick);
     Memory.counters = {tick: Game.time, seenTick: oldSeenTick + 1};
     if (0 == Game.time % 100) {
-        for (var name in Memory.creeps) {
+        _.keys(Memory.creeps).forEach((name)=> {
             if (!Game.creeps[name]) {
                 delete Memory.creeps[name];
             }
-        }
+        });
     }
     let cpu = {}, roomCpu = {};
     let availableCpu = Game.cpu.tickLimit;
@@ -185,15 +160,7 @@ function innerLoop() {
         let spawnCpu = Game.cpu.getUsed();
         if (updateStats) cpu['spawns'] = (cpu['spawns'] || 0) + spawnCpu - creepsCpu;
 
-        if (!(Game.time % 10) && room.memory.labs && Game.cpu.getUsed() < availableCpu - 100) {
-            // creep.log('running reactions');
-            handleLabs(room);
-        } else if (Game.cpu.getUsed() >= availableCpu - 100) {
-            if (updateStats) skipped.push(`${roomName}.labs`);
-
-        }
-        let labsCpu = Game.cpu.getUsed();
-        if (updateStats) cpu['labs'] = (cpu['labs'] || 0) + labsCpu - spawnCpu;
+        let labsCpu = spawnCpu;
 
         if (Game.cpu.getUsed() < availableCpu - 100) if (updateStats) room.updateCheapStats();
         if (Game.cpu.getUsed() < availableCpu - 100 && updateStats) {
@@ -251,7 +218,7 @@ function innerLoop() {
         Memory.stats['cpu_.main'] = Game.cpu.getUsed() - _.sum(cpu) - globalStart;
         Memory.stats['cpu'] = Game.cpu.getUsed();
         Memory.stats['gcl.progress'] = Game.gcl.progress;
-        console.log('PathFinder.callCount', (PathFinder.callCount || 0));
+        // console.log('PathFinder.callCount', (PathFinder.callCount || 0));
         Memory.stats['performance.PathFinder.search'] = (PathFinder.callCount || 0);
         let roster = util.roster();
         _.keys(handlers).forEach((k)=> Memory.stats['roster.' + k] = roster[k] || 0);

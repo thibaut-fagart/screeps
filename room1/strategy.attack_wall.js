@@ -199,7 +199,7 @@ class AttackWallStrategy extends BaseStrategy {
         if (creep.memory[ACTION] === STATE_CLEAR_PATH) {
             path = path || this.loadPath(creep);
             if (!path) {
-                let homeExit = creep.room.findExitTo(creep.memory.homeroom);
+                let homeExit = creep.room.getExitTo(creep.memory.homeroom);
                 let exit = creep.pos.findClosestByRange(homeExit);
                 // creep.log('entry ?', JSON.stringify(creep.memory.entry));
                 let pathObj = PathFinder.search(creep.pos, exit /*creep.memory.entry*/, this.ignoreWalls(creep));

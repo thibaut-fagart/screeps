@@ -30,9 +30,9 @@ class CloseAttackStrategy extends BaseStrategy {
             // choose target
             let attackerPriorities = [HEAL, RANGED_ATTACK, ATTACK];
             for (var part in attackerPriorities) {
-                target = creep.pos.findClosestByRange(hostiles, {filter: (c)=>c.getActiveBodyparts(part) != 0});
+                target = creep.pos.findClosestByRange(hostiles, {filter: (c)=>c.getActiveBodyparts(part).length != 0});
                 if (target) {
-                    creep.log('foundtarget with ', part);
+                    // creep.log('foundtarget with ', part);
                     break;
                 }
             }
@@ -41,11 +41,15 @@ class CloseAttackStrategy extends BaseStrategy {
             this.setRemoteTarget(creep, target);
             let attack = creep.attack(target);
             if (attack == ERR_NOT_IN_RANGE) {
-                creep.moveTo(target);
+                if (creep.pos.getRangeTo(target.pos)>5 && creep.hits === creep.hitsMax) {
+                    util.moveTo(creep, target.pos, this.constructor.name, {avoidCreeps: false});
+                } else {
+                    creep.moveTo(target);
+                }
             } else if (attack !== OK) {
-                // creep.log('attack?', attack);
+                creep.log('attack?', attack);
             }
-            let moveTo = creep.moveTo(target.pos);
+            // let moveTo = util.moveTo(creep, target.pos,this.constructor.name);
             // creep.log(this.constructor.name,this.range, 'attacking', JSON.stringify(target.pos),moveTo);
         }
         return target;

@@ -17,6 +17,7 @@ class RoleEnergyFiller extends RoleCarry {
             })),
             new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_LINK, (creep)=> ((s)=>s.room.storage && (s.pos.getRangeTo(s.room.storage) < 5) && s.cooldown === 0)),
             new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_STORAGE),
+            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_TERMINAL),
         ];
         this.unloadStrategies = [
             new DropToEnergyStorageStrategy(STRUCTURE_TOWER),

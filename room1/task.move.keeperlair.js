@@ -4,8 +4,9 @@ var BaseStrategy = require('./strategy.base');
 
 
 class MoveToSpawningKeeperLair extends BaseStrategy {
-    constructor() {
+    constructor(predicate) {
         super();
+        this.predicate = predicate || ((creep)=>((target)=>true));
         this.KEEPER_PATH_PATH = 'lair_path';
         this.KEEPER_PATH = 'lair';
     }
@@ -20,27 +21,14 @@ class MoveToSpawningKeeperLair extends BaseStrategy {
         // creep.log('lair?', !!lair);
         if (lair) {
             // creep.log('lair', lair);
-            if (creep.pos.getRangeTo(lair) < 8) {
+            if (creep.pos.getRangeTo(lair) < 3) {
                 // stop here
-                creep.log('close enough, stopping');
+                // creep.log('close enough, stopping');
                 delete creep.memory[this.KEEPER_PATH];
                 return true;
             }
-            let path = util.objectFromMemory(creep.memory, this.KEEPER_PATH_PATH);
-            // creep.log('previous path', path.length);
-            if (path) {
-                // followpath
-                // creep.log('following');
-                let to = creep.moveTo(path[0]);
-                if (OK !== to && ERR_TIRED !== to) {
-                    creep.log('moving?', to);
-                } else if (OK === to) {
-                    path = path.slice(1);
-                    creep.memory[this.KEEPER_PATH] = lair.id;
-                    creep.memory[this.KEEPER_PATH_PATH] = path;
-                }
-                return true;
-            }
+            util.moveTo(creep, lair.pos, this.constructor.name, {range: 1});
+            return true;
         }
 
 
@@ -56,6 +44,7 @@ class MoveToSpawningKeeperLair extends BaseStrategy {
             // creep.log('leader, find path');
             // lookup path
             let lairs = creep.room.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_KEEPER_LAIR}});
+            lairs = lairs.filter(this.predicate(creep));
             // creep.log('lairs', lairs.length);
             if (!lairs.length) return false;
             let sorted = _.sortBy(_.filter(lairs, (lair)=> lair.ticksToSpawn), (lair)=> lair.ticksToSpawn);
@@ -64,26 +53,25 @@ class MoveToSpawningKeeperLair extends BaseStrategy {
                 let target = sorted[0];
                 // creep.log('lair at', target.pos, JSON.stringify(target.pos.getRangeTo(creep)), creep.pos.getRangeTo(target));
                 let rangeTo = creep.pos.getRangeTo(target);
-                let hostiles = creep.room.find(FIND_HOSTILE_CREEPS);
-                if (rangeTo > 10) {
-                    let path = PathFinder.search(creep.pos, {pos: target.pos, range: 5}, {
-                        roomCallback: util.avoidCostMatrix(creep,hostiles,4)}).path;
-                    let to = creep.moveTo(path[0]);
+                // creep.log('rangeto lair', rangeTo);
+                if (rangeTo > 7) {
+                    let to = util.moveTo(creep, target.pos, this.constructor.name, {range:5});
+
+                    // let path = PathFinder.search(creep.pos, {pos: target.pos, range: 5}, {
+                    //     roomCallback: util.avoidCostMatrix(creep,hostiles,4)}).path;
+                    // let to = creep.moveTo(path[0]);
                     // creep.log('moving', JSON.stringify(path[0]));
                     if (OK !== to && ERR_TIRED !== to) {
                         creep.log('moving?', to);
-                    } else if (OK === to) {
-                        path = path.slice(1);
-                        creep.memory[this.KEEPER_PATH] = target.id;
-                        creep.memory[this.KEEPER_PATH_PATH] = path;
                     }
-                } else if (rangeTo < 7) {
-                    let path = PathFinder.search(creep.pos, {pos: target.pos, range: 5}, {
-                        flee: true,
-                        roomCallback: util.avoidCostMatrix(creep, hostiles)
-                    });
-
-                    let byPath = creep.moveByPath(path.path);
+                } else if (rangeTo <= (creep.getActiveBodyparts(ATTACK).length>0?4:8)) {
+                    let byPath = util.moveTo(creep, target.pos, this.constructor.name, {range:2, avoidCreeps:true});
+                    // let path = PathFinder.search(creep.pos, {pos: target.pos, range: 1}, {
+                    //     flee: true,
+                    //     roomCallback: util.avoidCostMatrix(creep, hostiles)
+                    // });
+                    //
+                    // let byPath = creep.moveByPath(path.path);
                     if (OK !== byPath && ERR_TIRED !== byPath) {
                         creep.log('moving?', byPath);
                     }

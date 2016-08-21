@@ -17,7 +17,7 @@ class RemoteTargetStrategy extends BaseStrategy {
     /** @param {Creep||StructureTower} creep
      * @return {Creep|| null}**/
     accepts(creep) {
-        if (!creep instanceof StructureTower || (creep.body && (creep.getActiveBodyparts(RANGED_ATTACK) == 0))) {
+        if (!creep.structureType || (creep.body && (creep.getActiveBodyparts(RANGED_ATTACK) == 0))) {
             // if(creep instanceof Creep)creep.log('not compatible with RemoteAttack');
             return null;
         }
@@ -45,7 +45,7 @@ class RemoteTargetStrategy extends BaseStrategy {
                 let rangedAttack = this.performAttack(creep, target);
                 // creep.log('rangedAttack?', rangedAttack); // TODO removed predicate
                 if (rangedAttack === ERR_NOT_IN_RANGE) {
-                    creep.moveTo(target);
+                    util.moveTo(creep, target.pos,this.constructor.name);
                     // if(creep instanceof Creep) creep.log('not in range, moving');
                 } else if (rangedAttack !== OK) {
                     if (creep instanceof Creep) creep.log('rangedAttack?', rangedAttack);
@@ -59,6 +59,7 @@ class RemoteTargetStrategy extends BaseStrategy {
 
     findTargets(creep) {
         let targetPredicate = this.predicate(creep);
+
         return this.range?creep.pos.findInRange(FIND_HOSTILE_CREEPS, this.range,{filter:targetPredicate}): creep.room.find(FIND_HOSTILE_CREEPS,{filter: targetPredicate});
     }
 
