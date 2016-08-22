@@ -29,6 +29,10 @@ class HarvestKeeperEnergySourceToContainerStrategy extends HarvestEnergySourceTo
 
         return sources;
     }
+
+    buildContainer(area, creep) {
+        return ;
+    }
 }
 
 module.exports = HarvestKeeperEnergySourceToContainerStrategy;

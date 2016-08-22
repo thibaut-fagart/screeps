@@ -176,24 +176,7 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
                     let area = source.room.lookAtArea(source.pos.y - 1, source.pos.x - 1, source.pos.y + 1, source.pos.x + 1, true);
                     let containers = area.filter((e)=>e.type === 'structure').map((e)=>(e.structure)).filter((s)=>s.structureType === STRUCTURE_CONTAINER);
                     if (!containers.length) {
-                        let containerSites = area.filter((e)=>e.type === 'constructionSite').map((e)=>(e.constructionSite)).filter((s)=>s.structureType === STRUCTURE_CONTAINER);
-                        if (!containerSites.length) {
-                            // find a place
-                            let terrain = area.filter((e)=>e.type === 'terrain');
-                            let nonWallTerrain = terrain.filter((e)=>e.terrain !== 'wall');
-                            let minRange = 100;
-                            let minT;
-                            for (let i = 0, max = nonWallTerrain.length; i < max; i++) {
-                                let t = nonWallTerrain[i];
-                                let range = creep.pos.getRangeTo(t.x, t.y);
-                                if (range < minRange) {
-                                    minT = t;
-                                    minRange = range;
-                                }
-                            }
-                            let ret = creep.room.createConstructionSite(minT.x, minT.y, STRUCTURE_CONTAINER);
-                            creep.log('built a container?', ret, minT.x, minT.y);
-                        }
+                        this.buildContainer(area, creep);
                     }
                 }
                 container = null;
@@ -205,6 +188,27 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
         return {
             source: source, container: container
         };
+    }
+
+    buildContainer(area, creep) {
+        let containerSites = area.filter((e)=>e.type === 'constructionSite').map((e)=>(e.constructionSite)).filter((s)=>s.structureType === STRUCTURE_CONTAINER);
+        if (!containerSites.length) {
+            // find a place
+            let terrain = area.filter((e)=>e.type === 'terrain');
+            let nonWallTerrain = terrain.filter((e)=>e.terrain !== 'wall');
+            let minRange = 100;
+            let minT;
+            for (let i = 0, max = nonWallTerrain.length; i < max; i++) {
+                let t = nonWallTerrain[i];
+                let range = creep.pos.getRangeTo(t.x, t.y);
+                if (range < minRange) {
+                    minT = t;
+                    minRange = range;
+                }
+            }
+            let ret = creep.room.createConstructionSite(minT.x, minT.y, STRUCTURE_CONTAINER);
+            creep.log('built a container?', ret, minT.x, minT.y);
+        }
     }
 
     findFreeContainersNear(creep, source) {
