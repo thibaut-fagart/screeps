@@ -8,7 +8,7 @@ var BuildStrategy = require('./strategy.build');
 class RoleRepair2 {
     constructor() {
         this.loadStrategies = [
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, undefined, (creep)=>((s)=>(s.structureType !== STRUCTURE_TOWER ))),
+            new LoadFromContainerStrategy(RESOURCE_ENERGY, undefined, (creep)=>((s)=>(s.structureType !== STRUCTURE_TOWER && s.structureType !== STRUCTURE_LAB))),
             new PickupStrategy(RESOURCE_ENERGY)/*,
              new HarvestEnergySourceStrategy()*/
         ];

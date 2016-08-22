@@ -12,14 +12,15 @@ class RoleBuilder {
         this.travelingPickup = new ClosePickupStrategy(RESOURCE_ENERGY, 2);
         this.loadFromNeighbour = new LoadFromContainerStrategy(RESOURCE_ENERGY, undefined, (creep)=> {
             return (s)=> {
+                if (s.structureType === STRUCTURE_LAB) return false;
                 let range = s.pos.getRangeTo(creep);
                 return range < 2 && s.energy > 50;
             };
         });
         this.loadStrategies = [
             new ClosePickupStrategy(RESOURCE_ENERGY, 5),
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, undefined, (creep)=> ((s)=>s.pos.getRangeTo(creep) < 5)),
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, undefined /*,(creep)=>((s)=>([STRUCTURE_TOWER, STRUCTURE_SPAWN, STRUCTURE_EXTENSION].indexOf(s.structureType) < 0))*/),
+            new LoadFromContainerStrategy(RESOURCE_ENERGY, undefined, (creep)=> ((s)=>s.structureType !== STRUCTURE_LAB && s.pos.getRangeTo(creep) < 5)),
+            new LoadFromContainerStrategy(RESOURCE_ENERGY, undefined, (creep)=> ((s)=>s.structureType !== STRUCTURE_LAB ) /*,(creep)=>((s)=>([STRUCTURE_TOWER, STRUCTURE_SPAWN, STRUCTURE_EXTENSION].indexOf(s.structureType) < 0))*/),
             new PickupStrategy(RESOURCE_ENERGY)/*,
             new HarvestEnergySourceStrategy()*/];
         this.buildStrategy = new BuildStrategy();
