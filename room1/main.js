@@ -5,7 +5,7 @@ var handlers = require('./base.handlers');
 var roleSpawn = require('./role.spawn');
 
 var profiler = require('./screeps-profiler');
-profiler.enable();
+if (!Game.rooms['sim']) profiler.enable();
 
 // var RoomManager = require('./manager.room'), roomManager = new RoomManager(); // todo manager
 // This line monkey patches the global prototypes.
@@ -233,9 +233,11 @@ function innerLoop() {
 // RoomObject.prototype.creeps = [];
 module.exports.loop = function () {
     let mainStart = Game.cpu.getUsed();
-    if (Game.cpu.bucket > 200) {
+    if (Game.cpu.bucket > 200 && !Game.rooms['sim']) {
         profiler.wrap(innerLoop);
         // innerLoop();
+    } else if (Game.rooms['sim']) {
+        innerLoop();
     }
     if (Game.cpu.tickLimit < 500) console.log(mainStart, Game.cpu.getUsed(), Game.cpu.bucket);
 

@@ -38,18 +38,18 @@ Room.prototype.operateLabs = function () {
     _.keys(this.memory.labs).forEach((labid)=> {
         let lab = Game.getObjectById(labid);
         if (!lab.cooldown) {
-            // creep.log('testing ', labid);
+            // this.log('testing ', labid);
             let reaction = this.expectedMineralType(lab);
-            //room.log('using ', reaction);
+            // this.log('using ', reaction);
             if (reaction) {
                 let ingredients = handlers['labOperator'].class().reactions [reaction];
-                // creep.log('searching labs with ingredients', ingredients, !!ingredients);
+                // this.log('searching labs with ingredients', ingredients, !!ingredients);
 
                 if (ingredients) {
                     let sourceLabs = ingredients.map((i)=>this.findLabWith(i));
                     if (sourceLabs[0] && sourceLabs[1]) {
 
-                        // console.log('running with ', JSON.stringify(sourceLabs.map((lab)=>lab.id)));
+                        // this.log('running with ', JSON.stringify(sourceLabs.map((lab)=>lab.id)));
                         let result = lab.runReaction(sourceLabs[0], sourceLabs[1]);
                         if (result !== OK) this.log('run reaction?', lab.mineralType, result);
                     }
@@ -221,7 +221,7 @@ Room.prototype.updateLocks = function () {
 };
 Room.prototype.operateTowers = function () {
     this.memory.towersCache = this.memory.towersCache || {date: 0};
-    if (this.memory.towersCache.date + 500 < Game.time) {
+    if (!this.memory.towersCache.towers || this.memory.towersCache.date + 500 < Game.time) {
         this.memory.towersCache.towers = this.find(FIND_MY_STRUCTURES, {filter: (s) => s.structureType == STRUCTURE_TOWER}).map((s) => s.id);
     }
     this.memory.towersCache.towers.forEach((towerid)=> {
@@ -465,7 +465,7 @@ Room.prototype.updateCheapStats = function () {
     }
     Memory.stats['room.' + this.name + '.energyAvailable'] = this.energyAvailable;
     Memory.stats['room.' + this.name + '.energyCapacityAvailable'] = this.energyCapacityAvailable;
-    Memory.stats['room.' + this.name + '.threats.harvested'] = this.memory.threatAssessment.harvested;
+    Memory.stats['room.' + this.name + '.threats.harvested'] = (this.memory.threatAssessment||{harvested:0}).harvested;
     Memory.stats['room.' + this.name + '.reservedCount'] = _.size(this.memory.reserved);
     Memory.stats['room.' + this.name + '.energyInSources'] = _.sum(_.map(this.find(FIND_SOURCES_ACTIVE), (s)=> s.energy));
     if (this.controller && this.controller.my) {
