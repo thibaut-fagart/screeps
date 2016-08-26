@@ -97,12 +97,16 @@ class PickupManager {
         map = map.filter((drop)=>drop.amount> 0);
         // creep.log('pickupManager', 'available', map.length);
         let availableDrops = map
-            .filter((drop)=> /*drop.amount > 50 && */(this.typeMatches(drop, resourceType, predicate(creep))));
+            .filter((drop)=> /*drop.amount > 50 && */(this.typeMatches(drop, resourceType, predicate?predicate(creep):()=>true)));
+        // creep.log(`availableDrops ${availableDrops.map((d)=>'' + d.pos.getRangeTo(creep.pos) + ' ' + d.amount)}`);
         // creep.log('typeMatches', resourceType, availableDrops.length);
         if (availableDrops.length) {
             let freeCapacity = creep.carryCapacity - _.sum(creep.carry);
-            let sortedDrops = _.sortBy(availableDrops.filter((drop)=>drop.pos.findInRange(FIND_HOSTILE_CREEPS,3).length ===0), (d) => (Math.min(this.freeAmount(d.id), freeCapacity)) * -1 + 4 * creep.pos.getRangeTo(d));
-
+            let safeDrops = availableDrops.filter((drop)=>drop.pos.findInRange(FIND_HOSTILE_CREEPS,3).length ===0);
+            // creep.log(`safeDrops ${availableDrops.map((d)=>'' + d.pos.getRangeTo(creep.pos) + ' ' + d.amount)}`);
+            let sortedDrops = _.sortBy(
+                safeDrops, (d) => (Math.min(this.freeAmount(d.id), freeCapacity)) * -1 + 4 * creep.pos.getRangeTo(d));
+            // creep.log(`sorted drops ${sortedDrops.map((d)=>'' + d.pos.getRangeTo(creep.pos) + ' ' + d.amount)}`);
             let chosen = sortedDrops[0];
             // creep.log('chosen', chosen);
             if (chosen) this.reserve(creep, chosen, freeCapacity);

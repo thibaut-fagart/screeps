@@ -135,14 +135,7 @@ class Util {
      * @returns {T|*}
      */
     getAndExecuteCurrentStrategy(creep, candidates) {
-        let s = creep.memory[this.CURRENT_STRATEGY];
-        let stratAndParams = {};
-        if ('string' == typeof s || 'undefined' == typeof s) {
-            stratAndParams.name = s;
-        } else {
-            stratAndParams = s;
-        }
-        var strategy = _.find(candidates, (strat)=> strat.constructor.name === stratAndParams.name && strat.acceptsState(stratAndParams.state));
+        let strategy = this.currentStrategy(creep, candidates);
         // creep.log('testing', JSON.stringify(stratAndParams));
         if (strategy && strategy.accepts(creep)) {
             // creep.log('matched', strategy, JSON.stringify(stratAndParams));
@@ -153,6 +146,17 @@ class Util {
             this.setCurrentStrategy(creep, null);
             return null;
         }
+    }
+
+    currentStrategy(creep, candidates) {
+        let s = creep.memory[this.CURRENT_STRATEGY];
+        let stratAndParams = {};
+        if ('string' == typeof s || 'undefined' == typeof s) {
+            stratAndParams.name = s;
+        } else {
+            stratAndParams = s;
+        }
+        return _.find(candidates, (strat)=> strat.constructor.name === stratAndParams.name && strat.acceptsState(stratAndParams.state));
     }
 
     /**
@@ -710,6 +714,18 @@ class Util {
      }
 
      */
+    primaryBuildColor(structureType) {
+        'use strict';
+        return COLOR_PURPLE + (_.keys(CONSTRUCTION_COST).indexOf(structureType) >= COLORS_ALL.length ? 1 : 1);
+    }
+    secondaryBuildColor(structureType) {
+        'use strict';
+        return _.keys(CONSTRUCTION_COST).indexOf(structureType) % COLORS_ALL.length;
+    }
+    buildColors(structureType) {
+        return {color: this.primaryBuildColor(structureType), secondaryColor: this.secondaryBuildColor(structureType)};
+    }
+
 }
 Util.ROOM_NAME_PATTERN = /([EW])(\d+)([NS])(\d+)/;
 module.exports = new Util();

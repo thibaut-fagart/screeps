@@ -10,24 +10,18 @@ var BuildStrategy = require('./strategy.build');
 class RoleBuilder {
     constructor() {
         this.travelingPickup = new ClosePickupStrategy(RESOURCE_ENERGY, 2);
-        this.loadFromNeighbour = new LoadFromContainerStrategy(RESOURCE_ENERGY, undefined, (creep)=> {
-            return (s)=> {
-                if (s.structureType === STRUCTURE_LAB) return false;
-                let range = s.pos.getRangeTo(creep);
-                return range < 2 && s.energy > 50;
-            };
-        });
         this.loadStrategies = [
             new ClosePickupStrategy(RESOURCE_ENERGY, 5),
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, undefined, (creep)=> ((s)=>s.structureType !== STRUCTURE_LAB && s.pos.getRangeTo(creep) < 5)),
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, undefined, (creep)=> ((s)=>s.structureType !== STRUCTURE_LAB ) /*,(creep)=>((s)=>([STRUCTURE_TOWER, STRUCTURE_SPAWN, STRUCTURE_EXTENSION].indexOf(s.structureType) < 0))*/),
-            new PickupStrategy(RESOURCE_ENERGY)/*,
-            new HarvestEnergySourceStrategy()*/];
+            new LoadFromContainerStrategy(RESOURCE_ENERGY, undefined, (creep)=> ((s)=>s.pos.getRangeTo(creep) < 5)),
+            new LoadFromContainerStrategy(RESOURCE_ENERGY, undefined),
+            new PickupStrategy(RESOURCE_ENERGY),
+            new HarvestEnergySourceStrategy()];
         this.buildStrategy = new BuildStrategy();
         this.BUILD_TARGET = 'buildtarget';
         util.indexStrategies(this.loadStrategies);
     }
-/**
+
+    /**
      *
      * @param creep
      * @returns {boolean} true if looking for boost, false if it's all good
@@ -48,7 +42,7 @@ class RoleBuilder {
                 // creep.log('lab', JSON.stringify(lab));
                 if (!lab) {
 //                    creep.log('NO LAB???', JSON.stringify(labs));
-                    creep.memory.boosted  =true;
+                    creep.memory.boosted = true;
                     return false;
                 }
                 let boosted = lab.boostCreep(creep);
@@ -66,6 +60,7 @@ class RoleBuilder {
         return false;
 
     }
+
     resign(creep) {
         creep.log('resigning ?');
         // creep.memory.role = 'upgrader';
@@ -112,7 +107,6 @@ class RoleBuilder {
             }
         } else {
             this.travelingPickup.accepts(creep);
-            this.loadFromNeighbour.accepts(creep);
             let strategy = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);
 
             if (!strategy) {

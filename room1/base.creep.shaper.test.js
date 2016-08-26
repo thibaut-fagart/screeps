@@ -7,79 +7,86 @@ var expect = chai.expect;
 require('../lib/mocks/gameStateGlobals')();
 
 var CreepShaper = require('./base.creep.shaper');
-
+let patterns = require('./base.creep.patterns');
+_.keys(patterns).forEach((name)=> {
+    let spec = patterns[name];
+    if (!_.isFunction(spec.body)) {
+        delete patterns[name]
+    }
+});
 
 describe('CreepShaper', function () {
     "use strict";
     describe('shapeBody', function () {
         it('', function () {
             let shaper = CreepShaper;
-            let room = new Room();
-            room.memory = {allowedBoosts: []};
-            room.energyCapacityAvailable = 1000;
-            room.availableBoosts = ()=>([/*'ZO'*/]);
             let requirements = shaper.requirements();
-            requirements[CAPACITY] = Infinity;
             requirements.minimum('fullPlainSpeed', 1);
             requirements.minimum(HEAL, 50);
-            requirements.minimum(HEAL, 50);
             requirements.maximize(ATTACK);
-            let body = shaper.shape(room, requirements);
-            console.log(JSON.stringify(_.countBy(body)));
+            let body = shaper.shape(requirements, {budget: 2250});
+            let bodyMakeup = _.countBy(body);
+            console.log(JSON.stringify(bodyMakeup));
+            expect(bodyMakeup[HEAL]).to.be.equal(5);
+            expect(bodyMakeup[ATTACK]).to.be.equal(5);
         });
         it('carry', function () {
             let shaper = CreepShaper;
-            let room = new Room();
-            room.memory = {allowedBoosts: []};
-            room.energyCapacityAvailable = 5000;
-            room.availableBoosts = ()=>([/*'ZO'*/]);
-            let body = shaper.shape(room, CreepShaper.requirements().minimum(FULL_ROAD_SPEED, 1).maximize(CAPACITY));
+            let body = shaper.shape(CreepShaper.requirements().minimum(FULL_ROAD_SPEED, 1).maximize(CAPACITY), {budget: 5000});
             console.log(JSON.stringify(_.countBy(body)));
         });
-        it('harvester', function () {
-            let shaper = CreepShaper;
-            let room = new Room();
-            room.memory = {allowedBoosts: []};
-            room.energyCapacityAvailable = 5000;
-            room.availableBoosts = ()=>([/*'ZO'*/]);
-            let body = shaper.shape(room, CreepShaper.requirements().minimum(HARVEST, 10));
+        it('base minerals in boosts', function () {
+            let body = CreepShaper.shape(CreepShaper.requirements().minimum(FULL_ROAD_SPEED, 1).maximize(CAPACITY), {budget: 5000, allowedBoosts: ['O', 'H']});
             console.log(JSON.stringify(_.countBy(body)));
         });
-        it('mineralHarvester', function () {
-            let shaper = CreepShaper;
+        it('RCLs', function () {
             let room = new Room();
+            room.name = 'my';
             room.memory = {allowedBoosts: []};
-            room.energyCapacityAvailable = 5000;
-            room.availableBoosts = ()=>([/*'ZO'*/]);
-            let body = CreepShaper.shape(room, CreepShaper.requirements().minimum(EMPTY_ROAD_SPEED, 0.2).maximize(HARVEST));
-            console.log(JSON.stringify(_.countBy(body)));
+            room.availableBoosts = () =>['ZO'];
+
+            for (let rcl = 1; rcl <= 8; rcl++) {
+                console.log('RCL ', rcl);
+                room.energyCapacityAvailable = EXTENSION_ENERGY_CAPACITY[rcl] * CONTROLLER_STRUCTURES[STRUCTURE_EXTENSION][rcl] + SPAWN_ENERGY_CAPACITY;
+
+                let bodies = _.mapValues(patterns, (spec)=> {
+                    if (_.isFunction(spec.body)) {
+                        return spec.body(room);
+                    } else {
+                        return spec.body;
+                    }
+                });
+                console.log(JSON.stringify(_.mapValues(bodies, (body)=>({
+                    body: _.countBy(body),
+                    cost: _.sum(body, (p)=>BODYPART_COST[p])
+                }))));
+            }
         });
-        it('remoteCarryKeeper', function () {
-            let shaper = CreepShaper;
+        it('RCLs with budget', function () {
             let room = new Room();
+            room.name = 'my';
             room.memory = {allowedBoosts: []};
-            room.energyCapacityAvailable = 5000;
-            room.availableBoosts = ()=>(['ZO']);
-            let body = shaper.shape(room, shaper.requirements().minimum(FULL_ROAD_SPEED, 1).minimum(DAMAGE, 1).minimum(HEAL, 1).maximize(CAPACITY));
-            console.log(JSON.stringify(_.countBy(body)));
-        });
-        it('create attacker', function () {
-            let shaper = CreepShaper;
-            let room = new Room();
-            room.memory = {allowedBoosts: []};
-            room.energyCapacityAvailable = 5000;
-            room.availableBoosts = ()=>(['UH2O', 'ZO', 'LO']);
-            let requirements = shaper.requirements();
-            requirements[CAPACITY] = Infinity;
-            requirements.minimum('fullPlainSpeed', 1);
-            requirements.minimum(ATTACK, 600);
-            requirements.minimum(HEAL, 50);
-            // requirements.maximize(ATTACK);
-            let body = shaper.shape(room, requirements);
-            console.log(JSON.stringify(_.countBy(body)));
+            room.availableBoosts = () =>['ZO'];
+
+            for (let rcl = 1; rcl <= 8; rcl++) {
+                console.log('RCL ', rcl);
+                room.energyCapacityAvailable = EXTENSION_ENERGY_CAPACITY[rcl] * CONTROLLER_STRUCTURES[STRUCTURE_EXTENSION][rcl] + SPAWN_ENERGY_CAPACITY;
+
+                let bodies = _.mapValues(patterns, (spec)=> {
+                    if (_.isFunction(spec.body)) {
+                        return spec.body(room,400);
+                    } else {
+                        return spec.body;
+                    }
+                });
+                console.log(JSON.stringify(_.mapValues(bodies, (body)=>({
+                    body: _.countBy(body),
+                    cost: _.sum(body, (p)=>BODYPART_COST[p])
+                }))));
+            }
         });
         it('use patterns', function () {
-            let patterns = require('./base.creep.patterns');
+            let patterns = patterns;
             let shaper = CreepShaper;
             let room = new Room();
             room.memory = {allowedBoosts: []};
@@ -93,10 +100,19 @@ describe('CreepShaper', function () {
                     return spec.body;
                 }
             });
-            console.log(JSON.stringify(_.mapValues(bodies,(body)=>_.sum(body, (p)=>BODYPART_COST[p]))));
+            console.log(JSON.stringify(_.mapValues(bodies, (body)=>_.sum(body, (p)=>BODYPART_COST[p]))));
         });
-        it('use patterns', function () {
-            let patterns = require('./base.creep.patterns');
+        it('filtering test', function () {
+            let objects = [];
+            for (let i =0; i < 100000; i++) {
+                objects.push({
+                    type: 'someType', fun: function () {
+
+                    }
+                });
+            }
+
+
             let shaper = CreepShaper;
             let room = new Room();
             room.memory = {allowedBoosts: []};
@@ -110,7 +126,7 @@ describe('CreepShaper', function () {
                     return spec.body;
                 }
             });
-            console.log(JSON.stringify(_.mapValues(bodies,(body)=>_.sum(body, (p)=>BODYPART_COST[p]))));
+            console.log(JSON.stringify(_.mapValues(bodies, (body)=>_.sum(body, (p)=>BODYPART_COST[p]))));
         });
     });
 });

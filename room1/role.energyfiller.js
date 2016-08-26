@@ -10,14 +10,14 @@ class RoleEnergyFiller extends RoleCarry {
     constructor() {
         super();
         this.loadStrategies = [
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (creep)=> ((s)=>s.pos.getRangeTo(creep) < 2)),
+            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (creep)=> ((s)=>creep.room.energyAvailable < creep.room.energyCapacityAvailable && s.pos.getRangeTo(creep) < 2)),
             // new PickupStrategy(RESOURCE_ENERGY, (creep)=>((d)=>(d.pos.getRangeTo(creep)< 2))),
             new PickupStrategy(RESOURCE_ENERGY, (creep)=>(function (d) {
                 return d.amount > 50;
             })),
             new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_LINK, (creep)=> ((s)=>s.room.storage && (s.pos.getRangeTo(s.room.storage) < 5) && s.cooldown === 0)),
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_STORAGE),
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_TERMINAL),
+            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_STORAGE, (creep)=> ((s)=>creep.room.energyAvailable < creep.room.energyCapacityAvailable)),
+            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_TERMINAL , (creep)=> ((s)=>creep.room.energyAvailable < creep.room.energyCapacityAvailable || s.store.energy > 5000)),
         ];
         this.unloadStrategies = [
             new DropToEnergyStorageStrategy(STRUCTURE_TOWER),

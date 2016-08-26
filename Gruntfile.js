@@ -39,7 +39,7 @@ module.exports = function(grunt) {
     grunt.initConfig({
         blanket: {
             coverage1: {
-                src: ['room1'],
+                src: ['process'],
                 dest: 'lib-cov/scripts/'
             },
             coverage2: {

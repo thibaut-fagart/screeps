@@ -192,6 +192,7 @@ const Profiler = {
 {name:'RoleCarry',val:require('./role.carry')},
 {name:'RoleControllerClaim',val:require('./role.controller.claim')},
 {name:'RoleControllerReserve',val:require('./role.controller.reserve')},
+{name:'RoleDismantler',val:require('./role.dismantler')},
 {name:'RoleEnergyFiller',val:require('./role.energyfiller')},
 {name:'RoleEnergyGatherer',val:require('./role.energygatherer')},
 {name:'RoleHarvester',val:require('./role.harvester')},
@@ -205,6 +206,7 @@ const Profiler = {
 {name:'RoleRemoteUpgrader',val:require('./role.remote.upgrader')},
 {name:'RoleRemoteHarvester',val:require('./role.remote_harvester')},
 {name:'RoleRemoteHarvesterKeeper',val:require('./role.remote_harvester.keeper')},
+{name:'RoleRemoteMineralHarvesterKeeper',val:require('./role.remote_mineralharvester.keeper')},
 {name:'RoleRepair2',val:require('./role.repair2')},
 {name:'RoleScout',val:require('./role.scout')},
 {name:'RoleSoldierAttacker',val:require('./role.soldier.attacker')},
@@ -222,6 +224,7 @@ const Profiler = {
 {name:'StrategyControllerClaim',val:require('./strategy.controller.claim')},
 {name:'StrategyControllerReserve',val:require('./strategy.controller.reserve')},
 {name:'StrategyDisableTarget',val:require('./strategy.disable_target')},
+{name:'StrategyDismantle',val:require('./strategy.dismantle')},
 {name:'StrategyDropToContainer',val:require('./strategy.drop_to_container')},
 {name:'StrategyDropToEnergyStorage',val:require('./strategy.drop_to_energyStorage')},
 {name:'StrategyFleeHomeRoom',val:require('./strategy.flee.tohomeroom')},
@@ -248,6 +251,7 @@ const Profiler = {
 {name:'TaskMoveToRoom',val:require('./task.move.toroom')},
   {name:'Util',val:require('./util')},
   {name:'UtilManagerPickup',val:require('./util.manager.pickup')},
+  {name:'CreepShaper',val:require('./base.creep.shaper')},
 
 
   ],

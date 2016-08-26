@@ -7,7 +7,8 @@ var PickupStrategy = require('./strategy.pickup');
 class RoleUpgrader {
     constructor() {
         this.loadStrategies = [
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, undefined, (creep)=>((s)=>(s.structureType !== STRUCTURE_TOWER && s.structureType !== STRUCTURE_LAB ))),
+            new LoadFromContainerStrategy(RESOURCE_ENERGY, undefined, (creep)=> ((s)=>s.pos.getRangeTo(creep) < 5)),
+            new LoadFromContainerStrategy(RESOURCE_ENERGY, undefined),
             new PickupStrategy(RESOURCE_ENERGY)/*,
             new HarvestEnergySourceStrategy()*/];
         this.ACTION_FILL = 'fill';

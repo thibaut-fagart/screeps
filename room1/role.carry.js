@@ -12,6 +12,7 @@ class RoleCarry {
         this.pickupStrategy = new ClosePickupStrategy(RESOURCE_ENERGY, 5);
         this.loadStrategies = [
             new PickupStrategy(undefined, (creep)=>((d)=>(d.amount > 50))),
+            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (creep)=> ((s)=>s.room.isHarvestContainer(s))),
             new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (creep)=> ((s)=>s.pos.getRangeTo(creep) < 2)),
             new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_LINK, (creep)=>((s)=>( s.energy && s.room.storage && (s.pos.getRangeTo(s.room.storage) < 5)))),
             new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER),
@@ -26,7 +27,7 @@ class RoleCarry {
             new DropToContainerStrategy(undefined, STRUCTURE_STORAGE),
             // new DropToContainerStrategy(RESOURCE_ENERGY,STRUCTURE_LINK),
             new DropToContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (creep)=> {
-                return ((s)=>( (s.room.memory.harvestContainers || []).indexOf(s.id) >= 0));
+                return ((s)=>!s.room.isHarvestContainer(s));
             })
         ];
         this.ACTION_UNLOAD = 'unload';

@@ -13,7 +13,7 @@ class RoleRemoteCarryKeeper extends RoleRemoteCarry {
     constructor() {
         super();
         this.fleeStrategy = new AvoidRespawnStrategy(1);
-        this.pickupStrategy = new KeeperPickupStrategy(RESOURCE_ENERGY, function(creep) {return (drop) => drop.pos.findInRange(FIND_HOSTILE_CREEPS, 5).length === 0 && creep.pos.getRangeTo(drop) < 5;});
+        this.pickupStrategy = new KeeperPickupStrategy(RESOURCE_ENERGY, function(creep) {return (drop) => drop.pos.findInRange(FIND_HOSTILE_CREEPS, 5).length === 0 && creep.pos.getRangeTo(drop) < 1;});
         this.loadStrategies = [
             this.pickupStrategy,
             new KeeperPickupStrategy(undefined, function(creep) {return  (drop)  =>(drop.pos.findInRange(FIND_HOSTILE_CREEPS, 5).length === 0);}),
@@ -40,6 +40,7 @@ class RoleRemoteCarryKeeper extends RoleRemoteCarry {
     }
 
     run(creep) {
+        if (this.seekBoosts(creep)) return;
         this.healStrategy.accepts(creep);
         if (!this.fleeStrategy.accepts(creep)) {
             // creep.log('super');
@@ -49,6 +50,28 @@ class RoleRemoteCarryKeeper extends RoleRemoteCarry {
             creep.say('fleeing');
             this.pickupStrategy.cancelPickup(creep);
         }
+    }
+
+    /**
+     *
+     * @param creep
+     * @returns {boolean} true if looking for boost, false if it's all good
+     */
+    seekBoosts(creep) {
+        // creep.log('seekBoosts');
+        if (creep.memory.boosted) {return ;}
+        let wantsBoosts = _.keys(_.groupBy(creep.body, (p)=>p.type)).find((partType) => {
+            let parts = _.filter(creep.body, (p)=>p.type === partType && !p.boost);
+            return !!(parts.length && this.boostPartType(creep, parts));
+        });
+        if (! wantsBoosts) creep.memory.boosted = true;
+        return wantsBoosts;
+
+
+    }
+
+    boostPartType(creep, parts) {
+        return creep.boostPartType(parts);
     }
 }
 

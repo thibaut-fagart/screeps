@@ -100,34 +100,18 @@ class CreepShaper {
 
     /**
      *
-     * @param {Room} room
      * @param {Requirements} requirements
-     * @param {number} [budget] how much we can spend, defaults to room.energyCapacityAvailable
-     * @return {Array}
+     * @param {{cache:{}, name, budget, availableBoosts}} options
+     * @return {Array} the body
      */
-    shape(room, requirements, budget) {
+    shape(requirements, options) {
         'use strict';
-        budget = budget || room.energyCapacityAvailable;
+        let budget = _.isFunction(options.budget)?options.budget(): options.budget;
         let currentCost = 0;
-        let boosts = room.availableBoosts();
-        let bestBoosts = {};
-        let factors = {};
-        _.keys(CreepShaper.featureParts).forEach((feature)=> {
-            let boostingMinerals = _.keys(BOOSTS[CreepShaper.featureParts[feature]]);
-            let matchingAvailableBoosts = boostingMinerals.filter((min)=>boosts.indexOf(min) >= 0);
-            if (matchingAvailableBoosts.length) {
-                let bestBoost = _.max(matchingAvailableBoosts, (min)=>BOOSTS[CreepShaper.featureParts[feature]][min][feature]|| 0);
-                room.log('best boost' ,feature, bestBoost, JSON.stringify(boostingMinerals),JSON.stringify(matchingAvailableBoosts));
-                bestBoosts[feature] = bestBoost;
-                factors[feature] = BOOSTS[CreepShaper.featureParts[feature]][bestBoost][feature];
-            } else {
-                factors[feature] = 1;
-            }
-        });
+        let factors =  this.factors(options);
         let lastValid = 0;
         let body = [];
         let bodyFeatures = {};
-
 
         currentCost = this.addPart(body, bodyFeatures, MOVE, factors, currentCost);
         let maximize = requirements.maximize();
@@ -145,8 +129,6 @@ class CreepShaper {
                     } else {
                         complete = ()=>true;
                     }
-
-
                 }
             } else {
                 // console.log('invalid', JSON.stringify(body));
@@ -158,8 +140,39 @@ class CreepShaper {
                 }
             }
         }
-        return body.slice(0, lastValid);
+        return lastValid?body.slice(0, lastValid):body;
 
+    }
+
+    /**
+     *
+     * @param {{cache:{}, name, budget, availableBoosts}} options
+     */
+    factors(options) {
+
+        if (options.cache && options.name && options.cache[options.name] && options.cache[options.name].date  && options.cache[options.name].date > Game.time -1500 && options.cache[options.name].factors) {
+            return options.cache[options.name].factors;
+        }
+
+        let boosts = (_.isFunction(options.availableBoosts) ? options.availableBoosts(): options.availableBoosts) ||[];
+        let factors = {};
+        let bestBoosts = {};
+        _.keys(CreepShaper.featureParts).forEach((feature)=> {
+            let boostingMinerals = _.keys(BOOSTS[CreepShaper.featureParts[feature]]).filter((min)=>BOOSTS[CreepShaper.featureParts[feature]][min][feature]);
+            let matchingAvailableBoosts = boostingMinerals.filter((min)=>boosts.indexOf(min) >= 0);
+            if (matchingAvailableBoosts.length) {
+                let bestBoost = _.max(matchingAvailableBoosts, (min)=>BOOSTS[CreepShaper.featureParts[feature]][min][feature] || 0);
+                // room.log('best boost' ,feature, bestBoost, JSON.stringify(boostingMinerals),JSON.stringify(matchingAvailableBoosts));
+                bestBoosts[feature] = bestBoost;
+                factors[feature] = BOOSTS[CreepShaper.featureParts[feature]][bestBoost][feature];
+            } else {
+                factors[feature] = 1;
+            }
+        });
+        if (options.cache && options.name) {
+            options.cache[options.name] = {date: Game.time, factors: factors};
+        }
+        return factors;
     }
 
     addPart(body, bodyFeatures, part, factors, cost) {
@@ -230,7 +243,10 @@ CreepShaper.baseFeatures = (function () {
     return result;
 })();
 
-
+global.EFFICIENT_BOOSTS = (function(){
+    'use strict';
+    return _.values(BOOSTS).reduce((acc, current)=>(acc.concat(_.keys(current))), []);
+})();
 /**
  *
  * @param {Room} room

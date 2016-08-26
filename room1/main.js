@@ -1,5 +1,6 @@
 var _ = require('lodash');
 require('./game.prototypes.room');
+require('./game.prototypes.creep');
 var util = require('./util');
 var handlers = require('./base.handlers');
 var roleSpawn = require('./role.spawn');
@@ -91,7 +92,7 @@ function innerLoop() {
             }
         });
     }
-    let cpu = {}, roomCpu = {};
+    let cpu = {}, roomCpu = {}, remoteCpu={};
     let availableCpu = Game.cpu.tickLimit;
     if (updateStats) _.keys(handlers).forEach((k)=>cpu[k] = 0);
     let sortedRooms = _.sortBy(_.values(Game.rooms), (r)=> r.controller && r.controller.my ? r.controller.level : 10);
@@ -139,7 +140,12 @@ function innerLoop() {
                             if (updateStats) skipped.push(`${roomName}.${creep.name}`);
                         }
                         let end = Game.cpu.getUsed();
-                        if (updateStats) cpu['creeps.'+creep.memory.role] = (cpu['creeps.'+creep.memory.role] || 0) + (end - start);
+                        if (updateStats) {
+                            cpu['creeps.'+creep.memory.role] = (cpu['creeps.'+creep.memory.role] || 0) + (end - start);
+                            if (creep.memory.remoteRoom) {
+                                remoteCpu[creep.memory.remoteRoom] = (remoteCpu[creep.memory.remoteRoom] || 0) + (end - start);
+                            }
+                        }
                     }
                 } catch (e) {
                     creep.log(e.stack);
@@ -207,6 +213,14 @@ function innerLoop() {
     if (updateStats) skipped.forEach((s)=> console.log('skipped', s));
     _.keys(roomCpu).forEach((k)=> {
         Memory.stats['cpu.rooms.' + k] = roomCpu[k] || 0;
+        // console.log(`cpu.room, ${k},${roomCpu[k] || 0}`);
+    });
+    _.keys(remoteCpu).forEach((k)=> {
+        Memory.stats['cpu.remoteRooms.' + k] = remoteCpu[k] || 0;
+        let stat = Memory.stats['room.' + k + '.efficiency.remoteMining'];
+        if ( stat && remoteCpu[k] || 0) {
+            Memory.stats[`remoteRooms.${k}.cpu_efficiency`] = stat/remoteCpu[k];
+        }
         // console.log(`cpu.room, ${k},${roomCpu[k] || 0}`);
     });
     if (messages.length > 0) {

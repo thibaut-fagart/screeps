@@ -40,20 +40,24 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
                 // creep.log('on container');
 
                 if (creep.carryCapacity && creep.carry.energy
-                    && (!util.roster(creep.room).repair2 && container.hits < 0.25 * container.hitsMax || source.energy === 0 || _.sum(container.store) === container.carryCapacity)) {
+                    && (!creep.room.controller.my && container.hits < 0.25 * container.hitsMax || source.energy === 0 || _.sum(container.store) === container.carryCapacity)) {
                     let repair = creep.repair(container);
                     // creep.log('repairing container?', repair);
                     if (repair === OK) return true;
                 }
                 let freeCapacity = container.storeCapacity - _.sum(container.store);
+                // creep.log('freeCapacity', freeCapacity);
                 if (!this.nooverflow || this.nooverflow && freeCapacity > 0) {
                     let harvestBeforeRegen = source.ticksToRegeneration * 2 * creep.getActiveBodyparts(WORK);
-                    // creep.log(source.energy == source.energyCapacity, freeCapacity, harvestBeforeRegen);
-                    if (this.isSourceFull(source) || freeCapacity > 0 // no nooverflow
+                    // creep.log(`harvestBeforeRegen ${harvestBeforeRegen}`);
+                    if (freeCapacity > 0 || this.isSourceFull(source)   // no nooverflow
                         || harvestBeforeRegen <= this.harvestableAmount(source)) {// will we deplete energy before regen ?
                         let ret = creep.harvest(source);
+                        // creep.log('harvest', ret);
                         if (OK !== ret && ERR_NOT_IN_RANGE !== ret && ERR_NOT_ENOUGH_RESOURCES !== ret) {
                             creep.log('harvest?', ret);
+                        } else if (ERR_NOT_ENOUGH_RESOURCES === ret && source.mineralType) {
+                            creep.memory.role = 'recycle';
                         }
                     }
                 }
@@ -164,7 +168,7 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
                 creep.memory[this.CONTAINER_PATH] = container.id;
                 let harvestContainers = creep.room.memory.harvestContainers || [];
                 // creep.log('harvestContainers', harvestContainers, (harvestContainers&& harvestContainers.length));
-                if (harvestContainers && harvestContainers.indexOf(container.id) < 0) {
+                if (!container.room.isHarvestContainer(container)) {
                     harvestContainers.push(container.id);
                     creep.room.memory.harvestContainers = harvestContainers;
                 }

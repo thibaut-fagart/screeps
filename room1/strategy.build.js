@@ -6,16 +6,16 @@ var BaseStrategy = require('./strategy.base');
 class BuildStrategy extends BaseStrategy {
     constructor(predicate) {
         super();
-        this.predicate = (predicate) || (function(creep) {return function (cs) {return true}});
+        this.predicate = (predicate) || (()=>(()=>true));
         this.BUILD_TARGET = 'buildtarget';
     }
 
     findTarget(creep) {
         // creep.log('predicate',this.predicate(creep)((Game.getObjectById(creep.memory[this.BUILD_TARGET]))));
         var target = util.objectFromMemory(creep.memory, this.BUILD_TARGET, this.predicate(creep));
-        // creep.log('buildTarget', target);
+        // if (target) creep.log('buildTarget', target);
         if (!target) {
-            // console.log("finding target for  ", creep.name);
+            console.log('finding target for  ', creep.name);
             var targets = creep.room.find(FIND_CONSTRUCTION_SITES, {filter: this.predicate(creep)});
             if (targets.length) {
                 if (targets[0].progress > 0) {
@@ -26,7 +26,9 @@ class BuildStrategy extends BaseStrategy {
                     // creep.memory.building = false;
                     return null;
                 }
-                if (target) creep.memory[this.BUILD_TARGET] = target.id;
+                if (target) {
+                    creep.memory[this.BUILD_TARGET] = target.id;
+                }
             }
         }
         return target;
@@ -40,6 +42,16 @@ class BuildStrategy extends BaseStrategy {
             target = this.findTarget(creep);
             // creep.log('building',target);
             if (!target) {
+                // creep.log('searching for deaying');
+                let nearbyDecaying = creep.room.glanceForAround(LOOK_STRUCTURES, creep.pos, 2,true)
+                    .map((r)=>r.structure)
+                    .filter((s)=>'number' === typeof s.ticksToDecay && s.hits < global[s.structureType.toUpperCase()+'_DECAY_AMOUNT']*1500/global[s.structureType.toUpperCase()+'_DECAY_TIME']);
+                creep.log('found ', JSON.stringify(nearbyDecaying));
+                if (nearbyDecaying.length>0) {
+                    creep.repair(nearbyDecaying[0]);
+                    return true;
+                }
+                creep.room.buildStructures();
                 // creep.log('target null');
                 delete creep.memory[this.BUILD_TARGET];
             } else {

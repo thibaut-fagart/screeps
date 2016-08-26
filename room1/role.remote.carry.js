@@ -12,7 +12,7 @@ var RegroupStrategy = require('./strategy.regroup');
 class RoleRemoteCarry {
 
     constructor() {
-        this.travelingPickup = new ClosePickupStrategy(RESOURCE_ENERGY, 2);
+        this.travelingPickup = new ClosePickupStrategy(RESOURCE_ENERGY, 1);
         this.loadFromNeighbour = new LoadFromContainerStrategy(undefined, undefined,
             function (creep) {
                 return (s)=> {
