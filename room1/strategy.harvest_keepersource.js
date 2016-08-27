@@ -30,7 +30,6 @@ class HarvestKeeperSourceStrategy extends HarvestEnergySourceStrategy {
         sources = sources.filter((s)=>s.pos.findInRange(FIND_HOSTILE_CREEPS, 4).length === 0);
         // creep.log('safe subset ', sources.length);
 
-        creep.log(sources.length);
         if (sources.length) {
             return sources.length ===1 ? sources[0]: creep.pos.findClosestByRange(sources);
         }

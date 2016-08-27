@@ -28,16 +28,16 @@ class RoleKeeperGuard extends RoleRemoteRoomGuard {
                 } else {
                     return (target)=>(true);
                 }
-            }), /*
-             new SquadAttackStrategy(),new /!*DisableTargetStrategy*!/RemoteAttackStrategy(5)
-             /!*new DisableTargetStrategy(5)*!/ /!*new RemoteHealKeeperGuardStrategy()*!//!*,new MoveToActiveKeeperLair()*!/, */
+            }),
+             new SquadAttackStrategy(),new /*DisableTargetStrategy*/RemoteAttackStrategy(5)
+             /*new DisableTargetStrategy(5)*/ /*new RemoteHealKeeperGuardStrategy()*//*,new MoveToActiveKeeperLair()*/,
             new MoveToSpawningKeeperLair((creep)=> {
                 if (creep.room.memory.sources) {
                     let sources = creep.room.memory.sources;
-                    return ((target)=> {
+                    return creep.room.memory.sources?((target)=> {
                         return target.pos.findInRange(FIND_SOURCES, 6).filter((s)=>sources.indexOf(s.id) >= 0).length > 0
                             || target.pos.findInRange(FIND_MINERALS, 6).filter((s)=>sources.indexOf(s.id) >= 0).length > 0;
-                    });
+                    }):()=>true;
                 } else {
                     return (target)=>(true);
                 }

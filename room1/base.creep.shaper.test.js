@@ -39,13 +39,23 @@ describe('CreepShaper', function () {
             let body = CreepShaper.shape(CreepShaper.requirements().minimum(FULL_ROAD_SPEED, 1).maximize(CAPACITY), {budget: 5000, allowedBoosts: ['O', 'H']});
             console.log(JSON.stringify(_.countBy(body)));
         });
+        it ('RCL5 keeper Guard',function () {
+            let room = new Room();
+            room.name = 'my';
+            room.memory = {allowedBoosts: []};
+            room.availableBoosts = () =>[/*'ZO'*/];
+            room.controller = {level: 5};
+            room.energyCapacityAvailable = EXTENSION_ENERGY_CAPACITY[room.controller.level] * CONTROLLER_STRUCTURES[STRUCTURE_EXTENSION][room.controller.level] + SPAWN_ENERGY_CAPACITY;
+            let body = patterns['keeperGuard'].body(room);
+            console.log(room.energyCapacityAvailable, JSON.stringify(_.countBy(body)));
+        });
         it('RCLs', function () {
             let room = new Room();
             room.name = 'my';
             room.memory = {allowedBoosts: []};
-            room.availableBoosts = () =>['ZO'];
-
+            room.availableBoosts = () =>[/*'ZO'*/];
             for (let rcl = 1; rcl <= 8; rcl++) {
+                room.controller = {level: rcl};
                 console.log('RCL ', rcl);
                 room.energyCapacityAvailable = EXTENSION_ENERGY_CAPACITY[rcl] * CONTROLLER_STRUCTURES[STRUCTURE_EXTENSION][rcl] + SPAWN_ENERGY_CAPACITY;
 

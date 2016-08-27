@@ -32,7 +32,7 @@ class DropToEnergyStorageStrategy extends BaseStrategy {
         if (creep.carry.energy === 0) return null;
         let target = util.objectFromMemory(creep.memory, this.PATH, (c)=> (c.energy < c.energyCapacity));
         // creep.log(this.structureType, 'target', target);
-        if (!target) {
+        if (!target || target.room.name !== creep.room.name) {
             // if (this.structureType === STRUCTURE_EXTENSION) creep.log('finding target');
             var targets = creep.room.find(FIND_STRUCTURES)
                 .filter((structure) => ((this.structureType && this.structureType === structure.structureType) || (!this.structureType)))

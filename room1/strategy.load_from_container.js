@@ -25,7 +25,7 @@ class LoadFromContainerStrategy extends BaseStrategy {
     accepts(creep) {
         let neededCarry = creep.carryCapacity - _.sum(creep.carry);
         let source = util.objectFromMemory(creep.memory, LoadFromContainerStrategy.PATH, (c)=>this.containerQty(creep, c) > neededCarry);
-        if (!source || this.containerQty(creep, source) < neededCarry) {
+        if (!source || this.containerQty(creep, source) < neededCarry || source.room.name !== creep.room.name) {
             source = this.findSource(creep, neededCarry, source);
         }
          //creep.log('source',source);
@@ -105,12 +105,10 @@ class LoadFromContainerStrategy extends BaseStrategy {
         // creep.log('LoadFromContainerStrategy', 'finding source');
         // find a new source, if no type specified, allow links if shared links have enough energy
         let containers = creep.room.findContainers();
-        let allowSpawn = !creep.room.storage && containers.filter((s)=>s.structureType === STRUCTURE_CONTAINER && s.pos.findInRange(FIND_SOURCES).length==0).length ==0;
-        let allSources = containers
+        let allowedContainers = containers.filter((s)=>creep.room.allowedLoadingContainer(s));
+        let allSources = allowedContainers
             .filter((s)=>(this.structure ? (s.structureType === this.structure ) : true)
                 && (!this.predicate || (this.predicate(creep))(s))
-                && ((allowSpawn || (STRUCTURE_SPAWN !== s.structureType)  && STRUCTURE_EXTENSION !==s.structureType) || s.room.energyAvailable === s.room.energyCapacityAvailable)
-                // }
             );
         // creep.log('allSources', allSources.length);
         // creep.log('allSources has storage ?',this.structure,  allSources.find((c)=>c.structureType === STRUCTURE_STORAGE));

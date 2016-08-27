@@ -176,6 +176,13 @@ class RoleSpawn {
             if (remoteRoom) {
                 // room.log('queueing for remoteMining', remoteRoom.name);
                 let hasKeeperLairs = remoteRoom.hasKeeperLairs();
+                let isRoomMinable = hasKeeperLairs || !(
+                        remoteRoom.controller && remoteRoom.controller.reservation && room.controller.owner.username !== remoteRoom.controller.reservation.username // reserved
+                        || remoteRoom.controller && remoteRoom.controller.owner && room.controller.owner.username !== remoteRoom.controller.owner.username // owned
+                    );
+                if (!isRoomMinable) {
+                    return 0;
+                }
                 if (hasKeeperLairs) {
                     // minimum boosts : attack2, heal2, move2
                     if (room.maxBoost(ATTACK, ATTACK) < 2 || room.maxBoost(HEAL, HEAL) < 2 || room.maxBoost(MOVE, 'fatigue') < 2) {
@@ -189,8 +196,9 @@ class RoleSpawn {
                 // room.log('roomDistance', room.name, remoteRoomName, roomDistance);
                 // room.log('safeSourcesAndMinerals', safeSourcesAndMinerals.length);
                 if (hasKeeperLairs && !room.memory.nomilitary) {
+                    room.memory.attack_min [remoteRoomName] = room.controller.level - 4;
                     if (room.energyCapacityAvailable >= 1800) {
-                        this.queue(room, queue, 'keeperGuard', patterns, {}, remoteRoster, 1, {remoteRoom: remoteRoomName});
+                        this.queue(room, queue, 'keeperGuard', patterns, {}, remoteRoster, room.controller.level-4, {remoteRoom: remoteRoomName});
                         // room.log('keeperGuards?',patterns['keeperGuard'].count,remoteRoster['keeperGuard']||0);
                     }
                 }
@@ -270,8 +278,9 @@ class RoleSpawn {
                     // room.log('hostiles present, no remoteMining!');
                     this.queue(room, queue, 'roleSoldier', patterns, {}, remoteRoster, 1, {remoteRoom: remoteRoomName});
                 }
-                let spawnReserve = ( !(hasKeeperLairs) && remoteRoom.controller && (!remoteRoom.controller.reservation || room.controller.owner.username !== remoteRoom.controller.reservation.username)
-                || (remoteRoom.controller && remoteRoom.controller.reservation.ticksToEnd < 500));
+                let spawnReserve = (
+                !(hasKeeperLairs) // keeper rooms are not reservable
+                    && !remoteRoom.controller || ! remoteRoom.controller.reservation || (remoteRoom.controller.reservation.ticksToEnd < 500));
                 // room.log('current reservation  ?', remoteRoom.name, JSON.stringify(remoteRoom.controller.reservation));
                 // spawn reserver if  the room is not reserved, or due to expire soon
                 if (spawnReserve && room.energyCapacityAvailable > BODYPART_COST[CLAIM] + BODYPART_COST[MOVE]) {
@@ -287,7 +296,7 @@ class RoleSpawn {
                         action: 'go_remote_room'
                     });
                 }
-            } else {
+            } else if (!Game.rooms[remoteRoomName]) {
                 room.log('queueing scout for remoteMining', remoteRoomName);
                 this.queue(room, queue, 'scout', patterns, currentSplit, remoteRoster, 1, {
                     remoteRoom: remoteRoomName,
@@ -323,8 +332,9 @@ class RoleSpawn {
             let rooms = _.isString(remoteRoomName) ? [room.memory.remoteMining] : room.memory.remoteMining;
             // room.log('rooms', JSON.stringify(rooms));
             rooms = _.sortBy(rooms, (r)=>util.roomDistance(room.name, r));
-            rooms.forEach((name)=> {
-                this.addRemoteMiningToQueue(name, room, patterns, currentSplit, queue);
+            // only process next room when previous one is full
+            rooms.find((name)=> {
+                !this.addRemoteMiningToQueue(name, room, patterns, currentSplit, queue);
             });
         }
         if (room.memory.siege) {
@@ -332,6 +342,13 @@ class RoleSpawn {
             let remoteRoster = this.remoteRoster(remoteRoomName);
             if (!Game.rooms[remoteRoomName]) {
                 this.queue(room, queue, 'towerDrainer', patterns, currentSplit, remoteRoster, 1, {remoteRoom: remoteRoomName});
+            }
+        }
+        if (room.memory.attack) {
+            let remoteRoomName = room.memory.attack;
+            let remoteRoster = this.remoteRoster(remoteRoomName);
+            if (!Game.rooms[remoteRoomName] || remoteRoster['attacker'] || 0 < 1) {
+                this.queue(room, queue, 'attacker', patterns, currentSplit, remoteRoster, 1, {remoteRoom: remoteRoomName});
             }
         }
         if (room.controller.level > 4 && room.memory.claim) {
@@ -629,7 +646,7 @@ class RoleSpawn {
         if (sites.length > 0) {
             let totalProgressRemaining = sites.reduce((acc, site)=>acc + site.progressTotal - site.progress, 0);
             // room.log(`totalProgressRemaining ${totalProgressRemaining}`);
-            let requiredBuilderParts = totalProgressRemaining / (BUILD_POWER * CREEP_LIFE_TIME);
+            let requiredBuilderParts = totalProgressRemaining *50 / (BUILD_POWER * CREEP_LIFE_TIME);// * 10to account for transport
             // room.log(`requiredBuilderParts ${requiredBuilderParts}`);
             let builders = room.find(FIND_MY_CREEPS).filter((c)=>c.memory.role === 'builder');
             let currentBuilderParts = builders.reduce((acc, c)=>acc + c.getActiveBodyparts(WORK), 0);
@@ -640,7 +657,7 @@ class RoleSpawn {
                 reassigned++;
                 assignee.memory.role = 'builder';
                 currentBuilderParts += assignee.getActiveBodyparts(WORK);
-                room.log(`reassigned ${assignee.name}, builderParts ${currentBuilderParts}/${requiredBuilderParts}`)
+                room.log(`reassigned ${assignee.name}, builderParts ${currentBuilderParts}/${requiredBuilderParts}`);
             }
         } else {
             room.find(FIND_MY_CREEPS).filter((c)=>c.memory.role === 'builder').forEach((c)=>c.memory.role = 'upgrader');

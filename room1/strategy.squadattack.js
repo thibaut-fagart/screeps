@@ -38,7 +38,9 @@ class SquadAttackStrategy extends Base {
         // keep the squad together
         // creep.log('squad.length', squad.length, Game.rooms[creep.memory.homeroom].memory.attack_min);
         // creep.log('leader?', isLeader, myDistanceToLeader, 'max', maxDistanceToLeader, squad.length);
-        if (squad.length < Game.rooms[creep.memory.homeroom].memory.attack_min) {
+        if (Game.rooms[creep.memory.homeroom].memory.attack_min
+            && Game.rooms[creep.memory.homeroom].memory.attack_min[creep.memory.remoteRoom]
+            && squad.length < Game.rooms[creep.memory.homeroom].memory.attack_min[creep.memory.remoteRoom]) {
             // let the leader lead the way, safely
             return false;
 /*

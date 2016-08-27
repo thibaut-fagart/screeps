@@ -240,7 +240,7 @@ class Util {
         }
         // console.log(JSON.stringify(coords));
         roomName = coords[1] + coords[2] + coords[3] + coords[4];
-        return new RoomPosition(x, y, roomName);
+        return Game.rooms[roomName] ? new RoomPosition(x, y, roomName): {x:x,y:y,roomName:roomName};
 
     }
 
@@ -317,13 +317,44 @@ class Util {
         return remoteRoom.memory.sources ? deposits.filter((s)=>remoteRoom.memory.sources.indexOf(s.id) >= 0):deposits;
     }
 
+    /**
+     * todo it should be possible to exchange pos with a creep for which lastMoved > Game.time -2 && fatigue ===0
+     * @param creep
+     * @param memorySlot
+     * @returns {boolean}
+     */
     checkBlocked(creep, memorySlot) {
         if (creep.memory.lastPos
             && creep.pos.x == creep.memory.lastPos.x && creep.pos.y == creep.memory.lastPos.y) {
             // creep.log('blocked ? ', creep.memory.triedMoved, creep.memory.blocked);
             if (creep.memory.triedMoved) { // didn't move, recompute !! todo improve
                 creep.memory.blocked = (creep.memory.blocked || 0) + 1;
-                creep.say('blocked');
+                // creep.say('blocked');
+                if (creep.memory[memorySlot]) {
+                    let path =  this.restorePath(creep.memory[memorySlot].path);
+                    let idx = _.findIndex(path, (i) => i.x - i.dx == creep.pos.x && i.y - i.dy == creep.pos.y);
+                    // creep.log('pathIndex', idx);
+                    if (idx>=0 && idx < path.length-1) {
+                        let nextPos = path[idx + 1];
+                        let pos = new RoomPosition(nextPos.x, nextPos.y, creep.room.name);
+                        let obstacleCreeps = pos.lookFor(LOOK_CREEPS);
+                        if (obstacleCreeps.length>0) {
+                            /* {Creep}*/
+                            let blocker = obstacleCreeps[0];
+                            // creep.log('blocker', blocker.name);
+                            if (blocker.fatigue == 0 && blocker.memory.lastMoved> Game.time -2) {
+                                let blockerMoveDir = (path[idx+1].direction+4)%8+1;
+                                let otherOk = blocker.move(blockerMoveDir);
+                                let ok = creep.move(path[idx+1].direction);
+                                if (otherOk ===OK && ok ===OK) {
+                                    // creep.log('movedBlocker', blockerMoveDir);
+                                    // creep.log('moved', path[idx+1].direction);
+                                    return false;
+                                }
+                            }
+                        }
+                    }
+                }
                 if (creep.memory.blocked > 2) {
                     // creep.log('blocked ? forgeting path');
                     delete creep.memory[memorySlot];
@@ -359,7 +390,8 @@ class Util {
         }
         let path = creep.memory[memory];
         // check the target pos didn't change
-        if (path && path.target && pos.isEqualTo(path.target.x, path.target.y) && pos.roomName == path.target.roomName) {
+        let isPathValid = path && path.target && pos.isEqualTo(path.target.x, path.target.y) && pos.roomName == path.target.roomName;
+        if (isPathValid) {
             path = this.restorePath(path.path);
             // creep.log('restored path', JSON.stringify(path));
         } else if (path) {
@@ -716,7 +748,7 @@ class Util {
      */
     primaryBuildColor(structureType) {
         'use strict';
-        return COLOR_PURPLE + (_.keys(CONSTRUCTION_COST).indexOf(structureType) >= COLORS_ALL.length ? 1 : 1);
+        return COLOR_PURPLE + (_.keys(CONSTRUCTION_COST).indexOf(structureType) >= COLORS_ALL.length ? 1 : 0);
     }
     secondaryBuildColor(structureType) {
         'use strict';

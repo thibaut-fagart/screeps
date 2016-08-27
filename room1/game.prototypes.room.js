@@ -101,7 +101,7 @@ Room.prototype.operateLinks = function () {
     }
 };
 Room.prototype.isHarvestContainer = function (container) {
-    return this.memory.harvestContainers && this.memory.harvestContainers.indexOf(container.id)>=0;
+    return this.memory.harvestContainers && this.memory.harvestContainers.indexOf(container.id) >= 0;
 };
 
 Room.prototype.harvestPositions = function () {
@@ -199,7 +199,7 @@ Room.prototype.deliver = function (fromRoom, carry) {
     this.memory.efficiency = this.memory.efficiency || {date: Game.time};
     this.memory.efficiency.remoteMining = this.memory.efficiency.remoteMining || {};
     this.memory.efficiency.remoteMining[fromRoom] = (this.memory.efficiency.remoteMining[fromRoom] || 0) + _.sum(carry);
-    this.log('delivered', _.sum(carry));
+    this.log('delivered from', fromRoom, _.sum(carry));
 
 };
 Room.prototype.updateLocks = function () {
@@ -253,13 +253,18 @@ Room.prototype.gc = function () {
         PickupManager.getManager(this.name).gc();
     }
 };
+/**
+ *
+ * @param {number|{x,y}} x
+ * @returns {{x,y}}
+ */
 function mirror(x) {
-    if ('number'===typeof x) {
+    if ('number' === typeof x) {
         return x === 0 || x === 49 ? 49 - x : x;
-    } else if ('number'===typeof x.x && 'number'===typeof x.y) {
+    } else if ('number' === typeof x.x && 'number' === typeof x.y) {
         return {x: mirror(x.x), y: mirror(x.y)};
     } else {
-        throw new Error('unexpected argument',x);
+        throw new Error('unexpected argument', x);
     }
 }
 
@@ -303,9 +308,9 @@ function findExit(room, targetRoom) {
     }
     roomMemory.roomDistance = roomMemory.roomDistance || {};
     roomMemory.roomDistance [targetRoom] = route.length;
-    // logWith.log('route before unshift', route.length, JSON.stringify(route));
+    // room.log('route before unshift', route.length, JSON.stringify(route));
     route.unshift({room: roomName});
-    // logWith.log('route', route.length, JSON.stringify(route));
+    // room.log('route', route.length, JSON.stringify(route));
     if (route.length > 1) {
         for (let i = 1, max = route.length; i < max; i++) {
             let currentRoom = route[i - 1].room;
@@ -316,16 +321,17 @@ function findExit(room, targetRoom) {
                 room.log('unknown room', currentRoom);
                 continue;
             }
-            // logWith.log('map step', nextRoom);
-            let currentExit = !Room.getExitTo(currentRoom, nextRoom, true);
-            if (currentExit) {
+            // room.log('map step', nextRoom);
+            let currentExit = Room.getExitTo(currentRoom, nextRoom, true);
+            if (!currentExit) {
                 let exitDir = roomStep.exit;
-                room.log('finding new exit', currentRoom, nextRoom);
+                // room.log('finding new exit', currentRoom, nextRoom);
                 exit = entryPoint.findClosestByPath(exitDir); // TODO cache
                 // todo try to choose an exit which does not touch a wall to limite future pathfinding issues
             } else {
                 exit = currentExit;
             }
+            // room.log('exit', exit);
             // store the path from every step in the route
             for (let j = i, maxj = route.length; j < maxj; j++) {
                 Room.setExitTo(currentRoom, route[j].room, exit);
@@ -378,7 +384,7 @@ Room.getExitTo = function (fromRoom, toRoom, failIfAbsent) {
 Room.prototype.setExitTo = function (toRoom, pos) {
     'use strict';
     Room.setExitTo(this.name, toRoom, pos);
-    Room.setExitTo(toRoom, this.name, mirror(pos));
+    Room.setExitTo(util.nextRoom(pos).roomName, this.name, mirror(pos));
 };
 Room.setExitTo = function (fromRoom, toRoom, pos) {
     'use strict';
@@ -543,7 +549,7 @@ Room.prototype.glanceAround = function (pos, range, asarray) {
 var Cache = {
     get: function (memory, path, fetcher, ttl) {
         if (!memory[path] || !memory[path].expires || ( Game.time > memory[path].expires)) {
-            console.log('Cache.get, expired ', path, memory[path].expires, Game.time);
+            // console.log('Cache.get, expired ', path, memory[path].expires, Game.time);
             memory[path] = {value: fetcher(), expires: Game.time + ttl};
         } else {
             //console.log('Cache.get, !expired ',path, memory[path].expires+ttl- Game.time);
@@ -577,18 +583,36 @@ Room.prototype.findContainers = function () {
     return containerIds.map((id)=> Game.getObjectById(id)).filter((s)=>!!s);
 };
 
-Room.prototype.buildStructures = function () {
+Room.prototype.buildStructures = function (pos) {
     'use strict';
     let genericBuilder = (type)=> {
         let flags = this.find(FIND_FLAGS, {filter: util.buildColors(type)});
-        let flagsWithoutSite = flags.filter((f)=>f.pos.lookFor(LOOK_STRUCTURES).filter((s)=>s.structureType ===type).length ===0);
-        this.log('flags',type, flags.length);
-        this.log('flagsWithoutSite',type, flagsWithoutSite.length);
-        if (flagsWithoutSite.length > 0) {
-            let lookFor = flagsWithoutSite[0].pos.lookFor(LOOK_CONSTRUCTION_SITES);
-            if (!lookFor.length) {
-                let built = flagsWithoutSite[0].pos.createConstructionSite(type);
-                this.log('building', type, JSON.stringify(flagsWithoutSite[0].pos), built);
+        let unbuiltFlags = flags.filter((f)=>f.pos.lookFor(LOOK_STRUCTURES).filter((s)=>s.structureType === type).length === 0);
+        let buildableFlags = unbuiltFlags.filter((f)=>f.pos.lookFor(LOOK_CONSTRUCTION_SITES).length === 0);
+        this.log('flags', type, flags.length);
+        this.log('unbuiltFlags', type, unbuiltFlags.length);
+        this.log('buildableFlags', type, buildableFlags.length);
+        if (unbuiltFlags.length > 0) {
+            let flag;
+            if (pos) {
+                flag = pos.findClosestByRange(unbuiltFlags);
+            } else {
+                let center ;
+                if (this.storage) {
+                    center = this.storage.pos;
+                } else {
+                    let spawns = this.find(FIND_MY_SPAWNS);
+                    if (spawns.length) {
+                        center = spawns[0];
+                    } else {
+                        center = new RoomPosition(25, 25, this.name);
+                    }
+                }
+                flag = center.findClosestByRange(buildableFlags);
+            }
+            if (flag) {
+                let built = flag.pos.createConstructionSite(type);
+                this.log('building', type, JSON.stringify(flag.pos), built);
                 return built === OK;
             }
         }
@@ -602,24 +626,30 @@ Room.prototype.buildStructures = function () {
             }
         };
         let rampartBuilder = ()=> {
-            if (genericBuilder(STRUCTURE_RAMPART))
-                return true;
+            return (genericBuilder(STRUCTURE_RAMPART));
         };
         let roadBuilder = ()=> {
-            if (genericBuilder(STRUCTURE_ROAD))
-                return true;
+            return (genericBuilder(STRUCTURE_ROAD));
         };
         let storageBuilder = ()=> {
             if (this.controller.level >= 4 && !this.storage) {
-                if (genericBuilder(STRUCTURE_STORAGE))
-                    return true;
+                return (genericBuilder(STRUCTURE_STORAGE));
+            }
+        };
+        let linksBuilder = ()=> {
+            if (this.controller.level >= 5) {
+                return (genericBuilder(STRUCTURE_LINK));
+            }
+        };
+        let labsBuilder = ()=> {
+            if (this.controller.level >= 6) {
+                return (genericBuilder(STRUCTURE_LAB));
             }
         };
         let extensionsBuilder = ()=> {
             let currentExtensionCount = this.find(FIND_STRUCTURES).filter((s)=>s.structureType === STRUCTURE_EXTENSION).length;
             if (this.controller.level >= 2 && CONTROLLER_STRUCTURES[STRUCTURE_EXTENSION][this.controller.level] > currentExtensionCount) {
-                if (genericBuilder(STRUCTURE_EXTENSION))
-                    return true;
+                return (genericBuilder(STRUCTURE_EXTENSION));
             }
         };
         let extractorBuilder = ()=> {
@@ -628,7 +658,7 @@ Room.prototype.buildStructures = function () {
                 return true;
             }
         };
-        let builders = [towerBuilder, storageBuilder, extensionsBuilder, rampartBuilder, extractorBuilder, roadBuilder];
+        let builders = [towerBuilder, storageBuilder, extensionsBuilder, rampartBuilder, extractorBuilder, linksBuilder, roadBuilder];
         builders.find((builder)=>builder());
 
     }

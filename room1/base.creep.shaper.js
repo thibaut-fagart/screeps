@@ -5,6 +5,7 @@ global.REPAIR = 'repair';
 global.DISMANTLE = 'dismantle';
 global.UPGRADE_CONTROLLER = 'upgradeController';
 global.RANGED_MASS_ATTACK = 'rangedMassAttack';
+global.FEATURE_RANGED_ATTACK= 'rangedAttack';
 global.CAPACITY = 'capacity';
 global.RANGED_HEAL = 'rangedHeal';
 global.DAMAGE = 'damage';
@@ -14,6 +15,7 @@ global.FULL_SWAMP_SPEED = 'fullSwampSpeed';
 global.EMPTY_ROAD_SPEED = 'emptyRoadSpeed';
 global.EMPTY_PLAIN_SPEED = 'emptyPlainSpeed';
 global.EMPTY_SWAMP_SPEED = 'emptySwampSpeed';
+let sortedFeatures = [FATIGUE, HEAL, RANGED_HEAL, ATTACK, FEATURE_RANGED_ATTACK, RANGED_MASS_ATTACK, HARVEST, BUILD, REPAIR, DISMANTLE, UPGRADE_CONTROLLER, CAPACITY, DAMAGE];
 class Requirements {
     constructor() {
         this.features = {};
@@ -37,62 +39,70 @@ class Requirements {
     }
 
     accepts(body, factors) {
+
         let invalidFeatures = [];
         let bodyMakeup = _.countBy(body);
         let bodyFeatures = {};
         _.keys(factors).forEach((feature)=>bodyFeatures[feature] = bodyMakeup[CreepShaper.featureParts[feature]] * factors[feature]);
+        if (this.features[DAMAGE]) {
+            let multiplier = 1 / factors[DAMAGE];
+            let toughParts = bodyMakeup[TOUGH] || 0;
+            let nonToughParts = body.length - toughParts;
+            bodyFeatures[DAMAGE] = nonToughParts * 100 + 100 * toughParts * multiplier;
+        }
         let fatigueReduction = bodyFeatures[FATIGUE] * 2;
-        let emptyFatigueIncrease = body.length - (bodyMakeup[MOVE] || 0) - (bodyMakeup[CARRY] || 0);
-        let fullFatigueIncrease = body.length - (bodyMakeup[MOVE] || 0);
+        let emptyFatigueIncrease = body.length - (bodyMakeup[MOVE] || 0) ;
+        let fullFatigueIncrease = body.length - (bodyMakeup[MOVE] || 0)+ (bodyMakeup[CARRY] || 0)  + (factors[CAPACITY]-1);
         _.keys(this.features).forEach(
             (feature)=> {
-                switch (feature) {
-                    case FULL_ROAD_SPEED : {
-                        if (fatigueReduction / fullFatigueIncrease < this.features[feature]) {
-                            invalidFeatures.push(FATIGUE);
+                if (this.features[feature]) {
+                    switch (feature) {
+                        case FULL_ROAD_SPEED : {
+                            if (fatigueReduction / fullFatigueIncrease < this.features[feature]) {
+                                invalidFeatures.push(FATIGUE);
+                            }
+                            break;
                         }
-                        break;
-                    }
-                    case FULL_PLAIN_SPEED :
-                        if (fatigueReduction / (2 * fullFatigueIncrease) < this.features[feature]) {
-                            invalidFeatures.push(FATIGUE);
-                        }
+                        case FULL_PLAIN_SPEED :
+                            if (fatigueReduction / (2 * fullFatigueIncrease) < this.features[feature]) {
+                                invalidFeatures.push(FATIGUE);
+                            }
 
-                        break;
-                    case  FULL_SWAMP_SPEED :
-                        if (fatigueReduction / (10 * fullFatigueIncrease) < this.features[feature]) {
-                            invalidFeatures.push(FATIGUE);
+                            break;
+                        case  FULL_SWAMP_SPEED :
+                            if (fatigueReduction / (10 * fullFatigueIncrease) < this.features[feature]) {
+                                invalidFeatures.push(FATIGUE);
+                            }
+                            break;
+                        case EMPTY_ROAD_SPEED : {
+                            if (fatigueReduction / (emptyFatigueIncrease) < this.features[feature]) {
+                                invalidFeatures.push(FATIGUE);
+                            }
+                            break;
                         }
-                        break;
-                    case EMPTY_ROAD_SPEED : {
-                        if (fatigueReduction / (emptyFatigueIncrease) < this.features[feature]) {
-                            invalidFeatures.push(FATIGUE);
-                        }
-                        break;
+                        case EMPTY_PLAIN_SPEED :
+                            if (fatigueReduction / (2 * emptyFatigueIncrease) < this.features[feature]) {
+                                invalidFeatures.push(FATIGUE);
+                            }
+                            break;
+                        case  EMPTY_SWAMP_SPEED :
+                            if (fatigueReduction / (2 * emptyFatigueIncrease) < this.features[feature]) {
+                                invalidFeatures.push(FATIGUE);
+                            }
+                            break;
+                        case DAMAGE :
+                            if (isNaN(bodyFeatures[feature]) || bodyFeatures[feature] < this.features[feature]) {
+                                invalidFeatures.push(feature);
+                            }
+                            break;
+                        default:
+                            if (isNaN(bodyFeatures[feature]) || bodyFeatures[feature] * CreepShaper.baseFeatures[feature] < this.features[feature]) {
+                                invalidFeatures.push(feature);
+                            }
                     }
-                    case EMPTY_PLAIN_SPEED :
-                        if (fatigueReduction / (2 * emptyFatigueIncrease) < this.features[feature]) {
-                            invalidFeatures.push(FATIGUE);
-                        }
-                        break;
-                    case  EMPTY_SWAMP_SPEED :
-                        if (fatigueReduction / (2 * emptyFatigueIncrease) < this.features[feature]) {
-                            invalidFeatures.push(FATIGUE);
-                        }
-                        break;
-                    case DAMAGE :
-                        if (isNaN(bodyFeatures[feature]) || bodyFeatures[feature] < this.features[feature]) {
-                            invalidFeatures.push(feature);
-                        }
-                        break;
-                    default:
-                        if (isNaN(bodyFeatures[feature]) || bodyFeatures[feature] * CreepShaper.baseFeatures[feature] < this.features[feature]) {
-                            invalidFeatures.push(feature);
-                        }
                 }
             }
-        )
-        ;
+        );
         return invalidFeatures;
     }
 }
@@ -106,9 +116,9 @@ class CreepShaper {
      */
     shape(requirements, options) {
         'use strict';
-        let budget = _.isFunction(options.budget)?options.budget(): options.budget;
+        let budget = _.isFunction(options.budget) ? options.budget() : options.budget;
         let currentCost = 0;
-        let factors =  this.factors(options);
+        let factors = this.factors(options);
         let lastValid = 0;
         let body = [];
         let bodyFeatures = {};
@@ -140,7 +150,7 @@ class CreepShaper {
                 }
             }
         }
-        return lastValid?body.slice(0, lastValid):body;
+        return lastValid ? body.slice(0, lastValid) : body;
 
     }
 
@@ -150,11 +160,11 @@ class CreepShaper {
      */
     factors(options) {
 
-        if (options.cache && options.name && options.cache[options.name] && options.cache[options.name].date  && options.cache[options.name].date > Game.time -1500 && options.cache[options.name].factors) {
+        if (options.cache && options.name && options.cache[options.name] && options.cache[options.name].date && options.cache[options.name].date > Game.time - 1500 && options.cache[options.name].factors) {
             return options.cache[options.name].factors;
         }
 
-        let boosts = (_.isFunction(options.availableBoosts) ? options.availableBoosts(): options.availableBoosts) ||[];
+        let boosts = (_.isFunction(options.availableBoosts) ? options.availableBoosts() : options.availableBoosts) || [];
         let factors = {};
         let bestBoosts = {};
         _.keys(CreepShaper.featureParts).forEach((feature)=> {
@@ -228,7 +238,7 @@ CreepShaper.partFeatures = (function () {
 CreepShaper.baseFeatures = (function () {
     let result = {};
     result[ATTACK] = ATTACK_POWER;
-    result[RANGED_ATTACK] = RANGED_ATTACK_POWER;
+    result[FEATURE_RANGED_ATTACK] = RANGED_ATTACK_POWER;
     result[RANGED_MASS_ATTACK] = RANGED_ATTACK_POWER;
     result[HEAL] = HEAL_POWER;
     result[RANGED_HEAL] = RANGED_HEAL_POWER;
@@ -243,7 +253,7 @@ CreepShaper.baseFeatures = (function () {
     return result;
 })();
 
-global.EFFICIENT_BOOSTS = (function(){
+global.EFFICIENT_BOOSTS = (function () {
     'use strict';
     return _.values(BOOSTS).reduce((acc, current)=>(acc.concat(_.keys(current))), []);
 })();

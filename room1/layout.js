@@ -14,10 +14,11 @@ module.exports = {
         let color = options && options.color || util.primaryBuildColor(STRUCTURE_ROAD);
         let secondaryColor = options && options.secondaryColor || util.secondaryBuildColor(STRUCTURE_ROAD);
         let flag;
+        if (pos.x %49 ===0 || pos.y%49 ===0) return ; // no flags on borders
         let flags = room.lookForAt(LOOK_FLAGS, pos.x, pos.y);
         let posId = '' + pos.x + ',' + pos.y;
         if (flags && flags.length) {
-            flag = flags.find((f)=>f.color === color && f.color === secondaryColor);
+            flag = flags.find((f)=>f.color === color && f.secondaryColor === secondaryColor);
         } else {
             if (flagsUnderCreation[room.name] && flagsUnderCreation[room.name][Game.time]) {
                 let posIds = flagsUnderCreation[room.name][Game.time];
@@ -30,10 +31,9 @@ module.exports = {
         }
         if (!flag) {
             let flagName;
-            if (Memory.temp.flagId) {
-                Memory.temp.flagId = Memory.temp.flagId + 1;
-                flagName = 'flag' + Memory.temp.flagId;
-            }
+            Memory.temp.flagId = Memory.temp.flagId || 0;
+            Memory.temp.flagId = Memory.temp.flagId + 1;
+            flagName = 'flag' + Memory.temp.flagId;
             flagName = room.createFlag(pos.x, pos.y, flagName, color, secondaryColor);
             if (_.isString(flagName)) {
                 let match = /flag(\d+)/.exec(flagName);

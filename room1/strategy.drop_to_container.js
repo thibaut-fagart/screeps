@@ -37,7 +37,7 @@ class DropToContainerStrategy extends BaseStrategy {
 
         let excludedContainers = this.getExcludedContainers(creep);
         let target = util.objectFromMemory(creep.memory, this.PATH, (c)=>_.sum(c.store) < c.storeCapacity && this.getExcludedContainers(creep).indexOf(c.id) < 0 && (this.predicate(creep))(c));
-        if (!target) {
+        if (!target || target.room.name !== creep.room.name) {
             // find a new target
             // creep.log('structure?', this.structure);
             let structureTypePredicate = this.structure ? ((s)=> s.structureType === this.structure) : (()=>true);

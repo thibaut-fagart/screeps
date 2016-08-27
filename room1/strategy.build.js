@@ -51,7 +51,7 @@ class BuildStrategy extends BaseStrategy {
                     creep.repair(nearbyDecaying[0]);
                     return true;
                 }
-                creep.room.buildStructures();
+                creep.room.buildStructures(creep.pos);
                 // creep.log('target null');
                 delete creep.memory[this.BUILD_TARGET];
             } else {

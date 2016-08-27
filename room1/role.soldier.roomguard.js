@@ -67,7 +67,7 @@ class RoleRemoteRoomGuard {
                 creep.memory.action = 'go_remote_room';
             } else {
                 // creep.log('brothers?', brotherCount);
-                if (!creep.room.memory.attack_min || (creep.room.memory.attack_min <= (brotherCount))) {
+                if (!creep.room.memory.attack_min || (creep.room.memory.attack_min && creep.room.memory.attack_min[creep.memory.remoteRoom]<= (brotherCount))) {
                     creep.memory.action = 'go_remote_room';
                 } else {
                     this.regroup(creep);

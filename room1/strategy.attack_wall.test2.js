@@ -10,7 +10,7 @@ PathFinder.search = function () {
     return {path: [{x: 1, y: 1}, {x: 1, y: 1}, {x: 1, y: 1}, {x: 1, y: 1}, {x: 1, y: 1},], ops: 100};
 };
 
-Creep.prototype.getActiveBodyParts = function () {
+Creep.prototype.getActiveBodyparts = function () {
     "use strict";
     return 1;
 };

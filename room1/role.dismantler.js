@@ -1,7 +1,6 @@
 var _ = require('lodash');
 var util = require('./util');
 var DismantleStrategy = require('./strategy.dismantle');
-var DropToContainerStrategy= require('./strategy.drop_to_container');
 var DropToContainerStrategy = require('./strategy.drop_to_container');
 var DropToEnergyStorageStrategy = require('./strategy.drop_to_energyStorage');
 
@@ -16,7 +15,7 @@ class RoleDismantler {
             new DropToContainerStrategy(undefined, STRUCTURE_STORAGE),
             // new DropToContainerStrategy(RESOURCE_ENERGY,STRUCTURE_LINK),
             new DropToContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (creep)=> {
-                return ((s)=>( (s.room.memory.harvestContainers || []).indexOf(s.id) >= 0));
+                return ((s)=>s.room.isHarvestContainer(s));
             })];
         util.indexStrategies(this.loadStrategies);
         util.indexStrategies(this.unloadStrategies);
