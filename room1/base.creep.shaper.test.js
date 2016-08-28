@@ -18,6 +18,16 @@ _.keys(patterns).forEach((name)=> {
 describe('CreepShaper', function () {
     "use strict";
     describe('shapeBody', function () {
+        function shaperOptions(room, role, budget) {
+            'use strict';
+            room.memory.creepShaper = room.memory.creepShaper || {};
+            return {
+                budget: budget ? budget : room.energyCapacityAvailable,
+                cache: budget ? {} : room.memory.creepShaper,
+                name: role,
+                availableBoosts: room.allowedBoosts(role)
+            };
+        }
         it('', function () {
             let shaper = CreepShaper;
             let requirements = shaper.requirements();
@@ -33,6 +43,26 @@ describe('CreepShaper', function () {
         it('carry', function () {
             let shaper = CreepShaper;
             let body = shaper.shape(CreepShaper.requirements().minimum(FULL_ROAD_SPEED, 1).maximize(CAPACITY), {budget: 5000});
+            console.log(JSON.stringify(_.countBy(body)));
+        });
+        it('remoteCarryRoad', function () {
+            let room = new Room();
+            room.name = 'my';
+            room.memory = {allowedBoosts: []};
+            room.availableBoosts = () =>[/*'ZO'*/];
+            room.controller = {level: 5};
+            room.energyCapacityAvailable = EXTENSION_ENERGY_CAPACITY[room.controller.level] * CONTROLLER_STRUCTURES[STRUCTURE_EXTENSION][room.controller.level] + SPAWN_ENERGY_CAPACITY;
+            let body = CreepShaper.shape(CreepShaper.requirements().minimum(FULL_ROAD_SPEED, 1).minimum(REPAIR,1).maximize(CAPACITY), shaperOptions(room, 'remoteCarry'));
+            console.log(JSON.stringify(_.countBy(body)));
+        });
+        it('remoteCarryPlain', function () {
+            let room = new Room();
+            room.name = 'my';
+            room.memory = {allowedBoosts: []};
+            room.availableBoosts = () =>[/*'ZO'*/];
+            room.controller = {level: 5};
+            room.energyCapacityAvailable = EXTENSION_ENERGY_CAPACITY[room.controller.level] * CONTROLLER_STRUCTURES[STRUCTURE_EXTENSION][room.controller.level] + SPAWN_ENERGY_CAPACITY;
+            let body = CreepShaper.shape(CreepShaper.requirements().minimum(FULL_PLAIN_SPEED, 1).minimum(REPAIR,1).maximize(CAPACITY), shaperOptions(room, 'remoteCarry'));
             console.log(JSON.stringify(_.countBy(body)));
         });
         it('base minerals in boosts', function () {

@@ -52,7 +52,7 @@ class Requirements {
         }
         let fatigueReduction = bodyFeatures[FATIGUE] * 2;
         let emptyFatigueIncrease = body.length - (bodyMakeup[MOVE] || 0) ;
-        let fullFatigueIncrease = body.length - (bodyMakeup[MOVE] || 0)+ (bodyMakeup[CARRY] || 0)  + (factors[CAPACITY]-1);
+        let fullFatigueIncrease = body.length - (bodyMakeup[MOVE] || 0)+ (bodyMakeup[CARRY] || 0) * (factors[CAPACITY]-1);
         _.keys(this.features).forEach(
             (feature)=> {
                 if (this.features[feature]) {
@@ -86,7 +86,7 @@ class Requirements {
                             }
                             break;
                         case  EMPTY_SWAMP_SPEED :
-                            if (fatigueReduction / (2 * emptyFatigueIncrease) < this.features[feature]) {
+                            if (fatigueReduction / (10 * emptyFatigueIncrease) < this.features[feature]) {
                                 invalidFeatures.push(FATIGUE);
                             }
                             break;
@@ -219,6 +219,7 @@ CreepShaper.featureParts = (function () {
             });
         });
     });
+    result[CLAIM] = CLAIM;
     return result;
 })();
 CreepShaper.partFeatures = (function () {
@@ -232,6 +233,7 @@ CreepShaper.partFeatures = (function () {
             });
         });
     });
+    result[CLAIM] = [CLAIM];
     return result;
 })();
 
@@ -250,6 +252,7 @@ CreepShaper.baseFeatures = (function () {
     result[CAPACITY] = CARRY_CAPACITY;
     result[FATIGUE] = 2;
     result[DAMAGE] = 1;
+    result[CLAIM] = 1;
     return result;
 })();
 

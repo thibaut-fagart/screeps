@@ -327,6 +327,8 @@ function findExit(room, targetRoom) {
                 let exitDir = roomStep.exit;
                 // room.log('finding new exit', currentRoom, nextRoom);
                 exit = entryPoint.findClosestByPath(exitDir); // TODO cache
+                // pahfinding sometimes fails
+                exit = exit || entryPoint.findClosestByRange(exitDir);
                 // todo try to choose an exit which does not touch a wall to limite future pathfinding issues
             } else {
                 exit = currentExit;
@@ -354,26 +356,20 @@ Room.getExitTo = function (fromRoom, toRoom, failIfAbsent) {
     let roomMemory = Memory.rooms[fromRoom] = Memory.rooms[fromRoom] || {};
     let exits = roomMemory.exits = (roomMemory.exits || {});
     let cached = exits[toRoom];
+    // console.log(`exit ${fromRoom}->${toRoom} ${cached}`);
     if (!cached) {
         let room = Game.rooms[fromRoom];
         if (room && !failIfAbsent) {
             cached = findExit(room, toRoom);
-            room.setExitTo(toRoom, cached);
+            if (cached) {
+                room.setExitTo(toRoom, cached);
+            }
             return cached;
         } else {
             return undefined;
         }
     }
-    if (cached && _.isString(cached) && cached[0] == '{') {
-        // old way, update
-        cached = JSON.parse(cached);
-        Room.setExitTo(fromRoom, toRoom, cached);
-    } else {
-        let x = Number.parseInt(cached.substring(0, 2));
-        let y = Number.parseInt(cached.substring(2, 4));
-        return cached = new RoomPosition(x, y, fromRoom);
-    }
-    return cached;
+    return util.posFromString(cached, fromRoom);
 };
 
 /**
@@ -390,35 +386,35 @@ Room.setExitTo = function (fromRoom, toRoom, pos) {
     'use strict';
     let roomMemory = Memory.rooms[fromRoom] = Memory.rooms[fromRoom] || {};
     let exits = roomMemory.exits = (roomMemory.exits || {});
-    let pad = (i)=> (i < 10 ? '0' + i.toString() : i.toString());
-    exits[toRoom] = pad(pos.x) + pad(pos.y);
+    exits[toRoom] = util.posToString(pos);
 };
 /**
  *
  * @param {string} toRoom
  * @returns {number}
  */
-Room.prototype.tripTimeToSources = function (toRoom) {
+Room.prototype.tripTimeToSources = function (toRoom, force) {
     'use strict';
     /**
      * fromRoom to exit
      * [from exit to exit]
      * average(from exit to sources)
      */
+    force = force || false;
     Memory.rooms[this.name].cache = Memory.rooms[this.name].cache || {};
     Memory.rooms[this.name].cache.remoteMining = Memory.rooms[this.name].cache.remoteMining || {};
     // console.log('tripTime',JSON.stringify(Memory.rooms[this.name].cache.remoteMining));
     let cache = Memory.rooms[this.name].cache.remoteMining;
 
-    if (!cache.tripTimeToSources || !cache.tripTimeToSources[toRoom] || (cache.tripTimeToSources.time + 3000 < Game.time + 100 * Math.random())/*refresh time, random so that not all rooms timeout at the same time*/) {
+    if (force || !cache.tripTimeToSources || !cache.tripTimeToSources[toRoom] || (cache.tripTimeToSources.time + 3000 < Game.time + 100 * Math.random())/*refresh time, random so that not all rooms timeout at the same time*/) {
         // this.log('tripTimeToSources not cached');
         cache.tripTimeToSources = cache.tripTimeToSources || {};
         cache.tripTimeToSources.time = Game.time;
         // console.log('tripTime computing');
         let roomCursor = this.name, startPoint;
         let tripTime = 0;
-        startPoint = this.storage ? this.storage.pos : this.controller.pos;
-        // this.log('tripTime using ', startPoint, ' as drop point');
+        startPoint = Room.getExitTo(roomCursor, toRoom).findClosestByRange(this.findContainers().filter(s=>[STRUCTURE_CONTAINER, STRUCTURE_LINK, STRUCTURE_STORAGE].indexOf(s.structureType) >= 0)).pos;
+        // this.log(`tripTime to ${toRoom} using ${startPoint} as drop point`);
         do {
             let exit = Room.getExitTo(roomCursor, toRoom);
             // this.log('tripTime exit', roomCursor, toRoom, JSON.stringify(exit));
@@ -426,11 +422,15 @@ Room.prototype.tripTimeToSources = function (toRoom) {
             if (!exit) {
                 return undefined;
             }
+            let inRoomPath;
             if (Game.rooms[roomCursor]) {
-                tripTime += util.safeMoveTo2({pos: startPoint, room: this}, exit, {range: 0}).length;
+                inRoomPath = util.safeMoveTo2({pos: startPoint, room: this}, exit, {range: 0}).length;
             } else {
-                tripTime += Math.floor(exit.getRangeTo(startPoint * 1.5));
+                // this.log(`tripTime to ${toRoom}, no vision, ranging ${exit}, ${startPoint}, dist ${exit.getRangeTo(startPoint)*1.5}`);
+                inRoomPath = Math.floor(exit.getRangeTo(startPoint) * 1.5);
             }
+            // this.log(`tripTime to ${toRoom}, ${roomCursor}, ${inRoomPath}`);
+            tripTime += inRoomPath;
             startPoint = util.nextRoom(exit);
             roomCursor = startPoint.roomName;
             // this.log('tripTime',this.name, roomCursor, tripTime);
@@ -452,7 +452,7 @@ Room.prototype.tripTimeToSources = function (toRoom) {
         // this.log('tripTime', this.name, toRoom, tripTime);
         cache.tripTimeToSources[toRoom] = tripTime;
     } else {
-        // this.log('tripTimeToSources cached');
+        // this.log(`tripTimeToSources ${toRoom} cached`);
     }
     return cache.tripTimeToSources[toRoom];
 };
@@ -589,21 +589,21 @@ Room.prototype.buildStructures = function (pos) {
         let flags = this.find(FIND_FLAGS, {filter: util.buildColors(type)});
         let unbuiltFlags = flags.filter((f)=>f.pos.lookFor(LOOK_STRUCTURES).filter((s)=>s.structureType === type).length === 0);
         let buildableFlags = unbuiltFlags.filter((f)=>f.pos.lookFor(LOOK_CONSTRUCTION_SITES).length === 0);
-        this.log('flags', type, flags.length);
-        this.log('unbuiltFlags', type, unbuiltFlags.length);
-        this.log('buildableFlags', type, buildableFlags.length);
+        // this.log('flags', type, flags.length);
+        // this.log('unbuiltFlags', type, unbuiltFlags.length);
+        // this.log('buildableFlags', type, buildableFlags.length);
         if (unbuiltFlags.length > 0) {
             let flag;
             if (pos) {
                 flag = pos.findClosestByRange(unbuiltFlags);
             } else {
-                let center ;
+                let center;
                 if (this.storage) {
                     center = this.storage.pos;
                 } else {
                     let spawns = this.find(FIND_MY_SPAWNS);
                     if (spawns.length) {
-                        center = spawns[0];
+                        center = spawns[0].pos;
                     } else {
                         center = new RoomPosition(25, 25, this.name);
                     }
@@ -612,7 +612,7 @@ Room.prototype.buildStructures = function (pos) {
             }
             if (flag) {
                 let built = flag.pos.createConstructionSite(type);
-                this.log('building', type, JSON.stringify(flag.pos), built);
+                // this.log('building', type, JSON.stringify(flag.pos), built);
                 return built === OK;
             }
         }
@@ -641,6 +641,9 @@ Room.prototype.buildStructures = function (pos) {
                 return (genericBuilder(STRUCTURE_LINK));
             }
         };
+        let wallsBuilder = ()=> {
+            return (genericBuilder(STRUCTURE_WALL));
+        };
         let labsBuilder = ()=> {
             if (this.controller.level >= 6) {
                 return (genericBuilder(STRUCTURE_LAB));
@@ -658,7 +661,7 @@ Room.prototype.buildStructures = function (pos) {
                 return true;
             }
         };
-        let builders = [towerBuilder, storageBuilder, extensionsBuilder, rampartBuilder, extractorBuilder, linksBuilder, roadBuilder];
+        let builders = [towerBuilder, storageBuilder, extensionsBuilder, rampartBuilder, wallsBuilder, extractorBuilder, linksBuilder, roadBuilder];
         builders.find((builder)=>builder());
 
     }
@@ -723,6 +726,88 @@ Room.prototype.maxBoost = function (part, feature) {
 Room.prototype.allowedLoadingContainer = function (structure) {
     return structure.structureType !== STRUCTURE_TOWER && structure.structureType !== STRUCTURE_LAB && (this.energyCapacity === this.energyCapacityAvailable || [STRUCTURE_SPAWN, STRUCTURE_EXTENSION].indexOf(structure.structureType) < 0);
 };
+
+/**
+ *
+ * @param {Creep|{type,(terrain|creep|structure}[]} creep creep  or result of RoomPosition#look
+ * @param {RoomPosition} [pos=creep.pos] if creep is not the results of #look, allows to check a position different than creep.pos
+ * @returns {boolean}
+ */
+Room.prototype.isValidParkingPos = function (creep, pos) {
+    let atXY;
+    if (!_.isArray(creep)) {
+        pos = pos || creep.pos;
+        atXY = pos.look();
+    } else {
+        atXY = creep;
+    }
+    let rejects = [
+        (data)=>data.terrain === 'wall',
+        (data)=>data.type === LOOK_CREEPS && data.creep.name !== creep.name,
+        (data)=>(data.type === LOOK_STRUCTURES )&& (parkForbiddenStructureTypes.indexOf(data.structure.structureType) >= 0),
+        (data)=>(data.type === LOOK_CONSTRUCTION_SITES)&& (parkForbiddenStructureTypes.indexOf(data.constructionSite.structureType) >= 0)
+    ];
+    let rejected = rejects.reduce((acc, predicate)=>(acc || atXY.reduce((acc2, at)=>acc2 || predicate(at), acc)), false);
+    // creep.log('isValid ', pos, !rejected, JSON.stringify(atXY));
+    return !rejected;
+};
+/**
+ * This callback type is called `requestCallback` and is displayed as a global symbol.
+ *
+ * @callback parkingPosValid
+ * @param {Creep} creep
+ * @param {RoomPosition} lookedPosition
+ * @return {boolean}
+ */
+/**
+ *
+ * @param {Creep} creep
+ * @param {RoomPosition} lookedPosition
+ * @param {number} range
+ * @param {parkingPosValid} validPredicate
+ * @returns {RoomPosition|undefined}
+ */
+Room.prototype.findValidParkingPosition= function (creep, lookedPosition, range) {
+    if (creep.memory.parking) {
+        let pos = util.posFromString(creep.memory.parking, creep.room.name);
+        if (pos.getRangeTo(lookedPosition)<= range  && this.isValidParkingPos(creep, pos)) {
+            // creep.log('restoring upgrade pos', pos);
+            return pos;
+        } else {
+            // creep.log(`discarding parking position ${pos}`);
+        }
+    }
+    let aroundYX = this.glanceAround(lookedPosition, range, false);
+    let candidates = [];
+    let plainCandidates =[];
+    let swampCandidates = [];
+    for (let y in aroundYX) {
+        if (y%49===0) continue;
+        for (let x in aroundYX[y]) {
+            if (x%49 ===0) continue;
+
+            let atXY = aroundYX[y][x];
+            if (this.isValidParkingPos(atXY)) {
+                // creep.log('parking ', JSON.stringify(atXY));
+                let terrain =atXY.find(l=>l.type === 'terrain');
+                let pos = new RoomPosition(x, y, this.name);
+                if (terrain.terrain==='plain') plainCandidates.push(pos );
+                else if (terrain.terrain === 'swamp') swampCandidates.push(pos );
+                candidates.push(pos);
+            }
+        }
+    }
+    // creep.log(`plains ${plainCandidates.length}, swamp ${swampCandidates.length} all ${candidates.length}`);
+    let chosen =  creep.pos.findClosestByRange(plainCandidates.length?plainCandidates:swampCandidates);
+    if (chosen) {
+        creep.memory.parking = util.posToString(chosen);
+        creep.log(`parking at ${chosen}`);
+    }
+    return chosen;
+};
+
+
+let parkForbiddenStructureTypes = OBSTACLE_OBJECT_TYPES.concat([STRUCTURE_ROAD]);
 
 Object.defineProperty(Room.prototype, 'import',
     {

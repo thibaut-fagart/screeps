@@ -12,7 +12,6 @@ class RoleTowerDrainer {
 
     resign(creep) {
         creep.log('resigning');
-        creep.memory.role = 'recycle';
     }
 
     init(creep) {
@@ -55,18 +54,18 @@ class RoleTowerDrainer {
 
             if (towers.length == 0) {
                 creep.log('job done !');
-                this.resign(creep);
-            }
-            // wait untill all TOUGH is gone, then go back
-            // creep.log('healing');
-            creep.heal(creep);
-            let remainingTough = creep.getActiveBodyparts(TOUGH);
-            if (remainingTough<=2) {
-                creep.log('retreating',remainingTough);
-                creep.memory.action = 'heal';
-                this.moveBackTask.accepts(creep);
-            } else {
-                creep.log('enduring', remainingTough);
+                // stay, in case energy is refilled
+            } else {// wait untill all TOUGH is gone, then go back
+                // creep.log('healing');
+                creep.heal(creep);
+                let remainingTough = creep.getActiveBodyparts(TOUGH);
+                if (remainingTough <= 2) {
+                    creep.log('retreating', remainingTough);
+                    creep.memory.action = 'heal';
+                    this.moveBackTask.accepts(creep);
+                } else {
+                    creep.log('enduring', remainingTough);
+                }
             }
         }
     }

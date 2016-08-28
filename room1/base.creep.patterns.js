@@ -17,7 +17,7 @@ let patterns = {
         memory: {role: 'harvester'}
     },
     'carry': {
-        body: (room, budget)=> CreepShaper.shape(CreepShaper.requirements().minimum(FULL_ROAD_SPEED, 1).minimum(CAPACITY,800), shaperOptions(room, 'carry', budget)),
+        body: (room, budget)=> CreepShaper.shape(CreepShaper.requirements().minimum(FULL_ROAD_SPEED, 1).minimum(CAPACITY, 800), shaperOptions(room, 'carry', budget)),
         count: 2,
         memory: {role: 'carry'}
     },
@@ -80,10 +80,9 @@ let patterns = {
     },
     'scout': {body: [MOVE], count: 0, memory: {role: 'scout'}},
     'roleSoldier': {
-        body: [TOUGH, TOUGH, TOUGH, TOUGH, MOVE, MOVE, MOVE, MOVE,
-            MOVE,
-            ATTACK, MOVE, ATTACK, MOVE, ATTACK, MOVE, ATTACK, MOVE,
-            HEAL, MOVE, HEAL, MOVE],
+        body: [MOVE, TOUGH, ATTACK, MOVE, ATTACK, TOUGH, MOVE, ATTACK, TOUGH,
+            MOVE, ATTACK, TOUGH, MOVE, HEAL, MOVE, MOVE, MOVE, MOVE,
+            MOVE, HEAL, MOVE],
         count: 0,
         memory: {role: 'roleSoldier', type: 'close'}
     },
@@ -94,17 +93,30 @@ let patterns = {
         count: 0,
         memory: {role: 'roleRemoteGuard', type: 'remote'}
     },
-    'claimer': {body: [MOVE, CLAIM, MOVE, CLAIM,], count: 0, memory: {role: 'claimer'}},
-    'reserver': {body: [MOVE, CLAIM, MOVE, CLAIM,], count: 0, memory: {role: 'reserver'}},
+    'claimer': {
+        body: (room, budget)=>
+            (room.controller.level >= 3 ? CreepShaper.shape(CreepShaper.requirements().minimum(EMPTY_SWAMP_SPEED, 1).minimum(CLAIM, 1), shaperOptions(room, 'claimer', budget)) : []),
+        count: 0, memory: {role: 'claimer'}
+    },
+    'reserver': {
+        body: (room, budget)=>
+            (room.controller.level >= 3 ? CreepShaper.shape(CreepShaper.requirements().minimum(EMPTY_PLAIN_SPEED, 1).minimum(CLAIM, 2), shaperOptions(room, 'claimer', budget)) : [])
+        , count: 0, memory: {role: 'reserver'}
+    },
     // 'remoteHarvester': {body: [CARRY, MOVE, WORK, MOVE, CARRY, MOVE, WORK, MOVE, CARRY, MOVE,WORK, MOVE, CARRY,MOVE, WORK, MOVE,MOVE,CARRY], scale:true, count: 2, memory: {role: 'remoteHarvester'}},
+    'remoteUpgrader': {
+        body: [MOVE, WORK, CARRY, MOVE, CARRY, WORK, MOVE, WORK, CARRY, MOVE, CARRY, WORK],
+        count: 0,
+        memory: {role: 'remoteUpgrader'}
+    },
     'remoteHarvester': {
-        body: (room, budget)=> CreepShaper.shape(CreepShaper.requirements().minimum(EMPTY_ROAD_SPEED, 0.5).minimum(CAPACITY, 50).minimum(HARVEST, 10), shaperOptions(room, 'remoteHarvester', budget)),
+        body: (room, budget)=> CreepShaper.shape(CreepShaper.requirements().minimum(EMPTY_PLAIN_SPEED, 0.5).minimum(CAPACITY, 50).minimum(HARVEST, 10), shaperOptions(room, 'remoteHarvester', budget)),
 
         count: 0,
         memory: {role: 'remoteHarvester'}
     },
     'remoteCarry': {
-        body: (room, budget)=> CreepShaper.shape(CreepShaper.requirements().minimum(FULL_ROAD_SPEED, 1).minimum(REPAIR,1).maximize(CAPACITY), shaperOptions(room, 'remoteCarry', budget)),
+        body: (room, budget)=> CreepShaper.shape(CreepShaper.requirements().minimum(FULL_ROAD_SPEED, 1).minimum(REPAIR, 1).minimum(CAPACITY, 800), shaperOptions(room, 'remoteCarry', budget)),
         count: 0,
         memory: {role: 'remoteCarry'}
     },
@@ -114,34 +126,34 @@ let patterns = {
         count: 0,
         memory: {role: 'mineralTransport'}
     },
-    'remoteUpgrader': {
-        body: [WORK, CARRY, MOVE, CARRY, WORK, MOVE, MOVE, WORK, CARRY, MOVE, CARRY, WORK, MOVE, MOVE],
-        count: 0,
-        memory: {role: 'remoteUpgrader'}
-    },
     'keeperGuard': {
 // ATTACK,HEAL,MOVE boosts
         body: (room, budget) => {
             "use strict";
-            switch(room.controller.level) {
-                case 1: case 2: case 3: case 4: return [];
+            switch (room.controller.level) {
+                case 1:
+                case 2:
+                case 3:
+                case 4:
+                    return [];
                 case 5:
                     return CreepShaper.shape(CreepShaper.requirements().minimum(FULL_PLAIN_SPEED, 1).minimum(HEAL, 40).maximize(FEATURE_RANGED_ATTACK, 40), shaperOptions(room, 'keeperGuard', budget));
                 case 6:
                     return CreepShaper.shape(CreepShaper.requirements().minimum(FULL_PLAIN_SPEED, 1).minimum(HEAL, 50).maximize(FEATURE_RANGED_ATTACK, 40), shaperOptions(room, 'keeperGuard', budget));
                 case 7:
                     return CreepShaper.shape(CreepShaper.requirements().minimum(FULL_PLAIN_SPEED, 1).minimum(HEAL, 100).maximize(FEATURE_RANGED_ATTACK, 40), shaperOptions(room, 'keeperGuard', budget));
-                default: return [TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH,  //15
-                                MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, //14
-                                ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, //10
-                                HEAL, HEAL, HEAL];
+                default:
+                    return [TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH,  //15
+                        MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, //14
+                        ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, //10
+                        HEAL, HEAL, HEAL];
             }
         }
 
-            /*[TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH,  //15
-            MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, //14
-            ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, //10
-            HEAL, HEAL, HEAL]*/, //3
+        /*[TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH,  //15
+         MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, //14
+         ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, //10
+         HEAL, HEAL, HEAL]*/, //3
         count: 0,
         memory: {role: 'keeperGuard'}
     },
@@ -164,11 +176,10 @@ let patterns = {
         memory: {role: 'remoteCarryKeeper'}
     },
     'remoteBuilder': {
-        body: [WORK, MOVE, CARRY, CARRY, MOVE, WORK, MOVE, WORK, MOVE, CARRY, CARRY, MOVE,
-            WORK, MOVE, CARRY, CARRY, MOVE, WORK, MOVE, WORK, MOVE, CARRY, CARRY, MOVE,
-            WORK, MOVE, CARRY, CARRY, MOVE, WORK, MOVE, WORK, MOVE, CARRY, CARRY, MOVE,
-            WORK, MOVE, CARRY, CARRY, MOVE, WORK, MOVE, WORK, MOVE, CARRY, CARRY, MOVE,
-            HEAL
+        body: [MOVE, WORK, CARRY, MOVE, WORK, CARRY, MOVE, WORK, CARRY,
+            MOVE, WORK, CARRY, MOVE, WORK, CARRY, MOVE, WORK, CARRY,
+            MOVE, WORK, CARRY, MOVE, WORK, CARRY, MOVE, WORK, CARRY,
+            MOVE, WORK, CARRY, MOVE, WORK, CARRY, MOVE, WORK, CARRY
         ],
         count: 0,
         memory: {role: 'remoteBuilder'}

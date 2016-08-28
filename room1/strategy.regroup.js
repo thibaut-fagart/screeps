@@ -5,35 +5,43 @@ class RegroupStrategy extends Base {
     constructor(flagcolor) {
         super();
         this.flagColor = flagcolor || COLOR_RED;
+        this.PATH = 'regroupPos';
+    }
+
+    getRegroupPos(creep) {
+        if (creep.memory[this.PATH]) {
+            let pos = util.posFromString(creep.memory[this.PATH]);
+
+            if (pos.lookFor && pos.lookFor(LOOK_FLAGS).find(f=>f.color === this.flagColor && f.secondaryColor === this.flagColor)) {
+                return pos;
+            } else {
+                delete creep.memory[this.PATH];
+            }
+        }
+        let regroupFlags = creep.room.find(FIND_FLAGS, {
+            filter: {
+                color: this.flagColor,
+                secondaryColor: this.flagColor
+            }
+        });
+        if (regroupFlags.length) {
+            let flag = regroupFlags[0];
+            let pos = creep.room.findValidParkingPosition(creep, flag.pos, 3);
+            if (pos) {
+                creep.memory[this.PATH] = util.posToString(pos);
+            }
+            return pos;
+        }
     }
 
     accepts(creep) {
         // creep.log('regroup?');
-        let regroupFlags = creep.room.find(FIND_FLAGS, {filter: {color: this.flagColor}});
-        if (regroupFlags.length) {
-            let flag = regroupFlags[0];
-            if (creep.pos.getRangeTo(flag.pos.x, flag.pos.y) <=3) return false;
-            // creep.log('moving to ', flag.pos);
-            util.moveTo(creep, flag.pos, 'regroup_' + this.flagColor);
-            // return true;
-/*
-            let memoryPath = ;
-            let path = util.objectFromMemory(creep.memory, memoryPath);
-
-            if (!path) {
-                path = PathFinder.search(creep.pos, flag.pos, {range: 1}).path;
-                // creep.log('pathingto', path.length,path[path.length-1]);
-                if (path.length) {
-                    path = creep.room.findPath(creep.pos, path[path.length - 1]);
-                }
-                // creep.log('path', JSON.stringify(path));
-
-                creep.memory[memoryPath] = path;
-            }
-            creep.moveByPath(path);
-            return true;
-*/
-
+        let pos = this.getRegroupPos(creep);
+        if (pos) {
+            // creep.log('regrouping on ', pos);
+            util.moveTo(creep, pos, 'regroup_' + this.flagColor);
+        }  else {
+            // creep.log('no flag', this.flagColor);
         }
         return false;
     }

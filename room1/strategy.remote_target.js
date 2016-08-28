@@ -17,13 +17,14 @@ class RemoteTargetStrategy extends BaseStrategy {
     /** @param {Creep||StructureTower} creep
      * @return {Creep|| null}**/
     accepts(creep) {
-        if (!creep.structureType || (creep.body && (creep.getActiveBodyparts(RANGED_ATTACK) == 0))) {
-            // if(creep instanceof Creep)creep.log('not compatible with RemoteAttack');
+        if (!creep.structureType && !(creep.body && (creep.getActiveBodyparts(RANGED_ATTACK)> 0))) {
+            // if(creep instanceof Creep)creep.log('not compatible with RemoteAttack', creep.getActiveBodyparts(RANGED_ATTACK));
             return null;
         }
         // find strangers
         // order by type (heal > *)  and distance
         let target;
+        // creep.log('executing RemoteTargetStrategy');
         let hostiles = this.findTargets(creep);
         // if(creep instanceof Creep) creep.log('hostiles', hostiles.length);
         if (hostiles.length) {

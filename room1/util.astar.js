@@ -15,7 +15,18 @@
 // - Simplified API
 // - Optimizations from http://theory.stanford.edu/~amitp/GameProgramming/Heuristics.html
 
-
+Room.prototype.getPositionAt = function (x, y) {
+    return new RoomPosition(x, y, this.name);
+};
+var util = require ('./util');
+Room.prototype.createFlagMemoryEfficient = function (pos, color) {
+    "use strict";
+    Game.rooms[this.roomName].createFlag(pos.x, pos.y, util.newFlagName(), color);
+};
+RoomPosition.prototype.getStructure = function () {
+    "use strict";
+    return this.lookFor(LOOK_STRUCTURES);
+};
 var astar = function () {
 
 };
@@ -89,7 +100,7 @@ astar.prototype.search = function (room, start, end, user_options) {
     if (typeof options.weight == 'function') {
         var weight = options.weight;
     } else {
-        var weight = this.scoring();
+        var weight = this.scoring;
     }
 
     var avoid_list = {};

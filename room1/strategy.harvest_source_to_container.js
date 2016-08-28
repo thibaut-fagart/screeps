@@ -195,6 +195,7 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
     }
 
     buildContainer(area, creep) {
+        if (creep.room.controller && creep.room.controller.level < 3) return;
         let containerSites = area.filter((e)=>e.type === 'constructionSite').map((e)=>(e.constructionSite)).filter((s)=>s.structureType === STRUCTURE_CONTAINER);
         if (!containerSites.length) {
             // find a place

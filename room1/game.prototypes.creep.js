@@ -1,6 +1,14 @@
 var _ = require('lodash');
 var util = require('./util');
 
+Creep.prototype.getSquadTarget = function () {
+    "use strict";
+    if (this.memory['SquadAttackStrategy']) {
+        let pos = this.memory['SquadAttackStrategy'].target;
+        return new RoomPosition(pos.x, pos.y, pos.roomName);
+    }
+};
+
 Creep.prototype.boostPartType = function (parts) {
     "use strict";
     let part_type = parts[0].type;

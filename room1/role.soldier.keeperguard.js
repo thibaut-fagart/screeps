@@ -29,8 +29,14 @@ class RoleKeeperGuard extends RoleRemoteRoomGuard {
                     return (target)=>(true);
                 }
             }),
-             new SquadAttackStrategy(),new /*DisableTargetStrategy*/RemoteAttackStrategy(5)
-             /*new DisableTargetStrategy(5)*/ /*new RemoteHealKeeperGuardStrategy()*//*,new MoveToActiveKeeperLair()*/,
+             new SquadAttackStrategy(3, creep=>{
+                 if (Memory.rooms[creep.memory.remoteRoom] && Memory.rooms[creep.memory.remoteRoom].sources ) {
+                     return (target)=> Memory.rooms[creep.memory.remoteRoom].sources.map(id=>Game.getObjectById(id)).find(s=>s.pos.getRangeTo(target) < 5);
+                 } else return ()=>true;
+
+             }),
+            new RemoteAttackStrategy(5),
+             /*new DisableTargetStrategy(5)*/ /*new RemoteHealKeeperGuardStrategy()*//*,new MoveToActiveKeeperLair()*/
             new MoveToSpawningKeeperLair((creep)=> {
                 if (creep.room.memory.sources) {
                     let sources = creep.room.memory.sources;

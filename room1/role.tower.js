@@ -6,13 +6,13 @@ class RoleTower {
     constructor() {
         this.remoteAttackStrategy = new RemoteTargetStrategy(undefined,(tower)=>{
             return function(target) {
-                let ignoredStructures = [STRUCTURE_ROAD, STRUCTURE_EXTRACTOR, STRUCTURE_LINK];
+                let ignoredStructures = [STRUCTURE_ROAD, STRUCTURE_EXTRACTOR];
                 let endangeredStructures = tower.room.glanceForAround(LOOK_STRUCTURES, target.pos, 3, true).filter((s)=>ignoredStructures.indexOf(s.structure.structureType)<0 );
                 let endangeredCreeps = tower.room.glanceForAround(LOOK_CREEPS, target.pos, 3, true).filter((c)=>c.my );
                 tower.log(`target ${JSON.stringify(target.pos)}, ${target.owner.username} endangeredStructures ${endangeredStructures.length}, endangeredCreeps ${endangeredCreeps.length}`);
                 Game.notify(`target ${JSON.stringify(target.pos)}, ${target.owner.username} endangeredStructures ${endangeredStructures.length}, endangeredCreeps ${endangeredCreeps.length}`);
 
-                return target.owner.username === 'Invader' ||  tower.pos.getRangeTo(target)<= 5&& tower.room.glanceForAround(LOOK_STRUCTURES);
+                return /*target.owner.username === 'Invader' || */ tower.pos.getRangeTo(target)<= 5 || (endangeredStructures.length+endangeredStructures.length>0);
             };
         });
         this.remoteHealStrategy = new RemoteHealStrategy();

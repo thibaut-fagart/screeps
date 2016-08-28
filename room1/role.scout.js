@@ -16,8 +16,13 @@ class RoleScout {
             let accepts = this.moveTask.accepts(creep);
             if (accepts) return;
         }
-        creep.memory.action = 'scout';
-        this.regroupTask.accepts(creep);
+        if (creep.memory.remoteRoom === creep.room.name) {
+            creep.memory.action = 'scout';
+            this.regroupTask.accepts(creep);
+        } else {
+            creep.memory.action = 'go_remote_room';
+        }
+
 
     }
 }

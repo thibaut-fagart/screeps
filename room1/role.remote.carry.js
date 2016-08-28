@@ -4,6 +4,7 @@ var LoadFromContainerStrategy = require('./strategy.load_from_container');
 var PickupStrategy = require('./strategy.pickup');
 var ClosePickupStrategy = require('./strategy.pickup.close');
 var DropToContainerStrategy = require('./strategy.drop_to_container');
+var DropToContainerCloseStrategy = require('./strategy.drop_to_container_close');
 var DropToEnergyStorageStrategy = require('./strategy.drop_to_energyStorage');
 var AvoidRespawnStrategy = require('./strategy.avoidrespawn');
 var MoveToRoomTask = require('./task.move.toroom');
@@ -13,6 +14,8 @@ class RoleRemoteCarry {
 
     constructor() {
         this.travelingPickup = new ClosePickupStrategy(RESOURCE_ENERGY, 1);
+        this.travelingDrop = new DropToContainerCloseStrategy(undefined, undefined,
+                        (creep)=>((s)=>([STRUCTURE_CONTAINER, STRUCTURE_STORAGE, STRUCTURE_LINK].indexOf(s.structureType) >= 0)),1);
         this.loadFromNeighbour = new LoadFromContainerStrategy(undefined, undefined,
             function (creep) {
                 return (s)=> {
@@ -150,6 +153,7 @@ class RoleRemoteCarry {
         }
         else if (creep.memory.action == this.ACTION_UNLOAD) {
             // creep.log('home, unloading');
+            this.travelingDrop.accepts(creep);
             let strategy = util.getAndExecuteCurrentStrategy(creep, this.unloadStrategies);
             if (!strategy) {
                 strategy = _.find(this.unloadStrategies, (strat)=>(strat.accepts(creep)));

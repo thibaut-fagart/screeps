@@ -117,7 +117,7 @@ class RoleRemoteRoomGuard {
             if (!strategy) {
                 _.filter(this.nonExclusiveStrategies, (strat)=>strat.accepts(creep));
                 strategy = _.find(this.attackStrategies, (strat)=>strat.accepts(creep));
-                // creep.log('newStrategy',util.strategyToLog(strategy));
+                creep.log('newStrategy',util.strategyToLog(strategy));
             }
             if (strategy) {
                 // creep.log('strategy', strategy.constructor.name);

@@ -15,7 +15,7 @@ class BuildStrategy extends BaseStrategy {
         var target = util.objectFromMemory(creep.memory, this.BUILD_TARGET, this.predicate(creep));
         // if (target) creep.log('buildTarget', target);
         if (!target) {
-            console.log('finding target for  ', creep.name);
+            // console.log('finding target for  ', creep.name);
             var targets = creep.room.find(FIND_CONSTRUCTION_SITES, {filter: this.predicate(creep)});
             if (targets.length) {
                 if (targets[0].progress > 0) {
@@ -43,11 +43,11 @@ class BuildStrategy extends BaseStrategy {
             // creep.log('building',target);
             if (!target) {
                 // creep.log('searching for deaying');
-                let nearbyDecaying = creep.room.glanceForAround(LOOK_STRUCTURES, creep.pos, 2,true)
+                let nearbyDecaying = creep.room.glanceForAround(LOOK_STRUCTURES, creep.pos, 2, true)
                     .map((r)=>r.structure)
-                    .filter((s)=>'number' === typeof s.ticksToDecay && s.hits < global[s.structureType.toUpperCase()+'_DECAY_AMOUNT']*1500/global[s.structureType.toUpperCase()+'_DECAY_TIME']);
-                creep.log('found ', JSON.stringify(nearbyDecaying));
-                if (nearbyDecaying.length>0) {
+                    .filter((s)=>'number' === typeof s.ticksToDecay && s.hits < global[s.structureType.toUpperCase() + '_DECAY_AMOUNT'] * 1500 / global[s.structureType.toUpperCase() + '_DECAY_TIME']);
+                // creep.log('found ', JSON.stringify(nearbyDecaying));
+                if (nearbyDecaying.length > 0) {
                     creep.repair(nearbyDecaying[0]);
                     return true;
                 }
@@ -55,19 +55,19 @@ class BuildStrategy extends BaseStrategy {
                 // creep.log('target null');
                 delete creep.memory[this.BUILD_TARGET];
             } else {
-                let build = creep.build(target);
-                if (build == ERR_NOT_IN_RANGE) {
-                    util.moveTo(creep, target.pos,this.constructor.name+ 'Path', {range:3});
-/*
-                    let moveTo = creep.moveTo(target);
-                    if (moveTo !== OK && moveTo !== ERR_TIRED) {
-                        creep.log('moveTo?', build);
+                let buildPos = this.findBuildPos(creep, target);
+                if (buildPos && !creep.pos.isEqualTo(buildPos)) {
+                    // creep.log('moving', buildPos);
+                    util.moveTo(creep, buildPos, this.constructor.name + 'Path', {range: 0});
+                } else {
+                    let build = creep.build(target);
+                    if (build == ERR_NOT_IN_RANGE && !buildPos) {
+                        util.moveTo(creep, target.pos, this.constructor.name + 'Path', {range: 3});
+                    } else if (build === ERR_INVALID_TARGET) {
+                        delete creep.memory[this.BUILD_TARGET];
+                    } else if (build !== OK) {
+                        creep.log('build?', build);
                     }
-*/
-                } else if (build === ERR_INVALID_TARGET) {
-                    delete creep.memory[this.BUILD_TARGET];
-                } else if (build !== OK) {
-                    creep.log('build?', build);
                 }
                 if (target.progress == target.progressTotal) {
                     // creep.log('build complete', target.name);
@@ -77,6 +77,18 @@ class BuildStrategy extends BaseStrategy {
         }
         return target;
     }
+
+
+    /**
+     *
+     * @param {Creep| {pos}} creep
+     * @param {ConstructionSite} target
+     * @returns {RoomPosition}
+     */
+    findBuildPos(creep, target) {
+        return creep.room.findValidParkingPosition(creep, target.pos, 3);
+    }
+
 }
 
 module.exports = BuildStrategy;

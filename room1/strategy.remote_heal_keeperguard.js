@@ -9,23 +9,21 @@ class RemoteHealKeeperGuardStrategy extends RemoteHealStrategy {
 
     findHealingTargets(creep) {
         let findHealingTargets2 = super.findHealingTargets(creep);
+        let hostilesNearby = creep.pos.findInRange(FIND_HOSTILE_CREEPS, 4).length > 0;
         // creep.log('base healing targets', findHealingTargets2.length);
         let targets = findHealingTargets2
-            // .filter((c)=> {
-            // if (c.memory.role !== creep.memory.role) return (c.hits < 0.5 * c.hitsMax);
-            // let ratio = c.hits / c.hitsMax;
-            // return (ratio < 0.75) || (ratio < 1 && c.pos.getRangeTo(creep) <= 1);
-
-        // })
-        ;
+            .filter((c)=> {
+                if (c.memory.role !== creep.memory.role) return !hostilesNearby;
+                let ratio = c.hits / c.hitsMax;
+                return (ratio < 0.75) || (ratio < 1 && c.pos.getRangeTo(creep) <= 1);
+            }).sort(c=>c.hits / c.hitsMax);
         // creep.log('healing targets', targets.length);
         return targets;
 
     }
 
-/*
     moveToAndHeal(creep, damaged) {
-         creep.log('moveToAndHeal', damaged.name);
+        creep.log('moveToAndHeal', damaged.name);
         return super.moveToAndHeal(creep, damaged); // TODO
         let rangeToDamaged = creep.pos.getRangeTo(damaged);
         if (rangeToDamaged > 1) {
@@ -56,7 +54,6 @@ class RemoteHealKeeperGuardStrategy extends RemoteHealStrategy {
             creep.heal(damaged);
         }
     }
-*/
 }
 
 module.exports = RemoteHealKeeperGuardStrategy;

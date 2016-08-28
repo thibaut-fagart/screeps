@@ -240,7 +240,7 @@ class Util {
         }
         // console.log(JSON.stringify(coords));
         roomName = coords[1] + coords[2] + coords[3] + coords[4];
-        return Game.rooms[roomName] ? new RoomPosition(x, y, roomName): {x:x,y:y,roomName:roomName};
+        return new RoomPosition(x, y, roomName);
 
     }
 
@@ -389,6 +389,7 @@ class Util {
             options.avoidCreeps = true;
         }
         let path = creep.memory[memory];
+        // creep.log('memory[path]',memory, JSON.stringify(path));
         // check the target pos didn't change
         let isPathValid = path && path.target && pos.isEqualTo(path.target.x, path.target.y) && pos.roomName == path.target.roomName;
         if (isPathValid) {
@@ -413,6 +414,7 @@ class Util {
             // if (blocked) creep.log('blocked path',JSON.stringify(path));
             path = this.pathFinderToMoveByPath(creep.pos, path);
             this.savePath(creep, memory, path, pos);
+            // creep.log('saved memory[path]',memory, JSON.stringify(creep.memory[memory]));
             // if (blocked) creep.log('serialized blocked path',creep.memory[memory]);
         }
         if (path.length) {
@@ -483,7 +485,9 @@ class Util {
         return path;
     }
 
+    
     safeMoveTo2(creep, destination, options) {
+        // creep.log('safeMoveTo2', creep.name, destination);
         options = options || {};
         let callback = this.avoidHostilesCostMatrix(creep, options);
         let goal = (options.range) ? {pos: destination, range: options.range} : destination;
@@ -493,6 +497,7 @@ class Util {
             roomCallback: callback
         }, options);
         let path = PathFinder.search(creep.pos, goal, options).path;
+        // creep.moveTo(path[0]);
         // creep.log('pathfinder path', JSON.stringify(creep.pos), JSON.stringify(destination), path.length);
         return path;
     }
@@ -544,7 +549,7 @@ class Util {
         this.cache = this.cache || {};
         this.cache[roomName] = this.cache[roomName] || {};
         if (!this.cache[roomName].expires || this.cache[roomName].expires < Game.time || !this.cache[roomName].matrix) {
-            creep.log('refreshing cachedMatrix');
+            // creep.log('refreshing cachedMatrix');
 
             let room = Game.rooms[roomName];
             this.cache[roomName].matrix = {
@@ -552,7 +557,7 @@ class Util {
                 matrix: this.avoidCostMatrix(room, room.find(FIND_HOSTILE_CREEPS), 4)
             };
         } else {
-            creep.log('returning cachedMatrix');
+            // creep.log('returning cachedMatrix');
 
         }
         return this.cache[roomName].matrix;
@@ -565,7 +570,7 @@ class Util {
 
     avoidHostilesCostMatrix(creepOrRoom, options) {
         let room = creepOrRoom.room ? creepOrRoom.room : creepOrRoom;
-        return this.avoidCostMatrix(room, room.find(FIND_HOSTILE_CREEPS), 4, options);
+        return this.avoidCostMatrix(room, (options && options.ignoreHostiles)?[]:room.find(FIND_HOSTILE_CREEPS), 4, options);
     }
 
     avoidCostMatrix(creepOrRoom, hostiles, range, options) {
@@ -618,7 +623,7 @@ class Util {
                 });
                 if (options.avoidCreeps) {
                     // creepOrRoom.log('avoidingCreeps');
-                    room.find(FIND_MY_CREEPS).forEach((c)=> {
+                    room.find(FIND_CREEPS).forEach((c)=> {
                         set(c.pos.x, c.pos.y, 255);
                     });
                 }
@@ -757,7 +762,35 @@ class Util {
     buildColors(structureType) {
         return {color: this.primaryBuildColor(structureType), secondaryColor: this.secondaryBuildColor(structureType)};
     }
+    newFlagName() {
+        let flagName;
+        Memory.temp.flagId = Memory.temp.flagId || 0;
+        Memory.temp.flagId = Memory.temp.flagId + 1;
+        flagName = 'flag' + Memory.temp.flagId;
+        return flagName;
+    }
 
+    /**
+     *
+     * @param {RoomPosition|{x,y}} pos
+     * @returns {string}
+     */
+    posToString(pos) {
+        let pad = (i)=> (i < 10 ? '0' + i.toString() : i.toString());
+        return pad(pos.x) + pad(pos.y);
+    }
+
+    /**
+     *
+     * @param  {string} pos
+     * @param [roomName]
+     * @returns {RoomPosition|{x,y}}
+     */
+    posFromString(pos, roomName) {
+        let x = Number.parseInt(pos.substring(0, 2));
+        let y = Number.parseInt(pos.substring(2, 4));
+        return Game.rooms[roomName] ? new RoomPosition(x, y, roomName) : {x: x, y: y, roomName:roomName};
+    }
 }
 Util.ROOM_NAME_PATTERN = /([EW])(\d+)([NS])(\d+)/;
 module.exports = new Util();

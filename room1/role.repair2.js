@@ -90,15 +90,21 @@ class RoleRepair2 {
                     // creep.log("no repair target");
                 } else {
                     // creep.log('3',target.hits, target.hitsMax, target.pos);
-                    let ret = creep.repair(target);
-                    if (ret == ERR_NOT_IN_RANGE) {
-                        util.moveTo(creep, target.pos, this.constructor.name + 'Path');
-                    } else if (ret !== OK) {
-                        creep.log('unexpected repair value', ret);
-                        this.clearTarget(creep);
-                    }
-                    if (target.hits == target.hitsMax) {
-                        this.clearTarget(creep);
+                    let repairPos = this.findRepairPos(creep, target);
+                    if (repairPos && !creep.pos.isEqualTo(repairPos)) {
+                        util.moveTo(creep, repairPos, this.constructor.name + 'Path', {range: 0});
+                    } else {
+                        let ret = creep.repair(target);
+                        if (ret == ERR_NOT_IN_RANGE && !repairPos) {
+                            util.moveTo(creep, target.pos, this.constructor.name + 'Path');
+                        } else if (ret !== OK) {
+                            creep.log('unexpected repair value', ret);
+                            this.clearTarget(creep);
+                        }
+
+                        if (target.hits == target.hitsMax) {
+                            this.clearTarget(creep);
+                        }
                     }
                 }
             }
@@ -178,6 +184,15 @@ class RoleRepair2 {
         }
     }
 
+    /**
+     *
+     * @param {Creep| {pos}} creep
+     * @param {Structure} target repair target
+     * @returns {RoomPosition}
+     */
+    findRepairPos(creep, target) {
+        return creep.room.findValidParkingPosition(creep, target.pos, 3);
+    }
 }
 // module.exports = roleRepair2;
 module.exports = RoleRepair2;

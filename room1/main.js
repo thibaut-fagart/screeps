@@ -11,31 +11,32 @@ if (!Game.rooms['sim'] && !Memory.disableProfiler) profiler.enable();
 // var RoomManager = require('./manager.room'), roomManager = new RoomManager(); // todo manager
 // This line monkey patches the global prototypes.
 // if (Game.cpu.bucket> 500)
-var debugRoles = [];
-var debugRooms = [];
-var debugCreeps = [];
+Memory.debug = Memory.debug || {};
+var debugRoles = Memory.debug.roles ||[];
+var debugRooms = Memory.debug.rooms || [];
+var debugCreeps = Memory.debug.creeps || [];
 Creep.prototype.log = function () {
     if ((!debugRoles.length || (debugRoles.indexOf(this.memory.role) >= 0))
         && (!debugRooms.length || (debugRooms.indexOf(this.room.name) >= 0))
         && (!debugCreeps.length || (debugCreeps.indexOf(this.name) >= 0))
     ) {
-        console.log([this.name, this.pos, this.memory.role].concat(Array.prototype.slice.call(arguments)));
+        console.log([Game.time, this.name, this.pos, this.memory.role].concat(Array.prototype.slice.call(arguments)));
     }
 };
 Spawn.prototype.log = function () {
     if ((!debugRooms.length || (debugRooms.indexOf(this.room.name) >= 0))
         && (!debugCreeps.length || (debugCreeps.indexOf(this.name) >= 0))
     ) {
-        console.log([this.name, this.room.name].concat(Array.prototype.slice.call(arguments)));
+        console.log([Game.time, this.name, this.room.name].concat(Array.prototype.slice.call(arguments)));
     }
 };
 Room.prototype.log = function () {
     if ((!debugRooms.length || (debugRooms.indexOf(this.name) >= 0))) {
-        console.log([this.name, this.controller ? this.controller.level : 'neutral'].concat(Array.prototype.slice.call(arguments)));
+        console.log([Game.time, this.name, this.controller ? this.controller.level : 'neutral'].concat(Array.prototype.slice.call(arguments)));
     }
 };
 Structure.prototype.log = function () {
-    console.log([this.structureType, this.room.name, this.id].concat(Array.prototype.slice.call(arguments)));
+    console.log([Game.time, this.structureType, this.room.name, this.id].concat(Array.prototype.slice.call(arguments)));
 };
 Structure.prototype.memory = function () {
     'use strict';
@@ -94,7 +95,7 @@ function innerLoop() {
     }
     let cpu = {}, roomCpu = {}, remoteCpu={};
     let availableCpu = Game.cpu.tickLimit;
-    if (updateStats) _.keys(handlers).forEach((k)=>cpu[k] = 0);
+    if (updateStats) _.keys(handlers).forEach((k)=>cpu['creeps.'+k] = 0);
     let sortedRooms = _.sortBy(_.values(Game.rooms), (r)=> r.controller && r.controller.my ? r.controller.level : 10);
     if (updateStats && Game.cpu.tickLimit < 500) console.log('room, controller, roomTasks , creeps ,spawns , labs , stats, room');
     let taskPairs = _.pairs(roomTasks);
@@ -211,11 +212,11 @@ function innerLoop() {
         );
     });
     if (updateStats) skipped.forEach((s)=> console.log('skipped', s));
-    _.keys(roomCpu).forEach((k)=> {
+    _.keys(Memory.rooms).forEach((k)=> {
         Memory.stats['cpu.rooms.' + k] = roomCpu[k] || 0;
         // console.log(`cpu.room, ${k},${roomCpu[k] || 0}`);
     });
-    _.keys(remoteCpu).forEach((k)=> {
+    _.keys(Memory.rooms).forEach((k)=> {
         Memory.stats['cpu.remoteRooms.' + k] = remoteCpu[k] || 0;
         let stat = Memory.stats['room.' + k + '.efficiency.remoteMining'];
         if ( stat && remoteCpu[k] || 0) {

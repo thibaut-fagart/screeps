@@ -30,15 +30,10 @@ module.exports = {
             return;
         }
         if (!flag) {
-            let flagName;
-            Memory.temp.flagId = Memory.temp.flagId || 0;
-            Memory.temp.flagId = Memory.temp.flagId + 1;
-            flagName = 'flag' + Memory.temp.flagId;
+            let flagName = util.newFlagName();
             flagName = room.createFlag(pos.x, pos.y, flagName, color, secondaryColor);
             if (_.isString(flagName)) {
-                let match = /flag(\d+)/.exec(flagName);
-                room.log('flag', flagName, JSON.stringify(match));
-                if (match) Memory.temp.flagId = Number(match[1]);
+                // room.log('flag', flagName);
                 flagsUnderCreation[room.name] = flagsUnderCreation[room.name] || {};
                 flagsUnderCreation[room.name][Game.time] = flagsUnderCreation[room.name][Game.time] || [];
                 flagsUnderCreation[room.name][Game.time].push(posId);
@@ -98,7 +93,8 @@ module.exports = {
         'use strict';
         let room = object.room;
         let dest = room.getExitTo(toRoom);
-        this.createFlags(this.findPath(room, object.pos, dest.pos, 1), room);
+        // room.log('pathing to ', dest);
+        this.createFlags(this.findPath(room, object.pos, dest, 1), room);
     },
     /**
      *
@@ -147,7 +143,8 @@ module.exports = {
      */
     costMatrix: function (roomName) {
         'use strict';
-        let matrix = new PathFinder.CostMatrix();
+        let matrix = util.avoidHostilesCostMatrix(Game.rooms[roomName])(roomName);
+            // new PathFinder.CostMatrix();
         let structures = Game.rooms[roomName].find(FIND_STRUCTURES);
         structures.forEach((s)=> {
             if (s.structureType === STRUCTURE_ROAD) {
@@ -386,9 +383,11 @@ module.exports = {
      * @param {string} [color]
      */
 
-    cleanFlagsColor: function (roomname, color) {
+    cleanFlagsColor: function (roomname, color, secondaryColor) {
         'use strict';
-        Game.rooms[roomname].find(FIND_FLAGS, {filter: {color: color}}).forEach((f)=> {
+        let predicate = color && secondaryColor?(f)=>f.color === color && f.secondaryColor === secondaryColor:
+            (color?(f)=>f.color === color:()=>true);
+        Game.rooms[roomname].find(FIND_FLAGS).filter(predicate).forEach((f)=> {
             f.remove();
         });
     },
