@@ -18,11 +18,11 @@ class MoveToSpawningKeeperLair extends BaseStrategy {
     accepts(creep) {
         // creep.log('moveToNextKeeperLair');
         let lair = util.objectFromMemory(creep.memory, this.KEEPER_PATH, (lair)=>lair.ticksToSpawn || lair.pos.findInRange(FIND_HOSTILE_CREEPS, 5).length == 0);
-        creep.log('lair?', lair);
+        // creep.log('lair?', lair);
         if (lair) {
             let desiredRange = creep.getActiveBodyparts(ATTACK) > 0 ? 3 : 6;
             let range = creep.pos.getRangeTo(lair);
-            creep.log(`lair ${lair} desiredRange ${desiredRange}, range ${range}`);
+            // creep.log(`lair ${lair} desiredRange ${desiredRange}, range ${range}`);
             if (range< desiredRange) {
                 let path = PathFinder.search(creep.pos, {pos: lair.pos, range: desiredRange}, {flee: true}).path;
                 creep.log('moving out', path[0]);
@@ -54,7 +54,7 @@ class MoveToSpawningKeeperLair extends BaseStrategy {
             // lookup path
             let lairs = creep.room.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_KEEPER_LAIR}});
             lairs = lairs.filter(this.predicate(creep));
-            creep.log('lairs', lairs.length);
+            // creep.log('lairs', lairs.length);
             if (!lairs.length) return false;
             let sorted = _.sortBy(_.filter(lairs, (lair)=> lair.ticksToSpawn), (lair)=> lair.ticksToSpawn);
             // creep.log('first lair ? ', sorted.length);

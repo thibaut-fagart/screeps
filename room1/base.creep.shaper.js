@@ -51,8 +51,8 @@ class Requirements {
             bodyFeatures[DAMAGE] = nonToughParts * 100 + 100 * toughParts * multiplier;
         }
         let fatigueReduction = bodyFeatures[FATIGUE] * 2;
-        let emptyFatigueIncrease = body.length - (bodyMakeup[MOVE] || 0) ;
-        let fullFatigueIncrease = body.length - (bodyMakeup[MOVE] || 0)+ (bodyMakeup[CARRY] || 0) * (factors[CAPACITY]-1);
+        let emptyFatigueIncrease = body.length - (bodyMakeup[MOVE] || 0) -(bodyMakeup[CARRY] ||0) ;
+        let fullFatigueIncrease = body.length - (bodyMakeup[MOVE] || 0)+ (bodyMakeup[CARRY] || 0) * (factors[CAPACITY]-1); // if carry is boosted, it weighs more
         _.keys(this.features).forEach(
             (feature)=> {
                 if (this.features[feature]) {

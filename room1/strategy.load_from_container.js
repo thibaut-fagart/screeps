@@ -105,6 +105,7 @@ class LoadFromContainerStrategy extends BaseStrategy {
         // creep.log('LoadFromContainerStrategy', 'finding source');
         // find a new source, if no type specified, allow links if shared links have enough energy
         let containers = creep.room.findContainers();
+        // creep.log('containers have labs', this.index, containers.length, _.filter(containers, (s)=>s.structureType === STRUCTURE_LAB).length);
         let allowedContainers = containers.filter((s)=>creep.room.allowedLoadingContainer(s));
         let allSources = allowedContainers
             .filter((s)=>(this.structure ? (s.structureType === this.structure ) : true)
@@ -114,7 +115,7 @@ class LoadFromContainerStrategy extends BaseStrategy {
         // creep.log('allSources has storage ?',this.structure,  allSources.find((c)=>c.structureType === STRUCTURE_STORAGE));
         // if (creep.memory.role ==='mineralGatherer') creep.log('allSources has links?', allSources.find((c)=>c.structureType === STRUCTURE_LINK));
         // if (this.structure === STRUCTURE_LINK) creep.log('allSources?', allSources.length);
-        // creep.log('allSources have links', allSources.length, _.filter(allSources, (s)=>s.structureType === STRUCTURE_LINK).length);
+        // creep.log('allSources have labs', allSources.length, _.filter(allSources, (s)=>s.structureType === STRUCTURE_LAB).length);
         // creep.log(this.constructor.name, 'storage ? ',_.find(allSources,(s)=>s.structureType ==STRUCTURE_STORAGE));
 
         let nonEmptySources = [];

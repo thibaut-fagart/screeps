@@ -54,7 +54,7 @@ function getFilter() {
 }
 
 function wrapFunction(name, originalFunction) {
-  return function wrappedFunction() {
+    const wrapped = function wrappedFunction() {
     if (Profiler.isProfiling()) {
       const nameMatchesFilter = name === getFilter();
       const start = Game.cpu.getUsed();
@@ -74,6 +74,9 @@ function wrapFunction(name, originalFunction) {
 
     return originalFunction.apply(this, arguments);
   };
+    wrapped.original = originalFunction;
+    wrapped.toString = function() { this.original.toString() };
+    return wrapped;
 }
 
 function hookUpPrototypes() {

@@ -34,6 +34,9 @@ class BuildStrategy extends BaseStrategy {
         return target;
     }
 
+    requestConstructionSite(creep) {
+        creep.room.buildStructures(creep.pos);
+    }
     /** @param {Creep} creep **/
     accepts(creep) {
 
@@ -51,7 +54,7 @@ class BuildStrategy extends BaseStrategy {
                     creep.repair(nearbyDecaying[0]);
                     return true;
                 }
-                creep.room.buildStructures(creep.pos);
+                this.requestConstructionSite(creep);
                 // creep.log('target null');
                 delete creep.memory[this.BUILD_TARGET];
             } else {

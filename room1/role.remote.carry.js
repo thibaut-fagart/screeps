@@ -9,13 +9,15 @@ var DropToEnergyStorageStrategy = require('./strategy.drop_to_energyStorage');
 var AvoidRespawnStrategy = require('./strategy.avoidrespawn');
 var MoveToRoomTask = require('./task.move.toroom');
 var RegroupStrategy = require('./strategy.regroup');
+var BuildAroundStrategy = require('./strategy.buildaround');
 
 class RoleRemoteCarry {
 
     constructor() {
-        this.travelingPickup = new ClosePickupStrategy(RESOURCE_ENERGY, 1);
+        this.travelingPickup = new ClosePickupStrategy(RESOURCE_ENERGY, 1, (creep)=>creep.room.name === creep.memory.homeroom ? ()=>false : ()=>true);
+        this.travelingBuild = new BuildAroundStrategy(3);
         this.travelingDrop = new DropToContainerCloseStrategy(undefined, undefined,
-                        (creep)=>((s)=>([STRUCTURE_CONTAINER, STRUCTURE_STORAGE, STRUCTURE_LINK].indexOf(s.structureType) >= 0)),1);
+            (creep)=>((s)=>([STRUCTURE_CONTAINER, STRUCTURE_STORAGE, STRUCTURE_LINK].indexOf(s.structureType) >= 0)), 1);
         this.loadFromNeighbour = new LoadFromContainerStrategy(undefined, undefined,
             function (creep) {
                 return (s)=> {
@@ -83,13 +85,15 @@ class RoleRemoteCarry {
             this.init(creep);
         }
         // creep.log('action?', creep.memory.action);
-        if (this.repairAround(creep)) {
+        if (creep.carry && creep.carry.energy && this.repairAround(creep)) {
+            creep.log('badly hit, repairing');
+            return;
+        } else if (creep.carry && creep.carry.energy && creep.fatigue > 0 && this.buildAround(creep)) {
+            // creep.log('building');
             return;
         }
-        this.buildAround(creep);
-        if (creep.room.name !== creep.memory.remoteRoom) {
-            this.travelingPickup.accepts(creep);
-        }
+
+        this.travelingPickup.accepts(creep);
         creep.memory.startTrip = creep.memory.startTrip || Game.time; // remember when the trip started, will allow to know when need to come back
         if (creep.memory.action === 'go_remote_room') {
             if (_.sum(creep.carry) > 0.95 * creep.carryCapacity) {
@@ -114,12 +118,18 @@ class RoleRemoteCarry {
         } else if (creep.memory.action === this.ACTION_UNLOAD && _.sum(creep.carry) === 0) {
             // TODO check lifespan , will the creep live long enough to go and bakc ?
             if (creep.room.name !== creep.memory.remoteRoom) {
-                let timeToSources = creep.room.tripTimeToSources(creep.memory.remoteRoom);
-                if (3 * timeToSources < creep.ticksToLive) {
+                let tripToSources = creep.room.tripTimeToSources(creep.memory.remoteRoom);
+                let mySpeed = creep.speed();
+                let tripTime = 0;
+                for (let i in tripToSources) {
+                    tripTime += tripToSources[i] * (mySpeed.empty[i] + mySpeed.full[i]);
+                }
+                //creep.log('trip time', creep.memory.remoteRoom, tripTime);
+                if (tripTime + 10 < creep.ticksToLive) {
                     this.setAction(creep, 'go_remote_room');
                     this.goRemoteTask.accepts(creep);
                 } else {
-                    creep.log('ready to die, recycling', creep.ticksToLive, timeToSources);
+                    creep.log('ready to die, recycling', creep.ticksToLive, tripTime);
                     creep.memory.previousRole = creep.memory.role;
                     creep.memory.role = 'recycle';
                     return false;
@@ -151,7 +161,7 @@ class RoleRemoteCarry {
                 }
             }
         }
-        else if (creep.memory.action == this.ACTION_UNLOAD) {
+        else if (creep.memory.action == this.ACTION_UNLOAD && creep.memory.homeroom == creep.room.name) {
             // creep.log('home, unloading');
             this.travelingDrop.accepts(creep);
             let strategy = util.getAndExecuteCurrentStrategy(creep, this.unloadStrategies);
@@ -164,7 +174,6 @@ class RoleRemoteCarry {
                 util.setCurrentStrategy(creep, strategy);
             } else {
                 util.setCurrentStrategy(creep, null);
-                return;
             }
         }
     }
@@ -172,13 +181,14 @@ class RoleRemoteCarry {
     /**
      *
      * @param creep
-     * @return false if repair level is satisfying
+     * @return {boolean} false if repair level is satisfying
      */
     repairAround(creep) {
         let range = 3;
+        let repairCapacity = creep.repairCapacity;
         let structures = creep.room.lookForAtArea(LOOK_STRUCTURES, Math.max(0, creep.pos.y - range), Math.max(0, creep.pos.x - range),
             Math.min(creep.pos.y + range, 49), Math.min(49, creep.pos.x + range), true);
-        let needRepair = structures.filter((s)=>s.hits < s.hitsMax && s.ticksToDecay);
+        let needRepair = structures.filter((s)=>s.ticksToDecay && s.hits + repairCapacity < s.hitsMax);
         if (needRepair.length) {
             creep.log('repairing');
             creep.repair(needRepair[0]);
@@ -186,16 +196,13 @@ class RoleRemoteCarry {
         }
     }
 
+    /**
+     *
+     * @param creep
+     * @returns {*}
+     */
     buildAround(creep) {
-        let range = 3;
-        let sites = creep.room.lookForAtArea(LOOK_CONSTRUCTION_SITES, Math.max(0, creep.pos.y - range), Math.max(0, creep.pos.x - range),
-            Math.min(creep.pos.y + range, 49), Math.min(49, creep.pos.x + range), true);
-        if (sites && sites.length) {
-            // creep.log('building', JSON.stringify(sites[0]));
-            creep.build(sites[0]);
-
-        }
+        return this.travelingBuild.accepts(creep);
     }
 }
-
 module.exports = RoleRemoteCarry;

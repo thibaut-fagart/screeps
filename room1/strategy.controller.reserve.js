@@ -5,10 +5,11 @@ var BaseStrategy = require('./strategy.base');
  * finds a non-empty  energy source, chooses at random to spread the load
  */
 class ReserveControllerStrategy extends BaseStrategy {
-    constructor(color) {
+    constructor(color, secondaryColor) {
         super();
         this.PATH = 'target';
         this.flagColor = color;
+        this.secondaryColor= secondaryColor || this.flagColor;
     }
 
     clearMemory(creep) {
@@ -63,7 +64,7 @@ class ReserveControllerStrategy extends BaseStrategy {
     findSpot(creep, target) {
         let pos = creep.memory.reserveFrom;
         if (!pos) {
-            let flags = target.room.lookForAtArea(LOOK_FLAGS, target.pos.y - 1, target.pos.x - 1, target.pos.y + 1, target.pos.x + 1, true).map((look)=>look.flag);
+            let flags = target.room.glanceForAround(LOOK_FLAGS, target.pos,1, true).map((look)=>look.flag).filter(f=>f.color === this.flagColor && f.secondaryColor === this.secondaryColor);
             if (flags && flags.length) {
                 pos = flags[0].pos;
             } else return false;

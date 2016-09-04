@@ -1,4 +1,5 @@
 var _ = require('lodash');
+var util = require('./util');
 var RemoteHealStrategy = require('./strategy.remote_heal');
 
 class RemoteHealKeeperGuardStrategy extends RemoteHealStrategy {
@@ -24,27 +25,31 @@ class RemoteHealKeeperGuardStrategy extends RemoteHealStrategy {
 
     moveToAndHeal(creep, damaged) {
         creep.log('moveToAndHeal', damaged.name);
-        return super.moveToAndHeal(creep, damaged); // TODO
+        if (creep.room.name ==='sim') debugger;
+        // return super.moveToAndHeal(creep, damaged); // TODO
         let rangeToDamaged = creep.pos.getRangeTo(damaged);
+        let hostiles = damaged.pos.findInRange(FIND_HOSTILE_CREEPS, 5);
         if (rangeToDamaged > 1) {
-            let hostiles = damaged.pos.findInRange(FIND_HOSTILE_CREEPS, 5);
             if (hostiles.length) {
-                let rangeTo = hostiles[0].pos.getRangeTo(creep.pos);
-                if (rangeTo === 3) {
-                    // creep.log('at range3, closing on ennemy to heal');
-                    creep.moveTo(hostiles[0]);
+                // find pos that are both at range1 of damaged and range max of hostiles
+                let area = creep.room.glanceAround(damaged.pos, 1);
+                let candidateHealing = util.findWalkableTiles(creep.room, area);
+                let desirability = [300, 200, 100, 0, 400];
+                candidateHealing.forEach(pos=>{
+                    let hostileRange =pos.getRangeTo(hostiles[0]);
+                    pos.score=hostileRange <desirability.length?desirability[hostileRange]+creep.pos.getRangeTo(pos):400;
+                });
+                let healingPos = _.min(candidateHealing, pos=>pos.score);
+                creep.log('healing from ', healingPos);
+                if (healingPos && Infinity !== healingPos) {
+                    creep.moveTo(healingPos);
                     creep.rangedHeal(damaged);
-                } else if (rangeTo === 2) {
-                    // creep.log('at range2, closing on squadmate to heal');
-                    if (creep.moveTo(damaged) === OK) {
-                        creep.heal(damaged);
-                    } else {
-                        creep.rangedHeal(damaged);
-                    }
+                } else {
+                    creep.rangedHeal(damaged);
                 }
             } else {
                 creep.moveTo(damaged);
-                if (rangeToDamaged === 2) {
+                if (rangeToDamaged ===1) {
                     creep.heal(damaged);
                 } else {
                     creep.rangedHeal(damaged);

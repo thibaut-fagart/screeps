@@ -83,7 +83,8 @@ describe('CreepShaper', function () {
             let room = new Room();
             room.name = 'my';
             room.memory = {allowedBoosts: []};
-            room.availableBoosts = () =>[/*'ZO'*/];
+            room.availableBoosts = () =>['KO','LO'];
+            room.glanceForAround = ()=> [];
             for (let rcl = 1; rcl <= 8; rcl++) {
                 room.controller = {level: rcl};
                 console.log('RCL ', rcl);

@@ -1,14 +1,11 @@
 var Base = require('./strategy.base');
-var RegroupStrategy = require('./strategy.regroup');
 var util = require('./util');
 
 class SquadAttackStrategy extends Base {
     constructor(range, predicate) {
         super();
         this.range = range || 3;
-        this.predicate = predicate || (function (creep) {
-                return (target)=>true;
-            })
+        this.predicate = predicate || (()=>(()=>true));
         this.MOVE_PATH = 'movePath';
     }
 
@@ -29,7 +26,11 @@ class SquadAttackStrategy extends Base {
         let squad = this.getSquad(creep);
         // creep.log('squad?', squad.length);
 
-        let leader = _.sortBy(squad, (b)=>b.name)[0];
+        let isAtBorder = (creep.pos.x % 49) < 2 || (creep.pos.y % 49) < 2;
+        if (isAtBorder) {
+            creep.log('overriding squad, near border');
+        }
+        let leader = (isAtBorder) ? creep : _.sortBy(squad, (b)=>b.name)[0];
         // creep.log(JSON.stringify(_.sortBy(squad, (b)=>b.name).map((c)=> c.name)))
         let isLeader = (!leader || leader.name === creep.name);
         let brotherFurthestToLeader = _.sortBy(squad, (c)=>-c.pos.getRangeTo(leader))[0];
@@ -37,14 +38,16 @@ class SquadAttackStrategy extends Base {
         let myDistanceToLeader = creep.pos.getRangeTo(leader);
         // if roster is not enough, regroup to exit
         // keep the squad together
-        // creep.log('squad.length', squad.length, Game.rooms[creep.memory.homeroom].memory.attack_min);
+        let homeroomMem = Memory.rooms[creep.memory.homeroom];
+        // creep.log('squad.length', squad.length, homeroomMem.attack_min);
         // creep.log('leader?', isLeader, myDistanceToLeader, 'max', maxDistanceToLeader, squad.length);
-        if (!isLeader && Game.rooms[creep.memory.homeroom].memory.attack_min
-            && Game.rooms[creep.memory.homeroom].memory.attack_min[creep.memory.remoteRoom]
-            && squad.length < Game.rooms[creep.memory.homeroom].memory.attack_min[creep.memory.remoteRoom]) {
+        let squadIsComplete = isAtBorder || (!homeroomMem.attack_min) || !homeroomMem.attack_min[creep.memory.remoteRoom]
+            || (homeroomMem.attack_min && homeroomMem.attack_min[creep.memory.remoteRoom]
+            && squad.length >= homeroomMem.attack_min[creep.memory.remoteRoom]);
+        if (/*!isLeader && */!squadIsComplete) {
             // let the leader lead the way, safely
-            // creep.log('wait for leader');
-            return false;
+            creep.log('wait for brothers', homeroomMem.attack_min[creep.memory.remoteRoom]);
+            return true;
         }
         let hostiles = creep.room.find(FIND_HOSTILE_CREEPS).filter(this.predicate(creep));
         // creep.log('hostiles ', hostiles.length);
@@ -77,24 +80,28 @@ class SquadAttackStrategy extends Base {
         let myRange = closestEnemy.pos.getRangeTo(creep);
         // if (isLeader) creep.log('hostiles', hostiles.length, myRange, JSON.stringify(closestEnemy.pos));
         let rangeToLeader = leader.pos.getRangeTo(closestEnemy);
-        if (myRange < 4 && rangeToLeader <= squad.length) {
+        let leaderTargets = leader.pos.findInRange(FIND_HOSTILE_CREEPS, 3);
+        let leaderTarget = leaderTargets.length && _.min(leaderTargets, c=>c.pos.getRangeTo(leader.pos));
+        if (myRange < 4) {
             // ok, attack
             // creep.log('ok, attack');
             return false;
         }
 
         if (isLeader) {
-            // creep.log('isLeader');
+            creep.log('isLeader');
 
             // creep.log('leader',maxDistanceToLeader,squad.length);
             // move forwards if everyone is nearby, otherwise go back
             // if (maxDistanceToLeader < squad.length + 3) {
-            if (myRange < 6 && maxDistanceToLeader > 3) {
-                return true;
-            } else if (myRange < 4) {
+            if (myRange < 4) {
                 // determine best spot : need 2 available cells at range 3
                 creep.log('deleting path');
                 return false;
+            } else if (myRange < 6 && maxDistanceToLeader > 1) {
+                // wait for brothers
+                creep.log('wait for brothers');
+                return true;
             } else {
                 let damaged = squad.find((c)=>c.hits < c.hitsMax);
                 if (damaged) {
@@ -116,94 +123,35 @@ class SquadAttackStrategy extends Base {
                 util.moveTo(creep, closestEnemy.pos, this.constructor.name, {
                     avoidCreeps: true,
                     ignoreHostiles: true,
-                    range: 3
+                    range: 2
                 });
                 return true;
 
-                /*
-                 let path = creep.memory.path[closestEnemy.id];
-                 if (!path || path.length ===0) {
-                 if (stoppedCounter < 3) {
-                 creep.log('moving to ennemy');
-                 util.moveTo(creep, closestEnemy.pos, this.constructor.name,{avoidCreeps:true, ignoreHostiles:true, range:3})
-                 // path = creep.memory.path[closestEnemy.id] || util.safeMoveTo2(creep, closestEnemy.pos, {avoidCreeps:true, ignoreHostiles:true, range:3});
-                 // creep.log('path', JSON.stringify(path));
-                 // creep.memory.path[closestEnemy.id] = path;
-                 return true;
-                 } else {
-                 creep.log('moving to ennemy2');
-                 util.moveTo(creep, closestEnemy.pos, this.constructor.name,{avoidCreeps:true, ignoreHostiles:true, range:3})
-                 // creep.memory.path[closestEnemy.id] = util.safeMoveTo2(creep, closestEnemy.pos, {avoidCreeps:true, ignoreHostiles:true, range:3});
-                 // creep.log('path', JSON.stringify(path));
-                 // path = creep.memory.path[closestEnemy.id];
-                 return true;
-                 }
-                 } else {
-                 // creep.log(path[0], creep.memory.path[closestEnemy.id]);
-                 if (this.samePos(path[0], creep.pos)) {
-                 path.shift();
-                 }
-                 // creep.log('moving to enemy');
-                 creep.moveTo(path[0]);
-                 return true;
-                 }
-                 */
             }
-            /*  } else if (maxDistanceToLeader < 2 * squad.length) {
-             // creep.log('too spread out, waiting');
-             // just wait
-             return true;
-             } else {
-             /!*
-             // creep.log('too spread out, gathering');
-             util.moveTo(creep, brotherFurthestToLeader.pos, this.constructor.name, {
-             avoidCreeps: true,
-             ignoreHostiles: true,
-             range: 3
-             });
-             *!/
-             // util.safeMoveTo(creep, brotherFurthestToLeader.pos);
-             return true;
-             }*/
         } else {
-            if (maxDistanceToLeader < squad.length + 3) {
-                if (myRange > 5) {
-                    let damaged = squad.find((c)=>c.hits < c.hitsMax);
-                    if (damaged) {
-                        // creep.log('damaged member, healing');
-                        if (creep.pos.getRangeTo(damaged) > 1) {
-                            creep.moveTo(damaged);
-                            creep.heal(damaged);
-                            return true;
-                        } else {
-                            creep.heal(damaged);
-                            return true;
-                        }
-                        // wait
-                    }
-                } else {
-                    // creep.log('in range');
-                    return false;
-                }
-            } else {
-                if (myRange > 6) {
-                    let leaderTarget = leader.getSquadTarget();
-                    if (leaderTarget) {
-                        creep.log('using leader target', leaderTarget);
-                        util.moveTo(creep, leaderTarget, this.constructor.name, {
-                            avoidCreeps: true,
-                            ignoreHostiles: true,
-                            range: 3
-                        });
+            if (myRange > 6 && leaderTarget) {
+                creep.moveTo(leaderTarget);
+                return true;
+            } else if (myRange > 3 && maxDistanceToLeader > 1) {
+                let damaged = squad.find((c)=>c.hits < c.hitsMax);
+                if (damaged) {
+                    creep.log('damaged member, healing');
+                    if (creep.pos.getRangeTo(damaged) > 1) {
+                        creep.moveTo(damaged);
+                        creep.heal(damaged);
+                        return true;
+                    } else {
+                        creep.heal(damaged);
                         return true;
                     }
+                    // wait
+                } else {
+                    creep.log('move to leader')
+                    creep.moveTo(leader);
+                    return true;
                 }
-                /*
-                 //move to leader
-                 // creep.log('closing on leader', JSON.stringify(leader.pos));
-                 creep.moveTo(leader.pos);
-                 return true;
-                 */
+            } else {
+                return false;
             }
         }
     }
@@ -239,6 +187,72 @@ class SquadAttackStrategy extends Base {
 
     samePos(lastPos, pos) {
         return lastPos.x === pos.x && lastPos.y === pos.y && lastPos.roomName === pos.roomName;
+    }
+
+    findAttackingPositions(creep, hostile) {
+        // find walkable tiles around hostile
+        // rate each tile with its range
+        // find a tile  of range max, with n other tiles at range max touching it
+        let center = hostile.pos;
+        let range = 3;
+        let area = hostile.room.glanceForAround(LOOK_TERRAIN, center, range);
+        // console.log('center', JSON.stringify(center));
+        let rangeTo = (center, x, y)=>Math.max(Math.abs(center.x - x), Math.abs(center.y - y));
+        for (let y in area) {
+            for (let x in area[y]) {
+                let terrain = area[y][x][0];
+                if (terrain === 'wall') {
+                    area[y][x] = 0;
+                } else {
+                    let myRange = rangeTo(center, x, y);
+                    area[y][x] = myRange;
+                }
+            }
+        }
+        // console.log('area', JSON.stringify(area));
+        let mapAt = (array, x, y)=>(array[y] || [])[x] || 0;
+        let minimumScore = range;
+        let chosenPositions = [];
+        for (let sy in area) {
+            let y = Number.parseInt(sy);
+            for (let sx in area[y]) {
+                let x = Number.parseInt(sx);
+                let positionsOk = [];
+                if ((mapAt(area, x, y) >= minimumScore)) {
+                    positionsOk.push({x: x, y: y});
+                    if ((mapAt(area, x, y - 1) >= minimumScore)) {
+                        positionsOk.push({x: x, y: y - 1});
+                    }
+                    if ((mapAt(area, x, y + 1) >= minimumScore)) {
+                        positionsOk.push({x: x, y: y + 1});
+                    }
+                    if ((mapAt(area, x - 1, y) >= minimumScore)) {
+                        positionsOk.push({x: x - 1, y: y});
+                    }
+                    if ((mapAt(area, x + 1, y) >= minimumScore)) {
+                        positionsOk.push({x: x + 1, y: y});
+                    }
+                    if (positionsOk.length >= 3) {
+                        chosenPositions.push(positionsOk);
+                    }
+                }
+            }
+        }
+        if (chosenPositions.length > 0) {
+            console.log('validPositions', chosenPositions.length);
+            let chosen = chosenPositions.reduce((chosen,positions)=>{
+                debugger;
+                let myRange = creep.pos.getRangeTo(positions[0].x, positions[0].y);
+                if (myRange< chosen.range) {
+                    chosen.range = myRange;
+                    chosen.positions = positions;
+                }
+                return chosen;
+            }, {positions:[],range:Infinity});
+            console.log('chosen', JSON.stringify(chosen));
+            console.log('chosen', JSON.stringify(chosen.positions));
+            return chosen.positions;
+        }
     }
 }
 SquadAttackStrategy.REFRESH_SQUAD = 10;

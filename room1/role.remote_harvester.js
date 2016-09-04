@@ -86,6 +86,11 @@ class RoleRemoteHarvester {
         }
         if (creep.memory.action == 'load') {
             // creep.log('finding strategy', this.loadStrategies.length);
+            let stash = creep.pos.lookFor(LOOK_ENERGY);
+            // creep.log('stash', stash.find(()=>true), stash.find(()=>true) && stash.find(()=>true).amount);
+            if (stash.find(()=>true) && stash.find(()=>true).amount > 2000) {
+                return;
+            }
             let strategy = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);
             // creep.log('previousStrategy',util.strategyToLog(strategy));
             if (!strategy) {

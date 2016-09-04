@@ -70,7 +70,7 @@ module.exports = {
         let room = object.room;
         let sources = room.find(FIND_SOURCES).concat(room.find(FIND_MINERALS).filter((m)=>m.pos.lookFor(LOOK_STRUCTURES).length > 0));
         if (room.memory.sources) sources = sources.filter((s)=>room.memory.sources.indexOf(s.id) >= 0);
-        sources.forEach((s)=> this.createFlags(this.findPath(room, object.pos, s.pos, 1), room), room);
+        sources.forEach((s)=> this.createFlags(this.findPath(room, object.pos, s.pos, 2), room), room);
     },
     /**
      *
@@ -81,7 +81,7 @@ module.exports = {
         let room = object.room;
         let sources = room.find(FIND_MINERALS);
         if (room.memory.sources) sources = sources.filter((s)=>room.memory.sources.indexOf(s.id) >= 0);
-        sources.forEach((s)=> this.createFlags(this.findPath(room, object.pos, s.pos, 1), room), room);
+        sources.forEach((s)=> this.createFlags(this.findPath(room, object.pos, s.pos, 2), room), room);
     },
 
     /**
@@ -105,7 +105,7 @@ module.exports = {
         'use strict';
         let room = Game.rooms[roomname];
         let dest = room.getExitTo(toRoom);
-        this.createFlags(this.findPath(room, room.storage.pos, dest), room);
+        this.createFlags(this.findPath(room, room.storage.pos, dest,1), room);
     },
     /**
      *
@@ -195,7 +195,7 @@ module.exports = {
         let room = Game.rooms[roomname];
         let orig = room.getExitTo(fromRoom);
         let dest = room.getExitTo(toRoom);
-        var path = this.findPath(room, orig, dest);
+        var path = this.findPath(room, orig, dest,1);
         // let path = new RoomPosition(orig.x, orig.y, room.name).findPathTo(dest.x, dest.y);
         console.log('path', path.length);
         this.createFlags(path, room);
@@ -228,7 +228,7 @@ module.exports = {
                     let used = Game.cpu.getUsed();
 
                     if (!pathHolder.path && used - startCpu < limit - used) {
-                        pathHolder.path = this.findPath(room, source1.pos, source2.pos, 1);
+                        pathHolder.path = this.findPath(room, source1.pos, source2.pos, 2);
                         console.log('path found', Game.cpu.getUsed() - used);
                     }
                     used = Game.cpu.getUsed();

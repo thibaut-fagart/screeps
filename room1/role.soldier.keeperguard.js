@@ -35,7 +35,7 @@ class RoleKeeperGuard extends RoleRemoteRoomGuard {
                  } else return ()=>true;
 
              }),
-            new RemoteAttackStrategy(5),
+            new RemoteAttackStrategy(4),
              /*new DisableTargetStrategy(5)*/ /*new RemoteHealKeeperGuardStrategy()*//*,new MoveToActiveKeeperLair()*/
             new MoveToSpawningKeeperLair((creep)=> {
                 if (creep.room.memory.sources) {

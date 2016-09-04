@@ -9,14 +9,9 @@ class RoleDismantler {
     constructor() {
         this.loadStrategies = [new DismantleStrategy()];
         this.unloadStrategies = [
-            new DropToEnergyStorageStrategy(STRUCTURE_TOWER),
-            new DropToEnergyStorageStrategy(STRUCTURE_SPAWN),
-            new DropToEnergyStorageStrategy(STRUCTURE_EXTENSION),
-            new DropToContainerStrategy(undefined, STRUCTURE_STORAGE),
-            // new DropToContainerStrategy(RESOURCE_ENERGY,STRUCTURE_LINK),
-            new DropToContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (creep)=> {
-                return ((s)=>s.room.isHarvestContainer(s));
-            })];
+            new DropToContainerStrategy(),
+            new DropToEnergyStorageStrategy()
+        ];
         util.indexStrategies(this.loadStrategies);
         util.indexStrategies(this.unloadStrategies);
     }
@@ -25,21 +20,6 @@ class RoleDismantler {
         // creep.memory.role = 'upgrader';
     }
 
-    /*
-     findTarget(creep) {
-     var target = util.objectFromMemory(this.BUILD_TARGET);
-     if (!target) {
-     // console.log("finding target for  ", creep.name);
-     var targets = creep.room.find(FIND_CONSTRUCTION_SITES).sort((c)=> -(c.progress / c.progressTotal));
-     if (targets.length) {
-     target = targets[0];
-
-     creep.memory[this.BUILD_TARGET] = target.id;
-     }
-     }
-     return target;
-     }
-     */
 
     onNoLoadStrategy(creep) {
 
@@ -47,6 +27,7 @@ class RoleDismantler {
 
     /** @param {Creep} creep **/
     run(creep) {
+        // creep.log(this.constructor.name);
         if (creep.memory.dismantling && _.sum(creep.carry) == creep.carryCapacity) {
             creep.memory.dismantling = false;
             util.setCurrentStrategy(creep, null);

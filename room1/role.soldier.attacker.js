@@ -10,10 +10,12 @@ var HealStrategy = require('./strategy.remote_heal');
 class RoleAttacker {
     constructor() {
         this.attackStrategies = [
+            new CloseAttackStrategy(undefined),
             new CloseAttackStrategy(undefined,(creep)=>((target)=>target.getActiveBodyparts(ATTACK)+target.getActiveBodyparts(HEAL)>0)),
             new RemoteAttackStrategy(),
+            new AttackStructureStrategy(),
             new HealStrategy()/*, new AttackWallStrategy()*/,
-            new AttackStructureStrategy()];
+            /*new AttackStructureStrategy()*/];
         this.moveTask = new MoveToRoomTask('attack');
         util.indexStrategies(this.attackStrategies);
     }
@@ -49,7 +51,7 @@ class RoleAttacker {
         }
 
         // creep.log(creep.memory.action);
-        if (creep.memory.action == 'go_remote_room' && creep.room.name == creep.memory.homeroom) {
+        if (creep.memory.action == 'go_remote_room' && creep.room.name !== creep.memory.remoteRoom) {
             let accepts = this.moveTask.accepts(creep);
             if (accepts) return;
         }

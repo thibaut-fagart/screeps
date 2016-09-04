@@ -11,46 +11,87 @@ if (!Game.rooms['sim'] && !Memory.disableProfiler) profiler.enable();
 // var RoomManager = require('./manager.room'), roomManager = new RoomManager(); // todo manager
 // This line monkey patches the global prototypes.
 // if (Game.cpu.bucket> 500)
+function debugCreep(name) {
+    'use strict';
+    Memory.debug = Memory.debug || {};
+    let debugCreeps = Memory.debug.creeps || [];
+    return (!debugCreeps.length || (debugCreeps.indexOf(name) >= 0));
+}
+function debugRole(name) {
+    'use strict';
+    Memory.debug = Memory.debug || {};
+    let debugRole = Memory.debug.roles || [];
+    return (!debugRole.length || (debugRole.indexOf(name) >= 0));
+}
+function debugRoom(name) {
+    'use strict';
+    Memory.debug = Memory.debug || {};
+    let debugRooms = Memory.debug.rooms || [];
+    return (!debugRooms.length || (debugRooms.indexOf(name) >= 0));
+}
 Memory.debug = Memory.debug || {};
-var debugRoles = Memory.debug.roles ||[];
-var debugRooms = Memory.debug.rooms || [];
-var debugCreeps = Memory.debug.creeps || [];
 Creep.prototype.log = function () {
-    if ((!debugRoles.length || (debugRoles.indexOf(this.memory.role) >= 0))
-        && (!debugRooms.length || (debugRooms.indexOf(this.room.name) >= 0))
-        && (!debugCreeps.length || (debugCreeps.indexOf(this.name) >= 0))
+    if (debugRole(this.memory.role)
+        && debugRoom(this.room.name)
+        && debugCreep(this.name)
     ) {
         console.log([Game.time, this.name, this.pos, this.memory.role].concat(Array.prototype.slice.call(arguments)));
     }
 };
 Spawn.prototype.log = function () {
-    if ((!debugRooms.length || (debugRooms.indexOf(this.room.name) >= 0))
-        && (!debugCreeps.length || (debugCreeps.indexOf(this.name) >= 0))
+    if (debugRole(this.memory.role)
+        && debugRoom(this.room.name)
+        && debugCreep(this.name)
     ) {
         console.log([Game.time, this.name, this.room.name].concat(Array.prototype.slice.call(arguments)));
     }
 };
 Room.prototype.log = function () {
-    if ((!debugRooms.length || (debugRooms.indexOf(this.name) >= 0))) {
+    if (debugRoom(this.name)) {
         console.log([Game.time, this.name, this.controller ? this.controller.level : 'neutral'].concat(Array.prototype.slice.call(arguments)));
     }
 };
 Structure.prototype.log = function () {
     console.log([Game.time, this.structureType, this.room.name, this.id].concat(Array.prototype.slice.call(arguments)));
 };
-Structure.prototype.memory = function () {
-    'use strict';
-    let mem = this.room.memory.structures;
-    if (!mem) {
-        mem = this.room.memory.structures = {};
-    }
-    if (!mem.id) {
-        return mem.id = {};
-    } else {
-        return mem.id;
-    }
 
-};
+Object.defineProperty(Structure.prototype, 'memory',
+    {
+        get: function () {
+            'use strict';
+            this.room.memory.structures = this.room.memory.structures || {};
+            let mem = this.room.memory.structures;
+            mem[this.id] = mem[this.id] || {};
+            return mem[this.id];
+        },
+        set: function (value) {
+            let mem = this.room.memory.structures = this.room.memory.structures || {};
+            mem[this.id] = value;
+        },
+        configurable: true
+    });
+
+Object.defineProperty(StructureLink.prototype, 'operator',
+    {
+        get: function () {
+            // this.log('getOperator', this.memory.operator);
+            let opId = this.memory.operator;
+            if (opId) {
+                let creep = Game.getObjectById(opId);
+                if (!creep) {
+                    delete this.memory.operator;
+                }
+                return creep;
+            }
+            return undefined;
+        },
+        set: function (value) {
+            // this.log('setOperator', value);
+            this.memory.operator = value && value.id;
+        },
+        configurable: true
+    });
+
 function wrapPathFinder() {
     "use strict";
     let basePathFinderSearch = PathFinder.search;
@@ -74,7 +115,9 @@ let roomTasks = {
     assessThreat: (r)=> {
         if (Game.cpu.bucket > 200) r.assessThreat();
     },
-    labs: (r)=> { if (!(Game.time % 10) && r.memory.labs) r.operateLabs();},
+    labs: (r)=> {
+        if (!(Game.time % 10) && r.memory.labs) r.operateLabs();
+    },
 
 };
 
@@ -93,9 +136,9 @@ function innerLoop() {
             }
         });
     }
-    let cpu = {}, roomCpu = {}, remoteCpu={};
+    let cpu = {}, roomCpu = {}, remoteCpu = {};
     let availableCpu = Game.cpu.tickLimit;
-    if (updateStats) _.keys(handlers).forEach((k)=>cpu['creeps.'+k] = 0);
+    if (updateStats) _.keys(handlers).forEach((k)=>cpu['creeps.' + k] = 0);
     let sortedRooms = _.sortBy(_.values(Game.rooms), (r)=> r.controller && r.controller.my ? r.controller.level : 10);
     if (updateStats && Game.cpu.tickLimit < 500) console.log('room, controller, roomTasks , creeps ,spawns , labs , stats, room');
     let taskPairs = _.pairs(roomTasks);
@@ -142,7 +185,7 @@ function innerLoop() {
                         }
                         let end = Game.cpu.getUsed();
                         if (updateStats) {
-                            cpu['creeps.'+creep.memory.role] = (cpu['creeps.'+creep.memory.role] || 0) + (end - start);
+                            cpu['creeps.' + creep.memory.role] = (cpu['creeps.' + creep.memory.role] || 0) + (end - start);
                             if (creep.memory.remoteRoom) {
                                 remoteCpu[creep.memory.remoteRoom] = (remoteCpu[creep.memory.remoteRoom] || 0) + (end - start);
                             }
@@ -196,8 +239,8 @@ function innerLoop() {
             }
             Memory.stats['room.' + room.name + '.strangers'] = _.size(strangers);
             Memory.stats['room.' + room.name + '.hostiles'] = _.size(hostiles);
-            //        let roster = util.roster(room);
-            //      _.keys(handlers).forEach((k)=> Memory.stats['room.' + room.name + '.creeps.' + k] = roster[k] || 0);
+            let roster = util.roster(room);
+            _.keys(handlers).forEach((k)=> Memory.stats['room.' + room.name + '.creeps.' + k] = roster[k] || 0);
         }
         let statsCpu = Game.cpu.getUsed();
         if (updateStats) cpu ['stats'] = (cpu ['stats'] || 0) + statsCpu - labsCpu;
@@ -219,8 +262,8 @@ function innerLoop() {
     _.keys(Memory.rooms).forEach((k)=> {
         Memory.stats['cpu.remoteRooms.' + k] = remoteCpu[k] || 0;
         let stat = Memory.stats['room.' + k + '.efficiency.remoteMining'];
-        if ( stat && remoteCpu[k] || 0) {
-            Memory.stats[`remoteRooms.${k}.cpu_efficiency`] = stat/remoteCpu[k];
+        if (stat && remoteCpu[k] || 0) {
+            Memory.stats[`remoteRooms.${k}.cpu_efficiency`] = stat / remoteCpu[k];
         }
         // console.log(`cpu.room, ${k},${roomCpu[k] || 0}`);
     });
@@ -248,6 +291,7 @@ function innerLoop() {
 // RoomObject.prototype.creeps = [];
 module.exports.loop = function () {
     let mainStart = Game.cpu.getUsed();
+    Memory.stats = Memory.stats || {};
     Memory.stats['cpu_.init'] = mainStart;
     if (Game.cpu.bucket > 200 && !Game.rooms['sim']) {
         profiler.wrap(innerLoop);

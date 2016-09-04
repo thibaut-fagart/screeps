@@ -102,6 +102,19 @@ class RoleBuilder {
         }
 
         if (creep.memory.building) {
+            if (creep.carry.energy <0.5 * _.sum(creep.carry)) {
+            // WTF creep pickep up some minerals !!
+                if (creep.pos.getRangeTo(creep.room.storage)>1) {
+                    util.moveTo(creep, creep.room.storage.pos, {range: 1});
+                } else {
+                    for (let min in creep.carry) {
+                        if (min !== RESOURCE_ENERGY) {
+                            creep.transfer(creep.room.storage, min);
+                        }
+                    }
+                }
+                return ;
+            }
             if (!this.buildStrategy.accepts(creep)) {
                 this.resign(creep);
             }

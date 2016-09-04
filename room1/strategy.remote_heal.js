@@ -72,7 +72,7 @@ class RemoteHealStrategy extends BaseStrategy {
                     heal = creep.rangedHeal(damaged);
                     creep.log(`healing ${damaged.name} at (${damaged.pos.x},${damaged.pos.y}), heal ${heal}`);
                 }
-                return !hostiles.length;
+                return hostiles.length;
             } else {
                 // creep.log('damaged, me', hasRangedAttack, hasAttack, damaged.name);
                 // creep.log('hasRangedAttack', hasRangedAttack, '!hasAttack', !hasAttack);

@@ -7,15 +7,17 @@ class RoleTower {
         this.remoteAttackStrategy = new RemoteTargetStrategy(undefined,(tower)=>{
             return function(target) {
                 let ignoredStructures = [STRUCTURE_ROAD, STRUCTURE_EXTRACTOR];
-                let endangeredStructures = tower.room.glanceForAround(LOOK_STRUCTURES, target.pos, 3, true).filter((s)=>ignoredStructures.indexOf(s.structure.structureType)<0 );
-                let endangeredCreeps = tower.room.glanceForAround(LOOK_CREEPS, target.pos, 3, true).filter((c)=>c.my );
+                let endangeredStructures = tower.room.glanceForAround(LOOK_STRUCTURES, target.pos, 3, true).map(p=>p.structure).filter((s)=>ignoredStructures.indexOf(s.structureType)<0 );
+                let endangeredCreeps = tower.room.glanceForAround(LOOK_CREEPS, target.pos, 5, true).map(p=>p.creep).filter((c)=>c.my );
                 tower.log(`target ${JSON.stringify(target.pos)}, ${target.owner.username} endangeredStructures ${endangeredStructures.length}, endangeredCreeps ${endangeredCreeps.length}`);
                 Game.notify(`target ${JSON.stringify(target.pos)}, ${target.owner.username} endangeredStructures ${endangeredStructures.length}, endangeredCreeps ${endangeredCreeps.length}`);
-
-                return /*target.owner.username === 'Invader' || */ tower.pos.getRangeTo(target)<= 5 || (endangeredStructures.length+endangeredStructures.length>0);
+                return /*target.owner.username === 'Invader' || */ tower.pos.getRangeTo(target)<= 5 || ((endangeredStructures.length+endangeredCreeps.length)>0);
             };
         });
-        this.remoteHealStrategy = new RemoteHealStrategy();
+        this.remoteHealStrategy = new RemoteHealStrategy(undefined,(tower)=>(creep=>{
+            if (creep.getActiveBodyparts(HEAL)>0 && creep.hits > 1000) return false;
+            return true;
+        }));
         // this.remoteRepairStrategy = new RemoteRepairStrategy();
     }
 
@@ -25,7 +27,9 @@ class RoleTower {
         let remoteTarget = this.remoteAttackStrategy.accepts(tower);
         if (remoteTarget) {
             tower.log('tower attacking', JSON.stringify(remoteTarget.owner));
-            try {Game.notify([tower.structureType, tower.room.name, tower.id].concat(['tower attacking', JSON.stringify(remoteTarget.owner)]));} catch(e) {
+            try {
+                Game.notify([tower.structureType, tower.room.name, tower.id].concat(['tower attacking', JSON.stringify(remoteTarget.owner)]));
+            } catch(e) {
                 tower.log('notification failed');
             }
             // tower.attack(remoteTarget);

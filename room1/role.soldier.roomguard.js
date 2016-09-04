@@ -26,9 +26,10 @@ class RoleRemoteRoomGuard {
         };
         this.healStrategy = new RemoteHealKeeperGuardStrategy(5);
         this.attackStrategies = [
-            this.healStrategy, new RegroupStrategy(COLOR_WHITE), new RemoteAttackStrategy(5, toleratePredicate), new SquadAttackStrategy(3, toleratePredicate), new RemoteAttackStrategy(undefined, toleratePredicate),
+            this.healStrategy, new RegroupStrategy(COLOR_WHITE), new RemoteAttackStrategy(5, toleratePredicate),
+            new SquadAttackStrategy(3, toleratePredicate), new RemoteAttackStrategy(undefined, toleratePredicate),
             new HealStrategy(), new CloseAttackStrategy(undefined, toleratePredicate)/*,new AttackStructureStrategy()*/];
-        this.regroupStrategy = new RegroupStrategy(COLOR_BLUE);
+        this.regroupStrategy = new RegroupStrategy(COLOR_ORANGE);
         this.moveTask = new MoveToRoomTask('attack', 'homeroom', 'remoteRoom');
         util.indexStrategies(this.attackStrategies);
     }
@@ -67,7 +68,7 @@ class RoleRemoteRoomGuard {
                 creep.memory.action = 'go_remote_room';
             } else {
                 // creep.log('brothers?', brotherCount);
-                if (!creep.room.memory.attack_min || (creep.room.memory.attack_min && creep.room.memory.attack_min[creep.memory.remoteRoom]<= (brotherCount))) {
+                if (!creep.room.memory.attack_min || !creep.room.memory.attack_min[creep.memory.remoteRoom] ||(creep.room.memory.attack_min[creep.memory.remoteRoom]<= (brotherCount))) {
                     creep.memory.action = 'go_remote_room';
                 } else {
                     this.regroup(creep);
@@ -117,7 +118,7 @@ class RoleRemoteRoomGuard {
             if (!strategy) {
                 _.filter(this.nonExclusiveStrategies, (strat)=>strat.accepts(creep));
                 strategy = _.find(this.attackStrategies, (strat)=>strat.accepts(creep));
-                creep.log('newStrategy',util.strategyToLog(strategy));
+                if (strategy)creep.log('newStrategy',util.strategyToLog(strategy));
             }
             if (strategy) {
                 // creep.log('strategy', strategy.constructor.name);

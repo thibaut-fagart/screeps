@@ -18,12 +18,11 @@ class RoleRecycle {
             if (range ==1) {
                 if (creep.memory.previousRole && creep.memory.remoteRoom) {
                     creep.log('recycling', creep.memory.remoteRoom, _.sum(creep.body, ((p)=>BODYPART_COST[p.type])) *creep.ticksToLive / 1500);
-                    creep.room.deliver(creep.memory.remoteRoom, Math.ceil(_.sum(creep.body, ((p)=>BODYPART_COST[p.type])) * creep.ticksToLive / 1500));
                 }
                 spawn.recycleCreep(creep);
             } else  util.moveTo(creep, spawn.pos, this.constructor.name+'Path');
         } else if (creep.memory.homeroom) {
-            creep.log('recycle move');
+            // creep.log('recycle move');
             if (!creep.memory.homeroom === creep.room.name){
                 creep.memory.action = 'go_home_room';
             }

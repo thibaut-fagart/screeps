@@ -6,7 +6,7 @@ var RegroupStrategy = require('./strategy.regroup');
 
 class RoleReserveController {
     constructor() {
-        this.loadStrategies = [new ReserveControllerStrategy(COLOR_ORANGE)];
+        this.loadStrategies = [new ReserveControllerStrategy(COLOR_GREY,COLOR_RED)];
         this.regroupStrategy = new RegroupStrategy(COLOR_ORANGE);
         this.moveTask = new MoveToRoomTask('reserve','homeroom','remoteRoom');
 

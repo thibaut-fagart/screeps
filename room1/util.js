@@ -283,7 +283,7 @@ class Util {
     }
 
     findSafeSources(remoteRoom, allowMinerals) {
-        let deposits=[];
+        let deposits = [];
         if (!remoteRoom) return [];
         let nonHostiles = remoteRoom.memory.tolerates || [];
         allowMinerals = allowMinerals && !remoteRoom.memory.ignoreMinerals;
@@ -310,11 +310,11 @@ class Util {
                 ).length == 0;
                 deposits = remoteRoom.find(FIND_SOURCES, {filter: safeFilter});
                 if (mineralsAreHarvestable) {
-                    deposits  = deposits.concat(remoteRoom.find(FIND_MINERALS, {filter: safeFilter})).filter((m)=>m.mineralAmount > 0);
+                    deposits = deposits.concat(remoteRoom.find(FIND_MINERALS, {filter: safeFilter})).filter((m)=>m.mineralAmount > 0);
                 }
             }
         }
-        return remoteRoom.memory.sources ? deposits.filter((s)=>remoteRoom.memory.sources.indexOf(s.id) >= 0):deposits;
+        return remoteRoom.memory.sources ? deposits.filter((s)=>remoteRoom.memory.sources.indexOf(s.id) >= 0) : deposits;
     }
 
     /**
@@ -331,22 +331,22 @@ class Util {
                 creep.memory.blocked = (creep.memory.blocked || 0) + 1;
                 // creep.say('blocked');
                 if (creep.memory[memorySlot]) {
-                    let path =  this.restorePath(creep.memory[memorySlot].path);
+                    let path = this.restorePath(creep.memory[memorySlot].path);
                     let idx = _.findIndex(path, (i) => i.x - i.dx == creep.pos.x && i.y - i.dy == creep.pos.y);
                     // creep.log('pathIndex', idx);
-                    if (idx>=0 && idx < path.length-1) {
+                    if (idx >= 0 && idx < path.length - 1) {
                         let nextPos = path[idx + 1];
                         let pos = new RoomPosition(nextPos.x, nextPos.y, creep.room.name);
                         let obstacleCreeps = pos.lookFor(LOOK_CREEPS);
-                        if (obstacleCreeps.length>0) {
+                        if (obstacleCreeps.length > 0) {
                             /* {Creep}*/
                             let blocker = obstacleCreeps[0];
                             // creep.log('blocker', blocker.name);
-                            if (blocker.fatigue == 0 && blocker.memory.lastMoved> Game.time -2) {
-                                let blockerMoveDir = (path[idx+1].direction+4)%8+1;
+                            if (blocker.fatigue == 0 && blocker.memory.lastMoved > Game.time - 2) {
+                                let blockerMoveDir = (path[idx + 1].direction + 4) % 8 + 1;
                                 let otherOk = blocker.move(blockerMoveDir);
-                                let ok = creep.move(path[idx+1].direction);
-                                if (otherOk ===OK && ok ===OK) {
+                                let ok = creep.move(path[idx + 1].direction);
+                                if (otherOk === OK && ok === OK) {
                                     // creep.log('movedBlocker', blockerMoveDir);
                                     // creep.log('moved', path[idx+1].direction);
                                     return false;
@@ -445,7 +445,7 @@ class Util {
         } else if (creep.pos.getRangeTo(pos) <= options.range) {
             return OK;
         } else {
-            creep.log('empty path', pos);
+            creep.log('empty path', pos, 'options.range',options.range, 'range',creep.pos.getRangeTo(pos));
             creep.moveTo(pos);
         }
     }
@@ -485,11 +485,18 @@ class Util {
         return path;
     }
 
-    
+
     safeMoveTo2(creep, destination, options) {
         // creep.log('safeMoveTo2', creep.name, destination);
         options = options || {};
         let callback = this.avoidHostilesCostMatrix(creep, options);
+        // console.log('safeMoveTo2', creep.room.name, creep.name);
+/*
+        if (creep.room.name === 'W55S44' && !creep.name) {
+            // creep.log('matrix',callback, callback(creep.room.name));
+            this.debugCostMatrix(creep.room, callback(creep.room.name));
+        }
+*/
         let goal = (options.range) ? {pos: destination, range: options.range} : destination;
         options = _.merge({
             plainCost: 2,
@@ -570,14 +577,23 @@ class Util {
 
     avoidHostilesCostMatrix(creepOrRoom, options) {
         let room = creepOrRoom.room ? creepOrRoom.room : creepOrRoom;
-        return this.avoidCostMatrix(room, (options && options.ignoreHostiles)?[]:room.find(FIND_HOSTILE_CREEPS), 4, options);
+        return this.avoidCostMatrix(room, (options && options.ignoreHostiles) ? [] : room.find(FIND_HOSTILE_CREEPS), 4, options);
     }
-
+    debugCostMatrix (room, matrix) {
+        for(let x = 0; x < 49; x++) {
+            for (let y =0; y < 49; y++) {
+                let cost = matrix.get(x, y);
+                if (cost===255) {
+                    room.createFlag(x, y, this.newFlagName(), COLOR_GREY, COLOR_RED);
+                }
+            }
+        }
+    }
     avoidCostMatrix(creepOrRoom, hostiles, range, options) {
         range = range || 1;
         options = options || {};
-        // creepOrRoom.log('avoidCostMatrix', JSON.stringify(options));
         let room = creepOrRoom.room ? creepOrRoom.room : creepOrRoom;
+        // creepOrRoom.log('avoidCostMatrix', room.name, JSON.stringify(options));
         return (roomName) => {
             if (roomName == room.name) {
                 let matrix = new PathFinder.CostMatrix();
@@ -608,17 +624,14 @@ class Util {
                 };
                 hostiles.forEach((c)=> {
                     let cost = (c.hits > 100) ? 255 : 60;
-                    matrix.set(c.pos.x, c.pos.y, 255);
-                    for (let r = 1; r <= range; r++) {
-                        let rcost = cost /** (range - r + 1) / range*/;
-                        set(c.pos.x - r, c.pos.y - r, rcost);
-                        set(c.pos.x - r, c.pos.y, rcost);
-                        set(c.pos.x - r, c.pos.y + r, rcost);
-                        set(c.pos.x, c.pos.y - r, rcost);
-                        set(c.pos.x, c.pos.y + r, rcost);
-                        set(c.pos.x + r, c.pos.y - r, rcost);
-                        set(c.pos.x + r, c.pos.y, rcost);
-                        set(c.pos.x + r, c.pos.y + r, rcost);
+                    let top = Math.max(0, c.pos.y - range);
+                    let left = Math.max(0, c.pos.x - range);
+                    let bottom = Math.min(49, c.pos.y + range);
+                    let right = Math.min(49, c.pos.x + range);
+                    for (let x = left; x <=right;x++) {
+                        for (let y = top; y <= bottom;y++) {
+                            matrix.set(x, y, cost);
+                        }
                     }
                 });
                 if (options.avoidCreeps) {
@@ -755,13 +768,16 @@ class Util {
         'use strict';
         return COLOR_PURPLE + (_.keys(CONSTRUCTION_COST).indexOf(structureType) >= COLORS_ALL.length ? 1 : 0);
     }
+
     secondaryBuildColor(structureType) {
         'use strict';
         return _.keys(CONSTRUCTION_COST).indexOf(structureType) % COLORS_ALL.length;
     }
+
     buildColors(structureType) {
         return {color: this.primaryBuildColor(structureType), secondaryColor: this.secondaryBuildColor(structureType)};
     }
+
     newFlagName() {
         let flagName;
         Memory.temp.flagId = Memory.temp.flagId || 0;
@@ -789,7 +805,36 @@ class Util {
     posFromString(pos, roomName) {
         let x = Number.parseInt(pos.substring(0, 2));
         let y = Number.parseInt(pos.substring(2, 4));
-        return Game.rooms[roomName] ? new RoomPosition(x, y, roomName) : {x: x, y: y, roomName:roomName};
+        try {
+            return new RoomPosition(x, y, roomName);
+        } catch (e) {
+            console.log('invalid pos', JSON.stringify(pos), roomName);
+            throw e;
+        }
+
+    }
+
+    /**
+     *
+     * @param {RoomPosition[]} path
+     * @param {log} logWith
+     * @return {road,plain,swamp}
+     */
+    pathCost(path, logWith) {
+        let result = {road: 0, plain: 0, swamp: 0};
+        return path.reduce((acc, pos)=> {
+            let stepCost = 2;
+            if (pos.lookFor(LOOK_STRUCTURES).find(l=> l.structureType === STRUCTURE_ROAD)) {
+                result.road =result.road + 1;
+            } else {
+                let terrain = pos.lookFor(LOOK_TERRAIN);
+                // logWith.log('terrain', JSON.stringify(terrain));
+                result[terrain] = result[terrain] + 1;
+            }
+            // logWith.log('stepCost', stepCost, JSON.stringify(pos));
+            return acc ;
+        }, result);
+        return result;
     }
 }
 Util.ROOM_NAME_PATTERN = /([EW])(\d+)([NS])(\d+)/;

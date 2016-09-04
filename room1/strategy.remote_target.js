@@ -29,7 +29,7 @@ class RemoteTargetStrategy extends BaseStrategy {
         // if(creep instanceof Creep) creep.log('hostiles', hostiles.length);
         if (hostiles.length) {
             // choose target
-            let attackerPriorities = [HEAL, RANGED_ATTACK, ATTACK];
+            let attackerPriorities = [HEAL, ATTACK, RANGED_ATTACK, WORK];
             for (var part in attackerPriorities) {
                 target = creep.pos.findClosestByRange(hostiles, {filter: (c)=>c.getActiveBodyparts(part) != 0});
                 if (target) {
@@ -46,7 +46,8 @@ class RemoteTargetStrategy extends BaseStrategy {
                 let rangedAttack = this.performAttack(creep, target);
                 // creep.log('rangedAttack?', rangedAttack); // TODO removed predicate
                 if (rangedAttack === ERR_NOT_IN_RANGE) {
-                    util.moveTo(creep, target.pos,this.constructor.name);
+                    // util.moveTo(creep, target.pos,this.constructor.name);
+                    creep.moveTo(target.pos);
                     // if(creep instanceof Creep) creep.log('not in range, moving');
                 } else if (rangedAttack !== OK) {
                     if (creep instanceof Creep) creep.log('rangedAttack?', rangedAttack);

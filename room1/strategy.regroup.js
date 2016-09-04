@@ -10,7 +10,7 @@ class RegroupStrategy extends Base {
 
     getRegroupPos(creep) {
         if (creep.memory[this.PATH]) {
-            let pos = util.posFromString(creep.memory[this.PATH]);
+            let pos = util.posFromString(creep.memory[this.PATH], creep.room.name);
 
             if (pos.lookFor && pos.lookFor(LOOK_FLAGS).find(f=>f.color === this.flagColor && f.secondaryColor === this.flagColor)) {
                 return pos;

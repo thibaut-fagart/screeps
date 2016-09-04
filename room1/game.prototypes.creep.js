@@ -8,6 +8,27 @@ Creep.prototype.getSquadTarget = function () {
         return new RoomPosition(pos.x, pos.y, pos.roomName);
     }
 };
+/**
+ * returns the speed of this creep ,actually ticks to move on each terrain
+ * @returns {{empty: {road: number, plain: number, swamp: number}, full: {road: number, plain: number, swamp: number}}}
+ */
+Creep.prototype.speed = function () {
+    "use strict";
+    let moves = this.getActiveBodyparts(MOVE);
+    let carrys = this.getActiveBodyparts(CARRY);
+    let total = this.body.length;
+    return {
+        empty: {
+            road: Math.ceil((total-carrys-moves)/(2*moves)),
+            plain: Math.ceil((total-carrys-moves)/moves),
+            swamp: Math.ceil(5*(total-carrys-moves)/moves),
+        }, full: {
+            road: Math.ceil((total-moves )/(2*moves)),
+            plain: Math.ceil((total-moves)/moves),
+            swamp: Math.ceil(5*(total-moves)/moves),
+        }
+    };
+};
 
 Creep.prototype.boostPartType = function (parts) {
     "use strict";
@@ -30,7 +51,7 @@ Creep.prototype.boostPartType = function (parts) {
             if (lab) break;
         }
         if (!lab) {
-            this.log(`no lab for ${part_type} , boosts : ${boosts}` );
+            this.log(`no lab for ${part_type} , boosts : ${boosts}`);
             return false;
         }
         if (lab) this.memory.boostingLab = lab.id;
@@ -50,4 +71,15 @@ Creep.prototype.boostPartType = function (parts) {
         return false;
     }
 };
+
+/**
+ *todo : account for boosts
+ */
+Object.defineProperty(Creep.prototype, 'repairCapacity', {
+    get: function () {
+        'use strict';
+        this.memory.repairCapacity = this.memory.repairCapacity || this.getActiveBodyparts(WORK) * REPAIR_POWER;
+        return this.memory.repairCapacity;
+    }
+});
 module.exports = Room.prototype;

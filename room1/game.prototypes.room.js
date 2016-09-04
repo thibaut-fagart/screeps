@@ -72,28 +72,25 @@ Room.prototype.operateLinks = function () {
     let storageLink = (this.storage) && links.find((l)=> l.pos.getRangeTo(this.storage) < 4);
     let controllerLink = links.find((l)=> l.pos.getRangeTo(this.controller.pos) < 5);
     let otherLinks = links.filter((l)=> (!storageLink || (storageLink && l.id !== storageLink.id)) && (!controllerLink || (controllerLink && l.id !== controllerLink.id)));
-    otherLinks = _.sortBy(otherLinks.filter((l)=>l.cooldown === 0), (l)=> -l.energy);
-    let linkAccepts = (link, amount) => link && /*!link.cooldown && */link.energy + amount < link.energyCapacity;
+    // this.log('dropoff links', otherLinks.length);
+    otherLinks = otherLinks.filter(l=>l.energy > 0.9 * l.energyCapacity);
+    let linkAccepts = (link, amount) => link && !link.energy;
     let chooseTargetLink = (amount, l1, l2)=> {
         if (linkAccepts(l1, amount)) {
             return l1;
         } else if (linkAccepts(l2, amount)) {
             return l2;
-        } else {
-            if (!l1 || !l2) {
-                return l1 ? l1 : l2;
-            } else if (l1.energy < l2.energy) {
-                return l1;
-            } else {
-                return l2;
-            }
         }
     };
-
+    // this.log('full links', otherLinks.length);
     otherLinks.forEach((l)=> {
         'use strict';
         let target = chooseTargetLink(l.energy, controllerLink, storageLink);
-        if (target) l.transferEnergy(target);
+        if (target) {
+            l.transferEnergy(target);
+        } else {
+            // this.log('no valid link target');
+        }
     });
     let target = storageLink ? chooseTargetLink(storageLink.energy, controllerLink, undefined) : undefined;
     if (target) {
@@ -166,11 +163,14 @@ Room.prototype.assessThreat = function () {
 Room.efficiency = function (roomName) {
     try {
         let roomMem = Memory.rooms[roomName].efficiency || {date: Game.time};
-        let oldMems = Memory.rooms[roomName].oldEfficiencies = Memory.rooms[roomName].oldEfficiencies || [];
-        if (roomMem.date + 1500 < Game.time) {
+        Memory.rooms[roomName].oldEfficiencies = Memory.rooms[roomName].oldEfficiencies || [];
+        let oldMems = Memory.rooms[roomName].oldEfficiencies;
+        if (!roomMem.date || roomMem.date + 500 < Game.time) {
+            // console.log('archiving old efficiency', oldMems.length);
             oldMems.push(roomMem);
             if (oldMems.length > 10) oldMems.shift();
-            roomMem = Memory.rooms[roomName].efficiency = {date: Game.time};
+            roomMem = {date: Game.time};
+            Memory.rooms[roomName].efficiency = {date: Game.time};
         }
         // [{remoteMining: {room:value}]
         let result = _.cloneDeep(roomMem);
@@ -303,8 +303,9 @@ function findExit(room, targetRoom) {
             }
         }
     });
-    if (!route) {
+    if (ERR_NO_PATH === route) {
         room.log('ERROR no route from', roomName, 'to', targetRoom);
+        return;
     }
     roomMemory.roomDistance = roomMemory.roomDistance || {};
     roomMemory.roomDistance [targetRoom] = route.length;
@@ -406,31 +407,41 @@ Room.prototype.tripTimeToSources = function (toRoom, force) {
     // console.log('tripTime',JSON.stringify(Memory.rooms[this.name].cache.remoteMining));
     let cache = Memory.rooms[this.name].cache.remoteMining;
 
-    if (force || !cache.tripTimeToSources || !cache.tripTimeToSources[toRoom] || (cache.tripTimeToSources.time + 3000 < Game.time + 100 * Math.random())/*refresh time, random so that not all rooms timeout at the same time*/) {
+    if (force || !cache.tripTimeToSources || !cache.tripTimeToSources[toRoom] || !cache.tripTimeToSources[toRoom].path
+        || _.isNumber(cache.tripTimeToSources[toRoom])
+        || (cache.tripTimeToSources[toRoom].time + 3000 < Game.time + 100 * Math.random())/*refresh time, random so that not all rooms timeout at the same time*/) {
         // this.log('tripTimeToSources not cached');
         cache.tripTimeToSources = cache.tripTimeToSources || {};
-        cache.tripTimeToSources.time = Game.time;
         // console.log('tripTime computing');
         let roomCursor = this.name, startPoint;
-        let tripTime = 0;
+        let tripTime = {plain: 0, swamp: 0, road: 0};
+
         startPoint = Room.getExitTo(roomCursor, toRoom).findClosestByRange(this.findContainers().filter(s=>[STRUCTURE_CONTAINER, STRUCTURE_LINK, STRUCTURE_STORAGE].indexOf(s.structureType) >= 0)).pos;
-        // this.log(`tripTime to ${toRoom} using ${startPoint} as drop point`);
+        this.log(`tripTime to ${toRoom} using ${startPoint} as drop point`);
+
         do {
             let exit = Room.getExitTo(roomCursor, toRoom);
-            // this.log('tripTime exit', roomCursor, toRoom, JSON.stringify(exit));
             // let path = PathFn;
             if (!exit) {
                 return undefined;
             }
             let inRoomPath;
             if (Game.rooms[roomCursor]) {
-                inRoomPath = util.safeMoveTo2({pos: startPoint, room: this}, exit, {range: 0}).length;
+                let path = util.safeMoveTo2({
+                    pos: startPoint,
+                    room: Game.rooms[roomCursor],
+                    log: this.log
+                }, exit, {range: 0});
+                inRoomPath = util.pathCost(path, this);
+                this.log('exact path cost', path.length, JSON.stringify(inRoomPath), JSON.stringify(startPoint), JSON.stringify(exit));
             } else {
+                inRoomPath = {plain: Math.floor(exit.getRangeTo(startPoint) * 1.5)};
                 // this.log(`tripTime to ${toRoom}, no vision, ranging ${exit}, ${startPoint}, dist ${exit.getRangeTo(startPoint)*1.5}`);
-                inRoomPath = Math.floor(exit.getRangeTo(startPoint) * 1.5);
+                this.log('heuristic cost', JSON.stringify(inRoomPath), JSON.stringify(startPoint), JSON.stringify(exit));
             }
             // this.log(`tripTime to ${toRoom}, ${roomCursor}, ${inRoomPath}`);
-            tripTime += inRoomPath;
+            _.merge(tripTime, inRoomPath, (a, b)=>a + b);
+            // tripTime += inRoomPath;
             startPoint = util.nextRoom(exit);
             roomCursor = startPoint.roomName;
             // this.log('tripTime',this.name, roomCursor, tripTime);
@@ -438,23 +449,33 @@ Room.prototype.tripTimeToSources = function (toRoom, force) {
         let targetRoom = Game.rooms[toRoom];
 
         if (targetRoom) {
-            let temp = 0;
+            let temp = {plain: 0, swamp: 0, road: 0};
             let sources = targetRoom.find(FIND_SOURCES);
-            sources.forEach((s)=>temp += util.safeMoveTo2({
-                pos: startPoint,
-                room: targetRoom
-            }, s.pos, {range: 2}).length);
-            // this.log('average trip to sources', roomCursor, startPoint, temp);
-            tripTime += temp / sources.length;
+            let extractors = targetRoom.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_EXTRACTOR}});
+            if (extractors.length) {
+                sources.push(extractors[0]);
+            }
+            sources.forEach((s)=> {
+                let cost = util.pathCost(util.safeMoveTo2({
+                    pos: startPoint,
+                    room: targetRoom
+                }, s.pos, {range: 2}), this);
+                // this.log('trip to source',s.id, roomCursor, startPoint, JSON.stringify(cost))
+                _.merge(temp, cost, (a, b)=>a + b);
+            });
+            // this.log('average trip to sources', roomCursor, startPoint, JSON.stringify(temp));
+            for (let i in temp) temp[i] = temp[i] / sources.length;
+            _.merge(tripTime, temp, (a, b)=>a + b);
         } else {
-            tripTime += 50;
+            _.merge(tripTime, {plain: 25}, (a, b)=>a + b);
         }
         // this.log('tripTime', this.name, toRoom, tripTime);
-        cache.tripTimeToSources[toRoom] = tripTime;
+        cache.tripTimeToSources[toRoom] = {path: tripTime, time: Game.time};
+
     } else {
         // this.log(`tripTimeToSources ${toRoom} cached`);
     }
-    return cache.tripTimeToSources[toRoom];
+    return cache.tripTimeToSources[toRoom].path;
 };
 
 Room.prototype.updateCheapStats = function () {
@@ -478,6 +499,13 @@ Room.prototype.updateCheapStats = function () {
         }
 
     });
+    let remoteRooms = _.isString(this.memory.remoteMining) ? [this.memory.remoteMining] : this.memory.remoteMining;
+    if (remoteRooms) {
+        let c = (trip)=>5 * (trip.swamp || 0) + 2 * (trip.plain || 0) + (trip.road || 0);
+        remoteRooms.forEach(remoteRoom=> {
+            Memory.stats[`room.${this.name}.remoteRooms.${remoteRoom}.tripTime`] = c(this.tripTimeToSources(remoteRoom));
+        });
+    }
     if (this.storage) {
         _.keys(this.storage.store).forEach((min)=>Memory.stats[`room.${this.name}.resources.storage.${min}`] = this.storage.store[min]);
     }
@@ -589,8 +617,8 @@ Room.prototype.buildStructures = function (pos) {
         let flags = this.find(FIND_FLAGS, {filter: util.buildColors(type)});
         let unbuiltFlags = flags.filter((f)=>f.pos.lookFor(LOOK_STRUCTURES).filter((s)=>s.structureType === type).length === 0);
         let buildableFlags = unbuiltFlags.filter((f)=>f.pos.lookFor(LOOK_CONSTRUCTION_SITES).length === 0);
-        // this.log('flags', type, flags.length);
-        // this.log('unbuiltFlags', type, unbuiltFlags.length);
+        // this.log('buildStructures',type,'flags', flags.length,'unbuiltFlags', unbuiltFlags.length,'buildableFlags', buildableFlags.length);
+        // this.log();
         // this.log('buildableFlags', type, buildableFlags.length);
         if (unbuiltFlags.length > 0) {
             let flag;
@@ -649,6 +677,14 @@ Room.prototype.buildStructures = function (pos) {
                 return (genericBuilder(STRUCTURE_LAB));
             }
         };
+        let terminalBuilder = ()=> {
+            if (this.controller.level >= 6) {
+                return (genericBuilder(STRUCTURE_TERMINAL));
+            }
+        };
+        let containerBuilder = ()=> {
+            return (genericBuilder(STRUCTURE_CONTAINER));
+        };
         let extensionsBuilder = ()=> {
             let currentExtensionCount = this.find(FIND_STRUCTURES).filter((s)=>s.structureType === STRUCTURE_EXTENSION).length;
             if (this.controller.level >= 2 && CONTROLLER_STRUCTURES[STRUCTURE_EXTENSION][this.controller.level] > currentExtensionCount) {
@@ -661,7 +697,7 @@ Room.prototype.buildStructures = function (pos) {
                 return true;
             }
         };
-        let builders = [towerBuilder, storageBuilder, extensionsBuilder, rampartBuilder, wallsBuilder, extractorBuilder, linksBuilder, roadBuilder];
+        let builders = [towerBuilder, storageBuilder, extensionsBuilder, rampartBuilder, wallsBuilder, extractorBuilder, linksBuilder, containerBuilder, roadBuilder, labsBuilder, terminalBuilder];
         builders.find((builder)=>builder());
 
     }
@@ -724,7 +760,10 @@ Room.prototype.maxBoost = function (part, feature) {
  * @returns {boolean} true if consumer creeps are allowed to pickup from this container
  */
 Room.prototype.allowedLoadingContainer = function (structure) {
-    return structure.structureType !== STRUCTURE_TOWER && structure.structureType !== STRUCTURE_LAB && (this.energyCapacity === this.energyCapacityAvailable || [STRUCTURE_SPAWN, STRUCTURE_EXTENSION].indexOf(structure.structureType) < 0);
+    return structure.structureType !== STRUCTURE_TOWER
+        && (
+            [STRUCTURE_SPAWN, STRUCTURE_EXTENSION].indexOf(structure.structureType) < 0 || (this.energyAvailable === this.energyCapacityAvailable)
+        );
 };
 
 /**
@@ -744,17 +783,42 @@ Room.prototype.isValidParkingPos = function (creep, pos) {
     let rejects = [
         (data)=>data.terrain === 'wall',
         (data)=>data.type === LOOK_CREEPS && data.creep.name !== creep.name,
-        (data)=>(data.type === LOOK_STRUCTURES )&& (parkForbiddenStructureTypes.indexOf(data.structure.structureType) >= 0),
-        (data)=>(data.type === LOOK_CONSTRUCTION_SITES)&& (parkForbiddenStructureTypes.indexOf(data.constructionSite.structureType) >= 0)
+        (data)=>(data.type === LOOK_STRUCTURES ) && (parkForbiddenStructureTypes.indexOf(data.structure.structureType) >= 0),
+        (data)=>(data.type === LOOK_CONSTRUCTION_SITES) && (parkForbiddenStructureTypes.indexOf(data.constructionSite.structureType) >= 0)
     ];
     let rejected = rejects.reduce((acc, predicate)=>(acc || atXY.reduce((acc2, at)=>acc2 || predicate(at), acc)), false);
     // creep.log('isValid ', pos, !rejected, JSON.stringify(atXY));
     return !rejected;
 };
+
 /**
- * This callback type is called `requestCallback` and is displayed as a global symbol.
  *
- * @callback parkingPosValid
+ * @param creep
+ * @param {[{pos,range}]} options
+ * @returns {Array}
+ */
+Room.prototype.findValidParkingPositions = function (creep, options) {
+    let aroundYX = this.glanceAround(options[0].pos, options[0].range, false);
+    let candidates = [];
+    options.shift();
+    let inrange = pos=>!(options.find(posAndRange=>posAndRange.pos.getRangeTo(pos) > posAndRange.range));
+    for (let y in aroundYX) {
+        if (y % 49 === 0) continue;
+        for (let x in aroundYX[y]) {
+            if (x % 49 === 0) continue;
+
+            let atXY = aroundYX[y][x];
+            let pos = new RoomPosition(x, y, this.name);
+            if (this.isValidParkingPos(atXY) && inrange(pos)) {
+                // creep.log('parking ', JSON.stringify(atXY));
+                candidates.push(pos);
+            }
+        }
+    }
+    return candidates;
+};
+/**
+ *@callback parkingPosValid
  * @param {Creep} creep
  * @param {RoomPosition} lookedPosition
  * @return {boolean}
@@ -767,10 +831,15 @@ Room.prototype.isValidParkingPos = function (creep, pos) {
  * @param {parkingPosValid} validPredicate
  * @returns {RoomPosition|undefined}
  */
-Room.prototype.findValidParkingPosition= function (creep, lookedPosition, range) {
+Room.prototype.findValidParkingPosition = function (creep, options, range) {
+    let lookedPosition = options;
+    if (_.isArray(options)) {
+        lookedPosition = options[0].pos;
+        range = options[0].range;
+    }
     if (creep.memory.parking) {
         let pos = util.posFromString(creep.memory.parking, creep.room.name);
-        if (pos.getRangeTo(lookedPosition)<= range  && this.isValidParkingPos(creep, pos)) {
+        if (pos.getRangeTo(lookedPosition) <= range && this.isValidParkingPos(creep, pos)) {
             // creep.log('restoring upgrade pos', pos);
             return pos;
         } else {
@@ -779,33 +848,39 @@ Room.prototype.findValidParkingPosition= function (creep, lookedPosition, range)
     }
     let aroundYX = this.glanceAround(lookedPosition, range, false);
     let candidates = [];
-    let plainCandidates =[];
+    let plainCandidates = [];
     let swampCandidates = [];
     for (let y in aroundYX) {
-        if (y%49===0) continue;
+        if (y % 49 === 0) continue;
         for (let x in aroundYX[y]) {
-            if (x%49 ===0) continue;
+            if (x % 49 === 0) continue;
 
             let atXY = aroundYX[y][x];
             if (this.isValidParkingPos(atXY)) {
                 // creep.log('parking ', JSON.stringify(atXY));
-                let terrain =atXY.find(l=>l.type === 'terrain');
+                let terrain = atXY.find(l=>l.type === 'terrain');
                 let pos = new RoomPosition(x, y, this.name);
-                if (terrain.terrain==='plain') plainCandidates.push(pos );
-                else if (terrain.terrain === 'swamp') swampCandidates.push(pos );
+                if (terrain.terrain === 'plain') plainCandidates.push(pos);
+                else if (terrain.terrain === 'swamp') swampCandidates.push(pos);
                 candidates.push(pos);
             }
         }
     }
     // creep.log(`plains ${plainCandidates.length}, swamp ${swampCandidates.length} all ${candidates.length}`);
-    let chosen =  creep.pos.findClosestByRange(plainCandidates.length?plainCandidates:swampCandidates);
+    let myCandidates = plainCandidates.length ? plainCandidates : swampCandidates;
+    let chosen = creep.pos.findClosestByPath(myCandidates);
+
+    // creep.log('returning ',chosen,'closest to',creep.pos,'of', JSON.stringify(myCandidates));
     if (chosen) {
         creep.memory.parking = util.posToString(chosen);
-        creep.log(`parking at ${chosen}`);
+        // creep.log(`parking at ${chosen}`);
     }
     return chosen;
 };
-
+Room.prototype.isCentralRoom = function () {
+    'use strict';
+    return !!/..5..5/.exec(this.name);
+};
 
 let parkForbiddenStructureTypes = OBSTACLE_OBJECT_TYPES.concat([STRUCTURE_ROAD]);
 

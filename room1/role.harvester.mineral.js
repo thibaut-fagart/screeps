@@ -31,6 +31,9 @@ class RoleMineralHarvester {
             strategy = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);
             if (!strategy) {
                 strategy = _.find(this.loadStrategies, (strat)=> (strat.accepts(creep)));
+                if (!strategy) {
+                    this.onNoLoadStrategy(creep);
+                }
             }
             // creep.log(util.strategyToLog(strategy));
 
@@ -42,6 +45,9 @@ class RoleMineralHarvester {
                 return;
             }
         }
+    }
+    onNoLoadStrategy(creep) {
+        creep.log('should resign?');
     }
 }
 
