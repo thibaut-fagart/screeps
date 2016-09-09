@@ -77,4 +77,4 @@ class CloseAttackStrategy extends BaseStrategy {
     }
 }
 
-module.exports = CloseAttackStrategy;
+require('./profiler').registerClass(CloseAttackStrategy, 'CloseAttackStrategy'); module.exports = CloseAttackStrategy;

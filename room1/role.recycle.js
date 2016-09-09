@@ -17,7 +17,7 @@ class RoleRecycle {
             let range = creep.pos.getRangeTo(spawn.pos);
             if (range ==1) {
                 if (creep.memory.previousRole && creep.memory.remoteRoom) {
-                    creep.log('recycling', creep.memory.remoteRoom, _.sum(creep.body, ((p)=>BODYPART_COST[p.type])) *creep.ticksToLive / 1500);
+                    creep.log('recycling', creep.memory.remoteRoom, creep.ticksToLive, _.sum(creep.body, ((p)=>BODYPART_COST[p.type])) *creep.ticksToLive / 1500);
                 }
                 spawn.recycleCreep(creep);
             } else  util.moveTo(creep, spawn.pos, this.constructor.name+'Path');
@@ -31,4 +31,4 @@ class RoleRecycle {
     }
 }
 
-module.exports = RoleRecycle;
+require('./profiler').registerClass(RoleRecycle, 'RoleRecycle'); module.exports = RoleRecycle;

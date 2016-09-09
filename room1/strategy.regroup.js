@@ -47,4 +47,4 @@ class RegroupStrategy extends Base {
     }
 
 }
-module.exports = RegroupStrategy;
+require('./profiler').registerClass(RegroupStrategy, 'RegroupStrategy'); module.exports = RegroupStrategy;

@@ -85,5 +85,6 @@ class RoleClaimController {
 
     }
 }
+require('./profiler').registerClass(RoleClaimController, 'RoleClaimController');
 
 module.exports = RoleClaimController;

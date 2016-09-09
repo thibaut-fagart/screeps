@@ -89,7 +89,7 @@ module.exports = {
      * @param {RoomObject} object
      * @param {string} toRoom
      */
-    fromObjectToExit: function (object, toRoom) {
+    fromExitTo: function (object, toRoom) {
         'use strict';
         let room = object.room;
         let dest = room.getExitTo(toRoom);

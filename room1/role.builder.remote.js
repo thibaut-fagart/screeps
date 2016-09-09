@@ -88,4 +88,6 @@ class RoleRemoteBuilder extends RoleBuilder {
 
     }
 }
+require('./profiler').registerClass(RoleRemoteBuilder, 'RoleRemoteBuilder');
+
 module.exports = RoleRemoteBuilder;

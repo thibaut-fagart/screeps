@@ -34,8 +34,7 @@ class DropToEnergyStorageStrategy extends BaseStrategy {
         // creep.log(this.structureType, 'target', target);
         if (!target || target.room.name !== creep.room.name) {
             // if (this.structureType === STRUCTURE_EXTENSION) creep.log('finding target');
-            var targets = creep.room.find(FIND_STRUCTURES)
-                .filter((structure) => ((this.structureType && this.structureType === structure.structureType) || (!this.structureType)))
+            var targets = (this.structureType? creep.room.structures[this.structureType] : creep.room.find(FIND_STRUCTURES))
                 .filter((c)=> (c.energy < c.energyCapacity));
             if (targets.length > 0) {
                 target = this.setTarget(creep, creep.pos.findClosestByPath(targets));
@@ -64,4 +63,4 @@ class DropToEnergyStorageStrategy extends BaseStrategy {
     }
 }
 
-module.exports = DropToEnergyStorageStrategy;
+require('./profiler').registerClass(DropToEnergyStorageStrategy, 'DropToEnergyStorageStrategy'); module.exports = DropToEnergyStorageStrategy;

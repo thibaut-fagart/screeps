@@ -69,7 +69,8 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
                         obstacleCreeps[0].moveTo(creep.pos);
                     }
                 }
-                let moveTo = util.moveTo(creep, container.pos,this.constructor.name+"Path", {range:0});
+                creep.log('moving to container');
+                let moveTo = this.moveTo(creep, container);
 
                 // creep.log('moveTo?', moveTo);
             }
@@ -89,7 +90,9 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
                     creep.log('harvest?', ret);
                 }
             } else {
-                if (ERR_NOT_FOUND ===util.moveTo(creep, source.pos,this.constructor.name+"Path",{range:1})) {
+                creep.log('moving to source');
+                let moveTo2 = this.moveTo(creep, source);
+                if (ERR_NOT_FOUND ===moveTo2) {
                     creep.log('discarding path');
                     delete creep.memory[this.PATH_TO_SOURCE_PATH];
                 }
@@ -104,6 +107,11 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
         return returnValue;
 
     }
+
+    moveTo(creep, source) {
+        return util.moveTo(creep, source.pos, this.constructor.name + "Path", {range: source.structureType ? 0: 1});
+    }
+
 
     findSourceAndContainer(creep) {
         let releaseLambda = (id) => {
@@ -227,7 +235,9 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
     }
 
     findFreeContainersNear(creep, source) {
-        return source.pos.findInRange(FIND_STRUCTURES, 1).filter((c) => c.structureType == STRUCTURE_CONTAINER && !util.isReserved(creep, c, 'harvest'));
+        return creep.room.glanceForAround(LOOK_STRUCTURES, source.pos, 1, true).map(s=>s.structure)
+        // source.pos.findInRange(FIND_STRUCTURES, 1)
+            .filter((c) => c.structureType == STRUCTURE_CONTAINER && !util.isReserved(creep, c, 'harvest'));
     }
 
     harvestableAmount(source) {
@@ -259,4 +269,4 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
 
 }
 
-module.exports = HarvestEnergySourceToContainerStrategy;
+require('./profiler').registerClass(HarvestEnergySourceToContainerStrategy, 'HarvestEnergySourceToContainerStrategy'); module.exports = HarvestEnergySourceToContainerStrategy;

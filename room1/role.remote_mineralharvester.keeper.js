@@ -41,4 +41,4 @@ class RoleRemoteMineralHarvesterKeeper extends RoleRemoteHarvester {
 
 }
 
-module.exports = RoleRemoteMineralHarvesterKeeper;
+require('./profiler').registerClass(RoleRemoteMineralHarvesterKeeper, 'RoleRemoteMineralHarvesterKeeper'); module.exports = RoleRemoteMineralHarvesterKeeper;

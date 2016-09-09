@@ -1,5 +1,3 @@
-var _ = require('lodash');
-
 let usedOnStart = 0;
 let enabled = false;
 let depth = 0;
@@ -16,7 +14,24 @@ function setupProfiler() {
     profile(duration, filter) {
       setupMemory('profile', duration || 100, filter);
     },
+    background(filter) {
+      setupMemory('background', false, filter);
+    },
+    restart() {
+      if (Profiler.isProfiling()) {
+        const filter = Memory.profiler.filter;
+        let duration = false;
+        if (!!Memory.profiler.disableTick) {
+          // Calculate the original duration, profile is enabled on the tick after the first call,
+          // so add 1.
+          duration = Memory.profiler.disableTick - Memory.profiler.enabledTick + 1;
+        }
+        const type = Memory.profiler.type;
+        setupMemory(type, duration, filter);
+      }
+    },
     reset: resetMemory,
+    output: Profiler.output,
   };
 
   overloadCPUCalc();
@@ -24,12 +39,13 @@ function setupProfiler() {
 
 function setupMemory(profileType, duration, filter) {
   resetMemory();
+  const disableTick = Number.isInteger(duration) ? Game.time + duration : false;
   if (!Memory.profiler) {
     Memory.profiler = {
       map: {},
       totalTime: 0,
       enabledTick: Game.time + 1,
-      disableTick: Game.time + duration,
+      disableTick,
       type: profileType,
       filter,
     };
@@ -52,6 +68,11 @@ function overloadCPUCalc() {
 function getFilter() {
   return Memory.profiler.filter;
 }
+
+const functionBlackList = [
+  'getUsed', // Let's avoid wrapping this... may lead to recursion issues and should be inexpensive.
+  'constructor', // es6 class constructors need to be called with `new`
+];
 
 function wrapFunction(name, originalFunction) {
     const wrapped = function wrappedFunction() {
@@ -86,35 +107,14 @@ function hookUpPrototypes() {
 }
 
 function profileObjectFunctions(object, label) {
-  let objectToWrap = object.prototype ? object.prototype :object;
-  let keys ;
-  if ('object' === typeof object) {
-    keys = Object.getOwnPropertyNames(Object.getPrototypeOf(object));
-  } else {
-    keys = Object.keys(objectToWrap);
-  }
+  const objectToWrap = object.prototype ? object.prototype : object;
 
-
-  if (!keys.length) {
-    if (!object.prototype) objectToWrap = object.constructor;
-    keys = Object.keys(objectToWrap);
-    if (!keys.length) {
-
-      keys = Object.getOwnPropertyNames(Object.getPrototypeOf(object));
-      if (keys[0] === 'constructor') keys = keys.splice(1);
-      else {
-        keys = Reflect.ownKeys(object.prototype);
-        if (keys[0] === 'constructor') keys = keys.splice(1);
-        else {
-          console.log(`profiler unable to find methods ${label}`);
-        }
-      }
-    }
-  }
-  keys.forEach(functionName => {
+  Object.getOwnPropertyNames(objectToWrap).forEach(functionName => {
+    const extendedLabel = `${label}.${functionName}`;
     try {
-      if (typeof objectToWrap[functionName] === 'function' && functionName !== 'getUsed') {
-        const extendedLabel = `${label}.${functionName}`;
+      const isFunction = typeof objectToWrap[functionName] === 'function';
+      const notBlackListed = functionBlackList.indexOf(functionName) === -1;
+      if (isFunction && notBlackListed) {
         const originalFunction = objectToWrap[functionName];
         objectToWrap[functionName] = profileFunction(originalFunction, extendedLabel);
       }
@@ -144,7 +144,12 @@ const Profiler = {
     Game.notify(Profiler.output());
   },
 
-  output() {
+  output(numresults) {
+    const displayresults = !!numresults ? numresults : 20;
+    if (!Memory.profiler || !Memory.profiler.enabledTick) {
+      return 'Profiler not active.';
+    }
+
     const elapsedTicks = Game.time - Memory.profiler.enabledTick + 1;
     const header = 'calls\t\ttime\t\tavg\t\tfunction';
     const footer = [
@@ -152,7 +157,7 @@ const Profiler = {
       `Total: ${Memory.profiler.totalTime.toFixed(2)}`,
       `Ticks: ${elapsedTicks}`,
     ].join('\t');
-    return [].concat(header, Profiler.lines().slice(0, 20), footer).join('\n');
+    return [].concat(header, Profiler.lines().slice(0, displayresults), footer).join('\n');
   },
 
   lines() {
@@ -189,75 +194,6 @@ const Profiler = {
     { name: 'RoomPosition', val: RoomPosition },
     { name: 'Source', val: Source },
     { name: 'Flag', val: Flag },
-    // { name: 'PathFinder', val: PathFinder },
-{name:'RoleBuilder',val:require('./role.builder')},
-{name:'RoleBuilderRemote',val:require('./role.builder.remote')},
-{name:'RoleCarry',val:require('./role.carry')},
-{name:'RoleControllerClaim',val:require('./role.controller.claim')},
-{name:'RoleControllerReserve',val:require('./role.controller.reserve')},
-{name:'RoleDismantler',val:require('./role.dismantler')},
-{name:'RoleEnergyFiller',val:require('./role.energyfiller')},
-{name:'RoleEnergyGatherer',val:require('./role.energygatherer')},
-{name:'RoleHarvester',val:require('./role.harvester')},
-{name:'RoleMineralHarvester',val:require('./role.harvester.mineral')},
-{name:'RoleLabOperator',val:require('./role.lab_operator')},
-{name:'RoleMineralGatherer',val:require('./role.mineralgatherer')},
-{name:'RoleMineralTransporter',val:require('./role.mineral.transporter')},
-{name:'RoleRecycle',val:require('./role.recycle')},
-{name:'RoleRemoteCarry',val:require('./role.remote.carry')},
-{name:'RoleRemoteCarryKeeper',val:require('./role.remote.carrykeeper')},
-{name:'RoleRemoteUpgrader',val:require('./role.remote.upgrader')},
-{name:'RoleRemoteHarvester',val:require('./role.remote_harvester')},
-{name:'RoleRemoteHarvesterKeeper',val:require('./role.remote_harvester.keeper')},
-{name:'RoleRemoteMineralHarvesterKeeper',val:require('./role.remote_mineralharvester.keeper')},
-{name:'RoleRepair2',val:require('./role.repair2')},
-{name:'RoleScout',val:require('./role.scout')},
-{name:'RoleSoldierAttacker',val:require('./role.soldier.attacker')},
-{name:'RoleSoldierRoomguard',val:require('./role.soldier.roomguard')},
-{name:'RoleSoldierTowerDrainer',val:require('./role.soldier.towerdrainer')},
-{name:'spawn',val:require('./role.spawn')},
-{name:'RoleTower',val:require('./role.tower')},
-{name:'RoleUpgrader',val:require('./role.upgrader')},
-{name:'StrategyAttackStructure',val:require('./strategy.attack.structure')},
-{name:'StrategyAttackWall',val:require('./strategy.attack_wall')},
-{name:'StrategyAvoidRespawn',val:require('./strategy.avoidrespawn')},
-{name:'StrategyBuildCautious',val:require('./strategy.build.cautious')},
-{name:'StrategyBuild',val:require('./strategy.build')},
-{name:'StrategyBuildAround',val:require('./strategy.buildaround')},
-{name:'StrategyCloseAttack',val:require('./strategy.closeattack_target')},
-{name:'StrategyControllerClaim',val:require('./strategy.controller.claim')},
-{name:'StrategyControllerReserve',val:require('./strategy.controller.reserve')},
-{name:'StrategyDisableTarget',val:require('./strategy.disable_target')},
-{name:'StrategyDismantle',val:require('./strategy.dismantle')},
-{name:'StrategyDropToContainer',val:require('./strategy.drop_to_container')},
-{name:'StrategyDropToEnergyStorage',val:require('./strategy.drop_to_energyStorage')},
-{name:'StrategyFleeHomeRoom',val:require('./strategy.flee.tohomeroom')},
-{name:'StrategyHarvestKeeperSource',val:require('./strategy.harvest_keepersource')},
-{name:'StrategyHarvestKeeperSourceToContainer',val:require('./strategy.harvest_keepersource_to_container')},
-{name:'StrategyHarvestSource',val:require('./strategy.harvest_source')},
-{name:'StrategyHarvestSourceToContainer',val:require('./strategy.harvest_source_to_container')},
-{name:'StrategyLoadFromContainer',val:require('./strategy.load_from_container')},
-{name:'StrategyMoveToRoom',val:require('./strategy.move_to_room')},
-{name:'StrategyPickup',val:require('./strategy.pickup')},
-{name:'StrategyPickupClose',val:require('./strategy.pickup.close')},
-{name:'StrategyPickupKeeper',val:require('./strategy.pickup.keeper')},
-{name:'StrategyRegroup',val:require('./strategy.regroup')},
-{name:'StrategyRemoteHeal',val:require('./strategy.remote_heal')},
-{name:'StrategyRemoteKeeperguard',val:require('./strategy.remote_heal_keeperguard')},
-{name:'StrategyRemoteRepair',val:require('./strategy.remote_repair')},
-{name:'StrategyRemoteTarget',val:require('./strategy.remote_target')},
-{name:'StrategyRemoteTargetNonKeeper',val:require('./strategy.remote_target_nonkeeper')},
-{name:'StrategySquadAttack',val:require('./strategy.squadattack')},
-{name:'StrategyStop',val:require('./strategy.stop')},
-{name:'StrategySwitchFocus',val:require('./strategy.switch_focus')},
-{name:'TaskMoveActiveKeeper',val:require('./task.move.activekeeper')},
-{name:'TaskMoveKeeperLair',val:require('./task.move.keeperlair')},
-{name:'TaskMoveToRoom',val:require('./task.move.toroom')},
-  {name:'Util',val:require('./util')},
-  {name:'UtilManagerPickup',val:require('./util.manager.pickup')},
-  {name:'CreepShaper',val:require('./base.creep.shaper')},
-
-
   ],
 
   record(functionName, time) {
@@ -288,7 +224,10 @@ const Profiler = {
   },
 
   isProfiling() {
-    return enabled && !!Memory.profiler && Game.time <= Memory.profiler.disableTick;
+    if (!enabled || !Memory.profiler) {
+      return false;
+    }
+    return !Memory.profiler.disableTick || Game.time <= Memory.profiler.disableTick;
   },
 
   type() {
@@ -341,11 +280,9 @@ module.exports = {
     hookUpPrototypes();
   },
 
-  registerObject(object, label) {
-    return profileObjectFunctions(object, label);
-  },
+  output: Profiler.output,
 
-  registerFN(fn, functionName) {
-    return profileFunction(fn, functionName);
-  },
+  registerObject: profileObjectFunctions,
+  registerFN: profileFunction,
+  registerClass: profileObjectFunctions,
 };

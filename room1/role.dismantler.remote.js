@@ -66,4 +66,6 @@ class RoleRemoteDismantler extends RoleDismantler {
 
     }
 }
+require('./profiler').registerClass(RoleRemoteDismantler, 'RoleRemoteDismantler');
+
 module.exports = RoleRemoteDismantler;

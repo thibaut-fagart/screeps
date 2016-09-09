@@ -10,4 +10,4 @@ class RoleLooter extends RoleRemoteCarry {
 
 }
 
-module.exports = RoleLooter;
+require('./profiler').registerClass(RoleLooter, 'RoleLooter'); module.exports = RoleLooter;

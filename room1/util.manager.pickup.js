@@ -187,4 +187,4 @@ PickupManager.getManager = function (roomName) {
     return manager;
 };
 PickupManager.PATH = 'pickupSource'; //TODO remote that from PickupStrategy
-module.exports = PickupManager;
+require('./profiler').registerClass(PickupManager, 'PickupManager'); module.exports = PickupManager;

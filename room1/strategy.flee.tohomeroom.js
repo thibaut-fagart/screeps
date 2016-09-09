@@ -57,4 +57,4 @@ class FleeToHomeRoomStrategy extends BaseStrategy {
     }
 }
 
-module.exports = FleeToHomeRoomStrategy;
+require('./profiler').registerClass(FleeToHomeRoomStrategy, 'FleeToHomeRoomStrategy'); module.exports = FleeToHomeRoomStrategy;

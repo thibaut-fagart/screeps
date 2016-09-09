@@ -17,7 +17,7 @@ class HarvestKeeperSourceStrategy extends HarvestEnergySourceStrategy {
     findSource(creep, source) {
 
         let sources = creep.room.find(FIND_SOURCES);
-        if (this.resource !== RESOURCE_ENERGY && creep.room.find(FIND_STRUCTURES).filter((s)=>s.structureType === STRUCTURE_EXTRACTOR).length) {
+        if (this.resource !== RESOURCE_ENERGY && creep.room.structures[STRUCTURE_EXTRACTOR].length) {
             sources = sources.concat(creep.room.find(FIND_MINERALS));
         }
         // creep.log('raw sources', sources.length);
@@ -41,4 +41,4 @@ class HarvestKeeperSourceStrategy extends HarvestEnergySourceStrategy {
     }
 }
 
-module.exports = HarvestKeeperSourceStrategy;
+require('./profiler').registerClass(HarvestKeeperSourceStrategy, 'HarvestKeeperSourceStrategy'); module.exports = HarvestKeeperSourceStrategy;

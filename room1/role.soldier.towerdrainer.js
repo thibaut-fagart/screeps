@@ -140,4 +140,4 @@ class RoleTowerDrainer {
 }
 RoleTowerDrainer.WANTED_BOOSTS = ['LO'];
 
-module.exports = RoleTowerDrainer;
+require('./profiler').registerClass(RoleTowerDrainer, 'RoleTowerDrainer'); module.exports = RoleTowerDrainer;

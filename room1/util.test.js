@@ -9,8 +9,8 @@ var util = require('./util');
 
 describe('util', function () {
     describe('findExit', function () {
-        "use strict";
-        it("", function () {
+        'use strict';
+        it('', function () {
             let creep = new Creep();
             let room = new Room();
             creep.room = room;
@@ -46,7 +46,7 @@ describe('util', function () {
     });
     describe('isReserved', function () {
         it('non locked objects should return false', function () {
-            "use strict";
+            'use strict';
 
             let creep = new Creep();
             creep.id = '1';
@@ -59,7 +59,7 @@ describe('util', function () {
 
         });
         it('objects locked by me should return false', function () {
-            "use strict";
+            'use strict';
 
             let creep = new Creep();
             creep.id = '1';
@@ -76,7 +76,7 @@ describe('util', function () {
 
         });
         it('objects locked by others should return true', function () {
-            "use strict";
+            'use strict';
 
             let creep = new Creep();
             creep.id = '1';
@@ -94,7 +94,7 @@ describe('util', function () {
 
         });
         it('objects locked by dead should return false', function () {
-            "use strict";
+            'use strict';
 
             let creep = new Creep();
             creep.id = '1';
@@ -114,7 +114,7 @@ describe('util', function () {
     });
     describe('release', function () {
         it('released locks should  be free', function () {
-            "use strict";
+            'use strict';
 
             let creep = new Creep();
             let creep2 = new Creep();
@@ -139,7 +139,7 @@ describe('util', function () {
 
         });
         it('objects locked by me should return false', function () {
-            "use strict";
+            'use strict';
 
             let creep = new Creep();
             creep.id = '1';
@@ -157,7 +157,7 @@ describe('util', function () {
 
         });
         it('objects locked by others should return true', function () {
-            "use strict";
+            'use strict';
 
             let creep = new Creep();
             creep.id = '1';
@@ -176,7 +176,7 @@ describe('util', function () {
 
         });
         it('objects locked by dead should return false', function () {
-            "use strict";
+            'use strict';
 
             let creep = new Creep();
             creep.id = '1';
@@ -195,8 +195,8 @@ describe('util', function () {
 
         });
     });
-    it("should be profileable", function () {
-        "use strict";
+    it('should be profileable', function () {
+        'use strict';
         let f = (object)=>object.prototype ? object.prototype :(Object.getPrototypeOf(object)?Object.getPrototypeOf(object):object);
         console.log(JSON.stringify(Object.keys(f(util))));
         console.log(Object.getPrototypeOf(util) == util.prototype);
@@ -213,9 +213,9 @@ describe('util', function () {
 });
 
 describe('reactions', function() {
-    "use strict";
+    'use strict';
     let constants = require('../lib/mocks/constants');
-    it("should work", function () {
+    it('should work', function () {
         function reverseReactions() {
             'use strict';
             let result = {};
@@ -230,36 +230,27 @@ describe('reactions', function() {
         console.log(JSON.stringify(reverseReactions()));
     });
 
-})
-/*
- let ProcessTable = require('./process.table'), processTable = new  ProcessTable();
+});
+describe('serializations', function () {
+    'use strict';
+    it('should serialize corrrectly',function () {
+        let body = [MOVE, WORK, CARRY];
+        expect(util.bodyToString(body)).to.be.equal('MWC');
+    });
+    it('should deserialize corrrectly',function () {
+        let body = [MOVE, WORK, CARRY];
+        expect(JSON.stringify(util.stringToBody('MWC'))).to.be.equal(JSON.stringify(body));
+    });
+    it('random tests', function() {
+        for (let i = 0; i < 100;i++) {
+            let bodyLength = Math.ceil(50 * Math.random());
+            let body = [];
+            for (let b = 0; b < bodyLength; b++) {
+                body.push(BODYPARTS_ALL[Math.floor(BODYPARTS_ALL.length * Math.random())]);
+            }
+            let serialized = util.bodyToString(body);
+            expect(JSON.stringify(util.stringToBody(serialized))).to.be.equal(JSON.stringify(body));
 
-
- console.log('emptytable', processTable);
-
- console.log(root);
- console.log(child);
- console.log(child2);
-
- processTable.register(root);
- processTable.register(child);
- processTable.register(child2);
-
- let savedData = processTable.save();
- console.log(savedData);
- let saved = JSON.parse(JSON.stringify(savedData));
- console.log('saved' ,saved);
-
- processTable = ProcessTable.load(saved);
-
- console.log('loaded',(processTable));
-
-
-
-
- // var bs =  Game.rooms.E38S14.find(FIND_MY_CREEPS, {filter:(c) => c.memory.role  ==='remoteBuilder'}); while (bs.length > 1) { bs.shift().memory.role = 'upgrader'}
-
- console.log(/repairs2/.exec('test.repairs2.toto'))
- console.log(/repairs2/.exec('test.repairs.toto'))
-
- */
+        }
+    })
+});

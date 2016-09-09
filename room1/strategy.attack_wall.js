@@ -336,4 +336,4 @@ class AttackWallStrategy extends BaseStrategy {
     }
 }
 
-module.exports = AttackWallStrategy;
+require('./profiler').registerClass(AttackWallStrategy, 'AttackWallStrategy'); module.exports = AttackWallStrategy;

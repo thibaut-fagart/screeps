@@ -65,5 +65,6 @@ class RoleDismantler {
         }
     }
 }
+require('./profiler').registerClass(RoleDismantler, 'RoleDismantler');
 
 module.exports = RoleDismantler;

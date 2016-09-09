@@ -3,4 +3,4 @@ class MoveToRoomStrategy {
     
 }
 
-module.exports = MoveToRoomStrategy;
+require('./profiler').registerClass(MoveToRoomStrategy, 'MoveToRoomStrategy'); module.exports = MoveToRoomStrategy;

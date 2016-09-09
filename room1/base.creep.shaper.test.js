@@ -79,11 +79,35 @@ describe('CreepShaper', function () {
             let body = patterns['keeperGuard'].body(room);
             console.log(room.energyCapacityAvailable, JSON.stringify(_.countBy(body)));
         });
-        it('RCLs', function () {
+        it('RCLs with boosts', function () {
             let room = new Room();
             room.name = 'my';
             room.memory = {allowedBoosts: []};
             room.availableBoosts = () =>['KO','LO'];
+            room.glanceForAround = ()=> [];
+            for (let rcl = 1; rcl <= 8; rcl++) {
+                room.controller = {level: rcl};
+                console.log('RCL ', rcl);
+                room.energyCapacityAvailable = EXTENSION_ENERGY_CAPACITY[rcl] * CONTROLLER_STRUCTURES[STRUCTURE_EXTENSION][rcl] + SPAWN_ENERGY_CAPACITY;
+
+                let bodies = _.mapValues(patterns, (spec)=> {
+                    if (_.isFunction(spec.body)) {
+                        return spec.body(room);
+                    } else {
+                        return spec.body;
+                    }
+                });
+                console.log(JSON.stringify(_.mapValues(bodies, (body)=>({
+                    body: _.countBy(body),
+                    cost: _.sum(body, (p)=>BODYPART_COST[p])
+                }))));
+            }
+        });
+        it('RCLs', function () {
+            let room = new Room();
+            room.name = 'my';
+            room.memory = {allowedBoosts: []};
+            room.availableBoosts = () =>[];
             room.glanceForAround = ()=> [];
             for (let rcl = 1; rcl <= 8; rcl++) {
                 room.controller = {level: rcl};

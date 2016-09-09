@@ -51,4 +51,4 @@ class SwitchFocusStrategy extends Base {
     }
 
 }
-module.exports = SwitchFocusStrategy;
+require('./profiler').registerClass(SwitchFocusStrategy, 'SwitchFocusStrategy'); module.exports = SwitchFocusStrategy;

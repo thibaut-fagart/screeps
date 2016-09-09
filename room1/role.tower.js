@@ -11,7 +11,7 @@ class RoleTower {
                 let endangeredCreeps = tower.room.glanceForAround(LOOK_CREEPS, target.pos, 5, true).map(p=>p.creep).filter((c)=>c.my );
                 tower.log(`target ${JSON.stringify(target.pos)}, ${target.owner.username} endangeredStructures ${endangeredStructures.length}, endangeredCreeps ${endangeredCreeps.length}`);
                 Game.notify(`target ${JSON.stringify(target.pos)}, ${target.owner.username} endangeredStructures ${endangeredStructures.length}, endangeredCreeps ${endangeredCreeps.length}`);
-                return /*target.owner.username === 'Invader' || */ tower.pos.getRangeTo(target)<= 5 || ((endangeredStructures.length+endangeredCreeps.length)>0);
+                return (target.owner.username === 'Invader' && 0<target.getActiveBodyparts(RANGED_ATTACK)+target.getActiveBodyparts(ATTACK) )||  tower.pos.getRangeTo(target)<= 5 || ((endangeredStructures.length+endangeredCreeps.length)>0);
             };
         });
         this.remoteHealStrategy = new RemoteHealStrategy(undefined,(tower)=>(creep=>{
@@ -64,4 +64,4 @@ class RoleTower {
 
 }
 
-module.exports = RoleTower;
+require('./profiler').registerClass(RoleTower, 'RoleTower'); module.exports = RoleTower;

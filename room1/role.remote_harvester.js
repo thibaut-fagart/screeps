@@ -121,4 +121,4 @@ class RoleRemoteHarvester {
 
 }
 
-module.exports = RoleRemoteHarvester;
+require('./profiler').registerClass(RoleRemoteHarvester, 'RoleRemoteHarvester'); module.exports = RoleRemoteHarvester;

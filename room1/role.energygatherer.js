@@ -10,7 +10,6 @@ class RoleEnergyGatherer extends RoleCarry {
     constructor() {
         super();
         this.loadStrategies = [
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (creep)=> ((s)=>s.pos.getRangeTo(creep) < 2)) ,
             new ClosePickupStrategy(RESOURCE_ENERGY, 2),
             new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (creep)=>((s)=>s.room.isHarvestContainer(s)))];
         this.unloadStrategies = [
@@ -23,5 +22,6 @@ class RoleEnergyGatherer extends RoleCarry {
 
     }
 }
+require('./profiler').registerClass(RoleEnergyGatherer, 'RoleEnergyGatherer');
 
 module.exports = RoleEnergyGatherer;

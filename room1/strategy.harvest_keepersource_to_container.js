@@ -11,11 +11,17 @@ class HarvestKeeperEnergySourceToContainerStrategy extends HarvestEnergySourceTo
     }
 
 
-    findSources(creep) {
+    moveTo(creep, source) {
+        return util.moveTo(creep, source.pos, this.constructor.name + "Path", {range: source.structureType ? 0: 1, ignoreHostiles: creep.memory.isFighter});
+    }
 
+
+
+    findSources(creep) {
+        creep.log('findSources');
         let sources = creep.room.find(FIND_SOURCES);
-        if (creep.room.find(FIND_STRUCTURES).filter((s)=>s.structureType === STRUCTURE_EXTRACTOR).length) {
-            sources = sources.concat(creep.room.find(FIND_MINERALS));
+        if (creep.room.structures[STRUCTURE_EXTRACTOR].length) {
+            sources = sources.concat(creep.room.find(FIND_MINERALS).filter(m=>m.mineralAmount>0));
         }
         // creep.log('raw sources', sources.length);
         if (creep.room.memory.sources) {
@@ -24,11 +30,13 @@ class HarvestKeeperEnergySourceToContainerStrategy extends HarvestEnergySourceTo
             sources = sources.filter((s)=>allowedSources.indexOf(s.id) >= 0);
             // creep.log('subset ', sources.length);
         }
-        sources = sources.filter((s)=>s.pos.findInRange(FIND_HOSTILE_CREEPS, 4).length === 0);
+        if (!creep.memory.isFighter) {
+            sources = sources.filter((s)=>s.pos.findInRange(FIND_HOSTILE_CREEPS, 4).length === 0);
+        }
         // creep.log('safe subset ', sources.length);
 
         return sources;
     }
 }
 
-module.exports = HarvestKeeperEnergySourceToContainerStrategy;
+require('./profiler').registerClass(HarvestKeeperEnergySourceToContainerStrategy, 'HarvestKeeperEnergySourceToContainerStrategy'); module.exports = HarvestKeeperEnergySourceToContainerStrategy;

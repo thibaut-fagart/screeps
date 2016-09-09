@@ -17,11 +17,14 @@ class AvoidRespawnStrategy extends BaseStrategy {
         if (nonDisabled.length>0 && this.predicate(creep)()) {
             // creep.log('get out ', this.minrange);
             // get the hell out !
-            let fleePath = PathFinder.search(creep.pos, {pos: nonDisabled[0].pos, range: 7}, {flee:true}).path;
+            let fleePath = PathFinder.search(creep.pos, {pos: nonDisabled[0].pos, range: 10}, {flee:true}).path;
             creep.moveTo(fleePath[0]);
             return true;
         }
-        let lairs = creep.pos.findInRange(FIND_STRUCTURES, 6, {filter: {structureType: STRUCTURE_KEEPER_LAIR}});
+        let lairs =
+            creep.room.glanceForAround(LOOK_STRUCTURES, creep.pos, 6, true).map(d=>d.structure)
+            // creep.pos.findInRange(FIND_STRUCTURES, 6)
+                .filter(s=>s.structureType=== STRUCTURE_KEEPER_LAIR);
         // creep.log('lairs?', lairs.length);
         if (lairs.length && lairs[0].ticksToSpawn < 10) {
             if (lairs[0].pos.getRangeTo(creep) < 10) {
@@ -41,4 +44,4 @@ class AvoidRespawnStrategy extends BaseStrategy {
         return false;
     }
 }
-module.exports = AvoidRespawnStrategy;
+require('./profiler').registerClass(AvoidRespawnStrategy, 'AvoidRespawnStrategy'); module.exports = AvoidRespawnStrategy;

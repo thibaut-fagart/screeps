@@ -43,4 +43,4 @@ class Role {
     }
 }
 
-module.exports = Role;
+require('./profiler').registerClass(Role, 'Role'); module.exports = Role;

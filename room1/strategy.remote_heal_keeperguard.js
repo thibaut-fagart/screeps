@@ -61,4 +61,4 @@ class RemoteHealKeeperGuardStrategy extends RemoteHealStrategy {
     }
 }
 
-module.exports = RemoteHealKeeperGuardStrategy;
+require('./profiler').registerClass(RemoteHealKeeperGuardStrategy, 'RemoteHealKeeperGuardStrategy'); module.exports = RemoteHealKeeperGuardStrategy;

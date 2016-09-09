@@ -232,4 +232,4 @@ class DropToContainerStrategy extends BaseStrategy {
     }
 }
 
-module.exports = DropToContainerStrategy;
+require('./profiler').registerClass(DropToContainerStrategy, 'DropToContainerStrategy'); module.exports = DropToContainerStrategy;

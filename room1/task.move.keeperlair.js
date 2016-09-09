@@ -12,7 +12,7 @@ class MoveToSpawningKeeperLair extends BaseStrategy {
     }
 
     findBrothers(creep) {
-        return creep.pos.findInRange(FIND_MY_CREEPS, 10, {filter: (c) => c.memory.role == creep.memory.role});
+        return creep.pos.findInRange(FIND_MY_CREEPS, 10).filter((c) => c.memory.role == creep.memory.role);
     }
 
     accepts(creep) {
@@ -52,7 +52,7 @@ class MoveToSpawningKeeperLair extends BaseStrategy {
         if (isLeader) {
             // creep.log('leader, find path');
             // lookup path
-            let lairs = creep.room.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_KEEPER_LAIR}});
+            let lairs = creep.room.structures[STRUCTURE_KEEPER_LAIR];
             lairs = lairs.filter(this.predicate(creep));
             // creep.log('lairs', lairs.length);
             if (!lairs.length) return false;
@@ -100,4 +100,4 @@ class MoveToSpawningKeeperLair extends BaseStrategy {
     }
 }
 MoveToSpawningKeeperLair.costMatrixes = {};
-module.exports = MoveToSpawningKeeperLair;
+require('./profiler').registerClass(MoveToSpawningKeeperLair, 'MoveToSpawningKeeperLair'); module.exports = MoveToSpawningKeeperLair;

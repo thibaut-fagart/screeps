@@ -200,4 +200,4 @@ class LoadFromContainerStrategy extends BaseStrategy {
 }
 LoadFromContainerStrategy.ANY_MINERAL = util.ANY_MINERAL;
 LoadFromContainerStrategy.PATH = 'containerSource';
-module.exports = LoadFromContainerStrategy;
+require('./profiler').registerClass(LoadFromContainerStrategy, 'LoadFromContainerStrategy'); module.exports = LoadFromContainerStrategy;

@@ -7,7 +7,7 @@ class DisableTargetStrategy extends StrategyRemoteTarget {
     }
 
     findBrothers(creep) {
-        return creep.pos.findInRange(FIND_MY_CREEPS, this.range, {filter: (c) => c.memory.role == creep.memory.role});
+        return creep.pos.findInRange(FIND_MY_CREEPS, this.range).filter((c) => c.memory.role == creep.memory.role);
     }
 
     findTargets(creep) {
@@ -25,7 +25,7 @@ class DisableTargetStrategy extends StrategyRemoteTarget {
         if (target.owner.username !=='Source Keeper' || _.filter(target.body, (b)=>b.hits > 0).length > 1) {
             return creep.rangedAttack(target);
         } else  if (target.hits < brotherCount * this.getDamage(creep) && !isLeader) {
-            let shouldDisable = target.findInRange(FIND_FLAGS, 5, {filer:{color:COLOR_ORANGE}}).length;
+            let shouldDisable = target.findInRange(FIND_FLAGS, 5).filter(f=>f.color===COLOR_ORANGE).length;
             if (!shouldDisable) {
                 // kill
                 return super.performAttack(creep, target);
@@ -43,4 +43,4 @@ class DisableTargetStrategy extends StrategyRemoteTarget {
     }
 }
 
-module.exports = DisableTargetStrategy;
+require('./profiler').registerClass(DisableTargetStrategy, 'DisableTargetStrategy'); module.exports = DisableTargetStrategy;

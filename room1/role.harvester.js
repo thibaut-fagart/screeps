@@ -48,5 +48,6 @@ class RoleHarvester {
         }
     }
 }
+require('./profiler').registerClass(RoleHarvester, 'RoleHarvester');
 
 module.exports = RoleHarvester;

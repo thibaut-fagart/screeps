@@ -75,4 +75,4 @@ class ReserveControllerStrategy extends BaseStrategy {
     }
 }
 
-module.exports = ReserveControllerStrategy;
+require('./profiler').registerClass(ReserveControllerStrategy, 'ReserveControllerStrategy'); module.exports = ReserveControllerStrategy;

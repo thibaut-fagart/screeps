@@ -36,7 +36,7 @@ class MoveToRoomTask extends BaseStrategy {
         if (creep.room.name != creep.memory[this.CREEP_REMOTE_PATH]) {
             let exit ;
             if (this.isRoomTooFar(creep.room.name, creep.memory[this.CREEP_REMOTE_PATH])) {
-                let portals = creep.room.find(FIND_STRUCTURES, {filter: {structureType :STRUCTURE_PORTAL}});
+                let portals = creep.room.structures[STRUCTURE_PORTAL];
                 if (portals) {
                     creep.log('took the portal !');
                     creep.log('stepping back into ',creep.moveTo(portals[0]));
@@ -120,7 +120,7 @@ class MoveToRoomTask extends BaseStrategy {
         // creep.log('movin in', creep.room.name);
         return false;
         if (creep.pos.x <= 3 || creep.pos.y <= 3 || creep.pos.y >= 46 || creep.pos.x >= 46) {
-            let greenFlags = creep.room.find(FIND_FLAGS, {filter: {color: COLOR_GREEN}});
+            let greenFlags = creep.room.find(FIND_FLAGS).filter(f=>f.color ===COLOR_GREEN);
             if (greenFlags.length) {
                 creep.moveTo(greenFlags[0]);
             }
@@ -209,4 +209,4 @@ class MoveToRoomTask extends BaseStrategy {
         return Game.map.getRoomLinearDistance(room1,room2)> 10;
     }
 }
-module.exports = MoveToRoomTask;
+require('./profiler').registerClass(MoveToRoomTask, 'MoveToRoomTask'); module.exports = MoveToRoomTask;

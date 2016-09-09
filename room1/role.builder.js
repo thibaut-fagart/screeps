@@ -33,7 +33,7 @@ class RoleBuilder {
         if (workParts.length) {
             let neededBoosts = workParts.length - workParts.filter((p)=>p.boost).length;
             if (!neededBoosts) return false;
-            let labs = creep.room.find(FIND_STRUCTURES, {filter: (s)=>s.structureType === STRUCTURE_LAB && s.mineralType === 'LH'});
+            let labs = creep.room.structures[STRUCTURE_LAB].filter(s=> s.mineralType === 'LH');
             labs = labs.filter((l)=>l.mineralAmount >= neededBoosts * 30 && l.energy >= 20 * neededBoosts);
             // creep.log('boosting?', attackParts.length, neededBoosts, labs.length);
             if (labs.length && neededBoosts) {
@@ -136,5 +136,6 @@ class RoleBuilder {
         }
     }
 }
+require('./profiler').registerClass(RoleBuilder, 'RoleBuilder');
 
 module.exports = RoleBuilder;

@@ -53,4 +53,4 @@ class DecayComputer {
         return room.controller.my;
     }
 }
-module.exports = DecayComputer;
+require('./profiler').registerClass(DecayComputer, 'DecayComputer'); module.exports = DecayComputer;

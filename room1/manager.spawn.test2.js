@@ -84,3 +84,6 @@ var rooms = [Game.rooms.E35S15,Game.rooms.E36S15];
             exits[k] = JSON.stringify(pos)
         });
     })
+
+
+var roomName = 'W55S43'; Game.rooms[roomName].find(FIND_STRUCTURES).filter(s=>(s.structureType === STRUCTURE_RAMPART || s.structureType === STRUCTURE_WALL)&& s.hits < 50000).forEach(s=>s.destroy())

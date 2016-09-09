@@ -35,4 +35,4 @@ class BaseStrategy {
 }
 
 
-module.exports = BaseStrategy;
+require('./profiler').registerClass(BaseStrategy, 'BaseStrategy'); module.exports = BaseStrategy;

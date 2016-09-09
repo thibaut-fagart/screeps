@@ -14,4 +14,4 @@ class RemoteTargetNonKeeperStrategy extends RemoteTargetStrategy {
     }
 }
 
-module.exports = RemoteTargetNonKeeperStrategy;
+require('./profiler').registerClass(RemoteTargetNonKeeperStrategy, 'RemoteTargetNonKeeperStrategy'); module.exports = RemoteTargetNonKeeperStrategy;

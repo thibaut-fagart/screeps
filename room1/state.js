@@ -29,4 +29,4 @@ class State {
         
     }
 }
-module.exports = State;
+require('./profiler').registerClass(State, 'State'); module.exports = State;

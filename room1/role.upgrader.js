@@ -109,14 +109,24 @@ class RoleUpgrader {
             } else {
                 creep.log('no upgrade position near container');
                 positions = creep.room.findValidParkingPositions(creep, [{pos: creep.room.controller.pos, range: 3}]);
-                position = creep.pos.findClosestByPath(positions);
+                if (positions.length) {
+                    position = creep.pos.findClosestByPath(positions);
+                } else {
+                    let area = creep.room.glanceAround(creep.room.controller.pos,3)
+                    let walkable = util.findWalkableTiles(creep.room, area);
+                    if (walkable.length) {
+                        position = creep.pos.findClosestByPath(walkable);
+                    }
+                }
             }
             // creep.log('upgrading from '+creep.memory.upgradeFrom);
-            creep.memory.upgradeFrom = util.posToString(position);
+            if (position) {
+                creep.memory.upgradeFrom = util.posToString(position);
+            }
         }
         // creep.log('upgrading from '+creep.memory.upgradeFrom);
         return util.posFromString(creep.memory.upgradeFrom, creep.room.name);
     }
 }
 
-module.exports = RoleUpgrader;
+require('./profiler').registerClass(RoleUpgrader, 'RoleUpgrader'); module.exports = RoleUpgrader;

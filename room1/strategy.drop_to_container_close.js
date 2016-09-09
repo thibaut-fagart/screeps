@@ -17,4 +17,4 @@ class DropToContainerCloseStrategy extends DropToContainerStrategy {
     }
 }
 
-module.exports = DropToContainerCloseStrategy;
+require('./profiler').registerClass(DropToContainerCloseStrategy, 'DropToContainerCloseStrategy'); module.exports = DropToContainerCloseStrategy;

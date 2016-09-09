@@ -16,7 +16,7 @@ class BuildStrategy extends BaseStrategy {
         // if (target) creep.log('buildTarget', target);
         if (!target) {
             // console.log('finding target for  ', creep.name);
-            var targets = creep.room.find(FIND_CONSTRUCTION_SITES, {filter: this.predicate(creep)});
+            var targets = creep.room.find(FIND_CONSTRUCTION_SITES).filter(this.predicate(creep));
             if (targets.length) {
                 if (targets[0].progress > 0) {
                     target = targets[0];
@@ -77,6 +77,8 @@ class BuildStrategy extends BaseStrategy {
                     delete creep.memory[this.BUILD_TARGET];
                 }
             }
+        } else {
+            delete creep.memory.buildFrom;
         }
         return target;
     }
@@ -89,9 +91,35 @@ class BuildStrategy extends BaseStrategy {
      * @returns {RoomPosition}
      */
     findBuildPos(creep, target) {
-        return creep.room.findValidParkingPosition(creep, target.pos, 3);
+        // return creep.room.findValidParkingPosition(creep, target.pos, 3);
+        if (creep.memory.buildFrom) {
+            let pos = util.posFromString(creep.memory.buildFrom, creep.room.name);
+            let creepAtPos = pos.lookFor(LOOK_CREEPS).filter(c=>c.name !== creep.name);
+            // creep.log('creepAtPos', JSON.stringify(creepAtPos));
+            if (creepAtPos.length || pos.getRangeTo(target)>3) {
+                // creep.log('conflict',creepAtPos[0].name);
+                delete creep.memory.buildFrom;
+            }
+        }
+        if (!creep.memory.buildFrom) {
+            let position;
+            let positions = creep.room.findValidParkingPositions(creep,[{pos: target.pos, range: 3}]);
+            if (positions.length) {
+                // creep.log('finding closest of ', JSON.stringify(positions), JSON.stringify(positions.map(p=>p instanceof RoomPosition)));
+                position = creep.pos.findClosestByPath(positions);
+            } else {
+                return undefined;
+            }
+
+
+            // creep.log('upgrading from '+creep.memory.buildFrom);
+            creep.memory.buildFrom = util.posToString(position);
+        }
+        // creep.log('upgrading from '+creep.memory.buildFrom);
+        return util.posFromString(creep.memory.buildFrom, creep.room.name);
+
     }
 
 }
 
-module.exports = BuildStrategy;
+require('./profiler').registerClass(BuildStrategy, 'BuildStrategy'); module.exports = BuildStrategy;

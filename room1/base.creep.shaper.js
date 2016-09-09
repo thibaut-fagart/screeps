@@ -260,6 +260,9 @@ global.EFFICIENT_BOOSTS = (function () {
     'use strict';
     return _.values(BOOSTS).reduce((acc, current)=>(acc.concat(_.keys(current))), []);
 })();
+
+require('./profiler').registerClass(CreepShaper, 'CreepShaper');
+
 /**
  *
  * @param {Room} room

@@ -1,11 +1,12 @@
 var _ = require('lodash');
 require('./game.prototypes.room');
 require('./game.prototypes.creep');
+require('./game.prototypes.lab');
 var util = require('./util');
 var handlers = require('./base.handlers');
 var roleSpawn = require('./role.spawn');
-
-var profiler = require('./screeps-profiler');
+var debugPerfs = false;
+var profiler = require('./profiler');
 if (!Game.rooms['sim'] && !Memory.disableProfiler) profiler.enable();
 
 // var RoomManager = require('./manager.room'), roomManager = new RoomManager(); // todo manager
@@ -126,13 +127,38 @@ function innerLoop() {
     let messages = [], skipped = [];
     wrapPathFinder();
     if (updateStats) Memory.stats = Memory.stats || {};
+    Memory.stats.deaths = 0;
     let globalStart = Game.cpu.getUsed();
     let oldSeenTick = Game.time || (Memory.counters && Memory.counters.seenTick);
     Memory.counters = {tick: Game.time, seenTick: oldSeenTick + 1};
-    if (0 == Game.time % 100) {
+    if (/*0 == Game.time % 100*/true) {
         _.keys(Memory.creeps).forEach((name)=> {
             if (!Game.creeps[name]) {
+                let creepMem = Memory.creeps[name];
+                if (creepMem.role !=='recycle') {
+                    let age;
+                    if (creepMem.birthTime) {
+                        age = Game.time - creepMem.birthTime; // TODO if not run every tick
+                    } else {
+                        let match = /.*_(\d+)/.exec(name);
+                        if (match) {
+                            let birth = match[1];
+                            age = Game.time % 1500 - birth;
+                            age = (age < 0) ? age + 1500 : age;
+                        }
+                    }
+                    let expectedDeath = /claimer.*/.exec(name) || /reserver.*/.exec(name) ? 490 : 1490;
+                    if (age < expectedDeath) {
+                        Game.notify(`${Game.time} creep ${name} died unnaturally at age ${age}`);
+                        Memory.stats.deaths = Memory.stats.deaths + 1;
+                    }
+                }
                 delete Memory.creeps[name];
+            }
+        });
+        _.keys(Memory.spawns).forEach((name)=> {
+            if (!Game.spawns[name]) {
+                delete Memory.spawns[name];
             }
         });
     }
@@ -140,7 +166,7 @@ function innerLoop() {
     let availableCpu = Game.cpu.tickLimit;
     if (updateStats) _.keys(handlers).forEach((k)=>cpu['creeps.' + k] = 0);
     let sortedRooms = _.sortBy(_.values(Game.rooms), (r)=> r.controller && r.controller.my ? r.controller.level : 10);
-    if (updateStats && Game.cpu.tickLimit < 500) console.log('room, controller, roomTasks , creeps ,spawns , labs , stats, room');
+    if (updateStats && Game.cpu.tickLimit < 500 && debugPerfs) console.log('room, controller, roomTasks , creeps ,spawns , labs , stats, room');
     let taskPairs = _.pairs(roomTasks);
     sortedRooms.forEach((room)=> {
         // for (var roomName in Game.rooms) {
@@ -171,14 +197,27 @@ function innerLoop() {
             var creeps = room.find(FIND_MY_CREEPS);
             // room.creeps = creeps;
             creeps.forEach(function (creep) {
+                creep.memory.lastAlive = Game.time;
                 try {
                     if (!creep.spawning) {
+                        creep.memory.birthTime = creep.memory.birthTime || Game.time;
                         let start = Game.cpu.getUsed();
                         if (start < availableCpu - 100) {
-                            let handler = handlers[creep.memory.role];
-                            if (handler) handler.run(creep);
-                            else {
-                                creep.log('!!!!!!no handler !! ');
+                            if (creep.memory.tasks) {
+                                let task = new (require('task.' + creep.memory.tasks[0].name))(creep.memory.tasks[0].args);
+                                let taskComplete = task.run(creep);
+                                if (taskComplete) {
+                                    creep.memory.tasks.splice(0, 1);
+                                    if (!creep.memory.tasks.length) {
+                                        delete creep.memory.tasks;
+                                    }
+                                }
+                            } else {
+                                let handler = handlers[creep.memory.role];
+                                if (handler) handler.run(creep);
+                                else {
+                                    creep.log('!!!!!!no handler !! ');
+                                }
                             }
                         } else {
                             if (updateStats) skipped.push(`${roomName}.${creep.name}`);
@@ -202,7 +241,8 @@ function innerLoop() {
         let creepsCpu = Game.cpu.getUsed();
         // room.log('creepsCpu', creepsCpu);
         if (Game.cpu.getUsed() < availableCpu - 100) {
-            roleSpawn.run(room);
+            try {roleSpawn.run(room);}
+            catch (e) {console.log(e); console.log(e.stack);}
         } else {
             if (updateStats) skipped.push(`${roomName}.spawn`);
 
@@ -215,7 +255,7 @@ function innerLoop() {
         if (Game.cpu.getUsed() < availableCpu - 100) if (updateStats) room.updateCheapStats();
         if (Game.cpu.getUsed() < availableCpu - 100 && updateStats) {
             Memory.stats['room.' + room.name + '.energyInStructures'] = _.sum(_.map(room.find(FIND_MY_STRUCTURES), (s)=> s.store ? s.store.energy : 0));
-            Memory.stats['room.' + room.name + '.energyDropped'] = _.sum(_.map(room.find(FIND_DROPPED_RESOURCES, {filter: (r) => r.resourceType == RESOURCE_ENERGY}), (s)=> s.amount));
+            Memory.stats['room.' + room.name + '.energyDropped'] = _.sum(_.map(room.find(FIND_DROPPED_RESOURCES).filter(r => r.resourceType == RESOURCE_ENERGY), (s)=> s.amount));
             if (0 == Game.time % 100) {
                 let regexp = new RegExp(`room.${room.name}.efficiency`);
                 _.keys(Memory.stats).filter((k)=>regexp.exec(k)).forEach((k)=>delete Memory [k]);
@@ -245,7 +285,7 @@ function innerLoop() {
         let statsCpu = Game.cpu.getUsed();
         if (updateStats) cpu ['stats'] = (cpu ['stats'] || 0) + statsCpu - labsCpu;
         if (updateStats) roomCpu[roomName] = Game.cpu.getUsed() - roomStartCpu;
-        if (updateStats && Game.cpu.tickLimit < 500) room.log(
+        if (updateStats && Game.cpu.tickLimit < 500 && debugPerfs) room.log(
             (roomTasksCpu - roomStartCpu).toFixed(1),
             (creepsCpu - roomTasksCpu).toFixed(1),
             (spawnCpu - creepsCpu).toFixed(1),
@@ -293,11 +333,13 @@ module.exports.loop = function () {
     let mainStart = Game.cpu.getUsed();
     Memory.stats = Memory.stats || {};
     Memory.stats['cpu_.init'] = mainStart;
+
     if (Game.cpu.bucket > 200 && !Game.rooms['sim']) {
         profiler.wrap(innerLoop);
         // innerLoop();
     } else if (Game.rooms['sim']) {
-        innerLoop();
+        try {innerLoop();}
+        catch (e) {console.log(e); console.log(e.stack);}
     }
     if (Game.cpu.tickLimit < 500) console.log(mainStart, Game.cpu.getUsed(), Game.cpu.bucket);
 

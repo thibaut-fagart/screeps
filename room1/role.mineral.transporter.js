@@ -58,4 +58,4 @@ class RoleMineralTransporter extends RoleRemoteCarry {
     }
 }
 
-module.exports = RoleMineralTransporter;
+require('./profiler').registerClass(RoleMineralTransporter, 'RoleMineralTransporter'); module.exports = RoleMineralTransporter;

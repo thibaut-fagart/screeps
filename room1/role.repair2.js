@@ -4,6 +4,7 @@ var LoadFromContainerStrategy = require('./strategy.load_from_container');
 var HarvestEnergySourceStrategy = require('./strategy.harvest_source');
 var PickupStrategy = require('./strategy.pickup');
 var BuildStrategy = require('./strategy.build');
+var RegroupStrategy = require('./strategy.regroup');
 
 class RoleRepair2 {
     constructor() {
@@ -15,6 +16,7 @@ class RoleRepair2 {
         this.ACTION_FILL = 'fill';
         this.buildStrategy = new BuildStrategy();
         util.indexStrategies(this.loadStrategies);
+        this.regroupStrategy = new RegroupStrategy(COLOR_ORANGE);
     }
 
     /**
@@ -29,7 +31,7 @@ class RoleRepair2 {
         if (workParts.length) {
             let neededBoosts = workParts.length - workParts.filter((p)=>p.boost).length;
             if (!neededBoosts) return false;
-            let labs = creep.room.find(FIND_STRUCTURES, {filter: (s)=>s.structureType === STRUCTURE_LAB && s.mineralType === 'LH'});
+            let labs = creep.room.structures[STRUCTURE_LAB].filter(s=> s.mineralType === 'LH');
             labs = labs.filter((l)=>l.mineralAmount >= neededBoosts * 30 && l.energy >= 20 * neededBoosts);
             // creep.log('boosting?', attackParts.length, neededBoosts, labs.length);
             if (labs.length && neededBoosts) {
@@ -106,6 +108,9 @@ class RoleRepair2 {
                             this.clearTarget(creep);
                         }
                     }
+                }
+                if (!target) {
+                    this.regroupStrategy.accepts(creep);
                 }
             }
         }
@@ -195,4 +200,4 @@ class RoleRepair2 {
     }
 }
 // module.exports = roleRepair2;
-module.exports = RoleRepair2;
+require('./profiler').registerClass(RoleRepair2, 'RoleRepair2'); module.exports = RoleRepair2;

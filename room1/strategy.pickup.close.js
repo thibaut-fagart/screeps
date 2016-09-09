@@ -37,7 +37,10 @@ class ClosePickupStrategy extends PickupStrategy{
     findSource(creep) {
         delete creep.memory[this.constructor.name + "Path"];
         delete creep.memory[this.PATH];
-        let resources =  creep.room.glanceForAround(LOOK_RESOURCES, creep.pos, this.range , true).map((r)=>r.resource).filter((r)=>r.pos.findInRange(FIND_HOSTILE_CREEPS,3).length==0);
+        let resources =  creep.room.glanceForAround(LOOK_RESOURCES, creep.pos, this.range , true).map((r)=>r.resource).filter((r)=>
+            !(r.room.glanceForAround(LOOK_CREEPS, r.pos, 3, true).map(d=>d.creep).find(c=>!c.my)))
+        // r.pos.findInRange(FIND_HOSTILE_CREEPS,3).length==0)
+        ;
         if (resources.length) {
             // todo find the biggest we can consume completely
             let resource = resources.find((r)=>true);
@@ -49,4 +52,4 @@ class ClosePickupStrategy extends PickupStrategy{
     }
 }
 
-module.exports = ClosePickupStrategy;
+require('./profiler').registerClass(ClosePickupStrategy, 'ClosePickupStrategy'); module.exports = ClosePickupStrategy;

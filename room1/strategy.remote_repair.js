@@ -58,4 +58,4 @@ class RemoteRepairStrategy extends BaseStrategy {
     }
 }
 
-module.exports = RemoteRepairStrategy;
+require('./profiler').registerClass(RemoteRepairStrategy, 'RemoteRepairStrategy'); module.exports = RemoteRepairStrategy;

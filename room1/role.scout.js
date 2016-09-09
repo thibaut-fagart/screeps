@@ -12,6 +12,7 @@ class RoleScout {
 
     /** @param {Creep} creep **/
     run(creep) {
+        this.scout(creep, creep.room);
         if (creep.memory.action !== 'scout') {
             let accepts = this.moveTask.accepts(creep);
             if (accepts) return;
@@ -25,6 +26,23 @@ class RoleScout {
 
 
     }
+    scout(creep, room) {
+        room.memory.scouted = room.memory.scouted || {time: -Infinity};
+        let scouted =room.memory.scouted;
+        if (scouted.time < Game.time + 10000) {
+            Memory.scouting = Memory.scouting || {};
+            Memory.scouting.needScouting = _.pull(Memory.scouting.needScouting||[], room.name);
+            Memory.scouting.scouted = Memory.scouting.scouted || [];
+            scouted.time = Game.time;
+            if(!_.includes(Memory.scouting.scouted, room.name)) {
+                Memory.scouting.scouted.push(room.name);
+            }
+            scouted.minerals = room.find(FIND_MINERALS).map(min=>min.mineralType);
+            scouted.owner = room.controller && room.controller.owner && room.controller.owner.username;
+            scouted.level = room.controller && room.controller.level;
+            scouted.sourceCount = room.find(FIND_SOURCES).length;
+        }
+    }
 }
 
-module.exports = RoleScout;
+require('./profiler').registerClass(RoleScout, 'RoleScout'); module.exports = RoleScout;

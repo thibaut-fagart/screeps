@@ -21,14 +21,13 @@ Room.prototype.wallsRequiringRepair = function () {
     'use strict';
     let currentRoomEnergy = (this.storage ? this.storage.energy || 0 : 0);
     return _.sortBy(
-        this.find(FIND_STRUCTURES, {
-            filter: (s)=>
-                ((s.structureType == STRUCTURE_WALL || (s.structureType == STRUCTURE_RAMPART && s.my)) &&
-                ((currentRoomEnergy < 10000 && s.hits < 100000)
-                || (currentRoomEnergy < 50000 && s.hits < 1000000)
-                || currentRoomEnergy > 50000)
-                && s.hits < s.hitsMax)
-        }),
+        this.structures[STRUCTURE_WALL].concat(this.structures[STRUCTURE_RAMPART].filter(s=>s.my))
+            .filter(s=>
+            ((currentRoomEnergy < 10000 && s.hits < 100000)
+            || (currentRoomEnergy < 50000 && s.hits < 1000000)
+            || currentRoomEnergy > 50000)
+            && s.hits < s.hitsMax)
+        ,
         (w)=>w.hits
     );
 
@@ -67,7 +66,7 @@ Room.prototype.hasKeeperLairs = function () {
     // this.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_KEEPER_LAIR}})
 };
 Room.prototype.operateLinks = function () {
-    let links = this.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_LINK}});
+    let links = this.structures[STRUCTURE_LINK];
     if (!links.length) return;
     let storageLink = (this.storage) && links.find((l)=> l.pos.getRangeTo(this.storage) < 4);
     let controllerLink = links.find((l)=> l.pos.getRangeTo(this.controller.pos) < 5);
@@ -129,7 +128,7 @@ Room.prototype.assessThreat = function () {
         // initialize to be able to get harvestRate
         this.memory.threatAssessment.lastInvadersAt = Game.time;
     }
-    if (this.find(FIND_HOSTILE_CREEPS, {filter: (c)=>c.owner.username == 'Invader'}).length && !this.memory.threatAssessment.invaders) {
+    if (this.find(FIND_HOSTILE_CREEPS).find(c=>c.owner.username == 'Invader') && !this.memory.threatAssessment.invaders) {
         this.memory.threatAssessment.invaders = true;
         this.memory.threatAssessment.harvested = 0;
         this.memory.threatAssessment.lastInvadersAt = Game.time;
@@ -228,12 +227,12 @@ Room.prototype.updateLocks = function () {
 Room.prototype.operateTowers = function () {
     this.memory.towersCache = this.memory.towersCache || {date: 0};
     if (!this.memory.towersCache.towers || this.memory.towersCache.date + 500 < Game.time) {
-        this.memory.towersCache.towers = this.find(FIND_MY_STRUCTURES, {filter: (s) => s.structureType == STRUCTURE_TOWER}).map((s) => s.id);
+        this.memory.towersCache.towers = this.find(FIND_MY_STRUCTURES).filter(s => s.structureType == STRUCTURE_TOWER).map((s) => s.id);
     }
     this.memory.towersCache.towers.forEach((towerid)=> {
         let tower = Game.getObjectById(towerid);
         if (tower) handlers['tower'].run(tower);
-        else this.memory.towersCache.towers = this.find(FIND_MY_STRUCTURES, {filter: (s) => s.structureType == STRUCTURE_TOWER}).map((s) => s.id);
+        else this.memory.towersCache.towers = this.find(FIND_MY_STRUCTURES).filter(s => s.structureType == STRUCTURE_TOWER).map((s) => s.id);
     });
 };
 Room.prototype.gc = function () {
@@ -416,7 +415,8 @@ Room.prototype.tripTimeToSources = function (toRoom, force) {
         let roomCursor = this.name, startPoint;
         let tripTime = {plain: 0, swamp: 0, road: 0};
 
-        startPoint = Room.getExitTo(roomCursor, toRoom).findClosestByRange(this.findContainers().filter(s=>[STRUCTURE_CONTAINER, STRUCTURE_LINK, STRUCTURE_STORAGE].indexOf(s.structureType) >= 0)).pos;
+        let exitTo = Room.getExitTo(roomCursor, toRoom);
+        startPoint = exitTo.findClosestByRange(this.findContainers().filter(s=>[STRUCTURE_CONTAINER, STRUCTURE_LINK, STRUCTURE_STORAGE].indexOf(s.structureType) >= 0)).pos;
         this.log(`tripTime to ${toRoom} using ${startPoint} as drop point`);
 
         do {
@@ -451,7 +451,7 @@ Room.prototype.tripTimeToSources = function (toRoom, force) {
         if (targetRoom) {
             let temp = {plain: 0, swamp: 0, road: 0};
             let sources = targetRoom.find(FIND_SOURCES);
-            let extractors = targetRoom.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_EXTRACTOR}});
+            let extractors = targetRoom.structures[STRUCTURE_EXTRACTOR];
             if (extractors.length) {
                 sources.push(extractors[0]);
             }
@@ -479,67 +479,71 @@ Room.prototype.tripTimeToSources = function (toRoom, force) {
 };
 
 Room.prototype.updateCheapStats = function () {
+    try {
+        Memory.stats['room.' + this.name + '.spawns.queueLength'] = this.memory.queueLength;
+        let building = this.memory.building;
+        let buildingRoles = building ? _.countBy(_.values(building).map((spec)=>spec.memory.role)) : {};
+        let queuePrefix = 'room.' + this.name + '.spawns.queue.';
+        let buildingPrefix = 'room.' + this.name + '.spawns.building.';
+        _.keys(handlers).forEach((role)=> {
+            if (this.memory.queue && this.memory.queue[role]) {
+                Memory.stats[queuePrefix + role] = this.memory.queue[role];
+            } else {
+                delete Memory.stats[queuePrefix + role];
+            }
+            let buildingRole = buildingRoles[role] || 0;
+            if (buildingRole) {
+                Memory.stats[buildingPrefix + role] = buildingRole;
+            } else {
+                delete Memory.stats[buildingPrefix + role];
+            }
 
-    Memory.stats['room.' + this.name + '.spawns.queueLength'] = this.memory.queueLength;
-    let building = this.memory.building;
-    let buildingRoles = building ? _.countBy(_.values(building).map((spec)=>spec.memory.role)) : {};
-    let queuePrefix = 'room.' + this.name + '.spawns.queue.';
-    let buildingPrefix = 'room.' + this.name + '.spawns.building.';
-    _.keys(handlers).forEach((role)=> {
-        if (this.memory.queue && this.memory.queue[role]) {
-            Memory.stats[queuePrefix + role] = this.memory.queue[role];
-        } else {
-            delete Memory.stats[queuePrefix + role];
-        }
-        let buildingRole = buildingRoles[role] || 0;
-        if (buildingRole) {
-            Memory.stats[buildingPrefix + role] = buildingRole;
-        } else {
-            delete Memory.stats[buildingPrefix + role];
-        }
-
-    });
-    let remoteRooms = _.isString(this.memory.remoteMining) ? [this.memory.remoteMining] : this.memory.remoteMining;
-    if (remoteRooms) {
-        let c = (trip)=>5 * (trip.swamp || 0) + 2 * (trip.plain || 0) + (trip.road || 0);
-        remoteRooms.forEach(remoteRoom=> {
-            Memory.stats[`room.${this.name}.remoteRooms.${remoteRoom}.tripTime`] = c(this.tripTimeToSources(remoteRoom));
         });
-    }
-    if (this.storage) {
-        _.keys(this.storage.store).forEach((min)=>Memory.stats[`room.${this.name}.resources.storage.${min}`] = this.storage.store[min]);
-    }
-    if (this.terminal) {
-        _.keys(this.terminal.store).forEach((min)=>Memory.stats[`room.${this.name}.resources.terminal.${min}`] = this.terminal.store[min]);
-    }
-    Memory.stats['room.' + this.name + '.energyAvailable'] = this.energyAvailable;
-    Memory.stats['room.' + this.name + '.energyCapacityAvailable'] = this.energyCapacityAvailable;
-    Memory.stats['room.' + this.name + '.threats.harvested'] = (this.memory.threatAssessment || {harvested: 0}).harvested;
-    Memory.stats['room.' + this.name + '.reservedCount'] = _.size(this.memory.reserved);
-    Memory.stats['room.' + this.name + '.energyInSources'] = _.sum(_.map(this.find(FIND_SOURCES_ACTIVE), (s)=> s.energy));
-    if (this.controller && this.controller.my) {
-        Memory.stats['room.' + this.name + '.controller.progress'] = this.controller.progress;
-        Memory.stats['room.' + this.name + '.controller.progressTotal'] = this.controller.progressTotal;
-        Memory.stats['room.' + this.name + '.controller.ProgressRatio'] = 100 * this.controller.progress / this.controller.progressTotal;
-    }
+        let remoteRooms = _.isString(this.memory.remoteMining) ? [this.memory.remoteMining] : this.memory.remoteMining;
+        if (remoteRooms) {
+            let c = (trip)=>5 * (trip.swamp || 0) + 2 * (trip.plain || 0) + (trip.road || 0);
+            remoteRooms.forEach(remoteRoom=> {
+                Memory.stats[`room.${this.name}.remoteRooms.${remoteRoom}.tripTime`] = c(this.tripTimeToSources(remoteRoom));
+            });
+        }
+        if (this.storage) {
+            _.keys(this.storage.store).forEach((min)=>Memory.stats[`room.${this.name}.resources.storage.${min}`] = this.storage.store[min]);
+        }
+        if (this.terminal) {
+            _.keys(this.terminal.store).forEach((min)=>Memory.stats[`room.${this.name}.resources.terminal.${min}`] = this.terminal.store[min]);
+        }
+        Memory.stats['room.' + this.name + '.energyAvailable'] = this.energyAvailable;
+        Memory.stats['room.' + this.name + '.energyCapacityAvailable'] = this.energyCapacityAvailable;
+        Memory.stats['room.' + this.name + '.threats.harvested'] = (this.memory.threatAssessment || {harvested: 0}).harvested;
+        Memory.stats['room.' + this.name + '.reservedCount'] = _.size(this.memory.reserved);
+        Memory.stats['room.' + this.name + '.energyInSources'] = _.sum(_.map(this.find(FIND_SOURCES_ACTIVE), (s)=> s.energy));
+        if (this.controller && this.controller.my) {
+            Memory.stats['room.' + this.name + '.controller.progress'] = this.controller.progress;
+            Memory.stats['room.' + this.name + '.controller.progressTotal'] = this.controller.progressTotal;
+            Memory.stats['room.' + this.name + '.controller.ProgressRatio'] = 100 * this.controller.progress / this.controller.progressTotal;
+        }
 
-    let spawnStats = this.find(FIND_MY_SPAWNS)
-        .reduce(
-            (sum, spawn)=> {
-                _.keys(spawn.memory.spawns).forEach((k)=> {
-                    if (!(/.*Bits/.exec(k))) {
-                        sum[k] = (sum[k] || 0) + spawn.memory.spawns[k];
-                    }
-                });
-                return sum;
-            }, {});
-    // this.log('spawnStats', JSON.stringify(spawnStats));
-    let spawnPrefix = `room.${this.name}.spawns.`;
-    _.keys(spawnStats).forEach((k)=> {
-        let value = spawnStats[k];
-        if (value === 0) delete Memory.stats[spawnPrefix + k];
-        else  Memory.stats[spawnPrefix + k] = value;
-    });
+        let spawnStats = this.find(FIND_MY_SPAWNS)
+            .reduce(
+                (sum, spawn)=> {
+                    _.keys(spawn.memory.spawns).forEach((k)=> {
+                        if (!(/.*Bits/.exec(k))) {
+                            sum[k] = (sum[k] || 0) + spawn.memory.spawns[k];
+                        }
+                    });
+                    return sum;
+                }, {});
+        // this.log('spawnStats', JSON.stringify(spawnStats));
+        let spawnPrefix = `room.${this.name}.spawns.`;
+        _.keys(spawnStats).forEach((k)=> {
+            let value = spawnStats[k];
+            if (value === 0) delete Memory.stats[spawnPrefix + k];
+            else  Memory.stats[spawnPrefix + k] = value;
+        });
+    } catch (e) {
+        console.log(e);
+        console.log(e.stack);
+    }
 };
 /**
  *
@@ -614,7 +618,10 @@ Room.prototype.findContainers = function () {
 Room.prototype.buildStructures = function (pos) {
     'use strict';
     let genericBuilder = (type)=> {
-        let flags = this.find(FIND_FLAGS, {filter: util.buildColors(type)});
+        let colors = util.buildColors(type);
+        let flags = ((pos) ?
+            this.glanceForAround(LOOK_FLAGS, pos, 3, true).map(l=>l.flag)
+            : this.find(FIND_FLAGS)).filter(f=>f.color == colors.color && f.secondaryColor === colors.secondaryColor);
         let unbuiltFlags = flags.filter((f)=>f.pos.lookFor(LOOK_STRUCTURES).filter((s)=>s.structureType === type).length === 0);
         let buildableFlags = unbuiltFlags.filter((f)=>f.pos.lookFor(LOOK_CONSTRUCTION_SITES).length === 0);
         // this.log('buildStructures',type,'flags', flags.length,'unbuiltFlags', unbuiltFlags.length,'buildableFlags', buildableFlags.length);
@@ -648,7 +655,7 @@ Room.prototype.buildStructures = function (pos) {
     };
     if (this.controller && this.controller.my && this.find(FIND_CONSTRUCTION_SITES).length == 0) {
         let towerBuilder = ()=> {
-            if (this.controller.level >= 3 && this.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_TOWER}}).length < CONTROLLER_STRUCTURES[STRUCTURE_TOWER][this.controller.level]) {
+            if (this.controller.level >= 3 && this.structures[STRUCTURE_TOWER].length < CONTROLLER_STRUCTURES[STRUCTURE_TOWER][this.controller.level]) {
                 if (genericBuilder(STRUCTURE_TOWER))
                     return true;
             }
@@ -686,13 +693,13 @@ Room.prototype.buildStructures = function (pos) {
             return (genericBuilder(STRUCTURE_CONTAINER));
         };
         let extensionsBuilder = ()=> {
-            let currentExtensionCount = this.find(FIND_STRUCTURES).filter((s)=>s.structureType === STRUCTURE_EXTENSION).length;
+            let currentExtensionCount = this.structures[STRUCTURE_EXTENSION].length;
             if (this.controller.level >= 2 && CONTROLLER_STRUCTURES[STRUCTURE_EXTENSION][this.controller.level] > currentExtensionCount) {
                 return (genericBuilder(STRUCTURE_EXTENSION));
             }
         };
         let extractorBuilder = ()=> {
-            if (this.controller.level >= 6 && !this.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_EXTRACTOR}})) {
+            if (this.controller.level >= 6 && !this.structures[STRUCTURE_EXTRACTOR]) {
                 this.find(FIND_MINERALS).forEach((min)=> min.pos.createConstructionSite(STRUCTURE_EXTRACTOR));
                 return true;
             }
@@ -708,7 +715,7 @@ Room.prototype.availableBoosts = function () {
     if (!(this.memory.boosts && this.memory.boosts.date && this.memory.boosts.date > Game.time - 1000)) {
         this.memory.boosts = {
             date: Game.time,
-            value: this.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_LAB}}).map((lab)=>lab.mineralType).filter((min)=>EFFICIENT_BOOSTS.indexOf(min) >= 0)
+            value: this.structures[STRUCTURE_LAB].map((lab)=>lab.mineralType).filter((min)=>EFFICIENT_BOOSTS.indexOf(min) >= 0)
 
         };
     }
@@ -747,7 +754,7 @@ Room.prototype.allowedBoosts = function (role) {
  * @param {string} feature
  */
 Room.prototype.maxBoost = function (part, feature) {
-    let labs = this.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_LAB}});
+    let labs = this.structures[STRUCTURE_LAB];
     let minerals = labs.map((lab)=>lab.mineralType);
     if (!minerals) return 1;
     else return _.max(_.keys(BOOSTS[part])
@@ -914,5 +921,21 @@ Object.defineProperty(Room.prototype, 'export',
         configurable: true
     }
 );
+Object.defineProperty(Room.prototype, 'structures',
+    {
+        get: function () {
+            if (Game.time !== this._structuresUpdated) {
+                this._structuresUpdated = Game.time;
+                this._structures = _.groupBy(this.find(FIND_STRUCTURES), 'structureType');
+                _.keys(CONTROLLER_STRUCTURES).forEach(type=>this._structures[type] = this._structures[type] || []);
+                [STRUCTURE_CONTROLLER, STRUCTURE_KEEPER_LAIR, STRUCTURE_POWER_BANK, STRUCTURE_RAMPART, STRUCTURE_WALL, STRUCTURE_PORTAL, STRUCTURE_ROAD]
+                    .forEach(type=>this._structures[type] = this._structures[type] || []);
+            }
+            return this._structures;
+        },
+        configurable: true
+    }
+);
+
 
 module.exports = Room.prototype;

@@ -265,7 +265,7 @@ class Util {
 
         let creeps = (room || predicate) ?
             (predicate ?
-                room.find(FIND_MY_CREEPS, {filter: predicate})
+                room.find(FIND_MY_CREEPS).filter(predicate)
                 : room.find(FIND_MY_CREEPS)) : Game.creeps;
         return _.countBy(creeps, (c) => c.memory.role);
     }
@@ -288,7 +288,7 @@ class Util {
         let nonHostiles = remoteRoom.memory.tolerates || [];
         allowMinerals = allowMinerals && !remoteRoom.memory.ignoreMinerals;
         let hostiles = remoteRoom.find(FIND_HOSTILE_CREEPS).filter((c)=>c.owner.username !== 'Source Keeper' && (!c.owner || nonHostiles.indexOf(c.owner.username) < 0));
-        let mineralsAreHarvestable = allowMinerals && remoteRoom.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_EXTRACTOR}}).length;
+        let mineralsAreHarvestable = allowMinerals && remoteRoom.structures[STRUCTURE_EXTRACTOR].length;
         // remoteRoom.log('mineralsAreHarvestable', mineralsAreHarvestable, 'hostiles?',!(hostiles.length));
         if (!(hostiles.length)) {
             deposits = remoteRoom.find(FIND_SOURCES);
@@ -308,9 +308,9 @@ class Util {
                         return activeParts.length > 1;
                     } // non disabled keepers
                 ).length == 0;
-                deposits = remoteRoom.find(FIND_SOURCES, {filter: safeFilter});
+                deposits = remoteRoom.find(FIND_SOURCES).filter(safeFilter);
                 if (mineralsAreHarvestable) {
-                    deposits = deposits.concat(remoteRoom.find(FIND_MINERALS, {filter: safeFilter})).filter((m)=>m.mineralAmount > 0);
+                    deposits = deposits.concat(remoteRoom.find(FIND_MINERALS).filter(safeFilter)).filter((m)=>m.mineralAmount > 0);
                 }
             }
         }
@@ -391,23 +391,25 @@ class Util {
         let path = creep.memory[memory];
         // creep.log('memory[path]',memory, JSON.stringify(path));
         // check the target pos didn't change
-        let isPathValid = path && path.target && pos.isEqualTo(path.target.x, path.target.y) && pos.roomName == path.target.roomName;
+        let isPathValid = path && path.target && (pos.getRangeTo(path.target.x, path.target.y)<=options.range) && pos.roomName == path.target.roomName;
         if (isPathValid) {
             path = this.restorePath(path.path);
             // creep.log('restored path', JSON.stringify(path));
         } else if (path) {
-            // creep.log('dropping path, bad destination', JSON.stringify(pos), JSON.stringify(path.target));
+            // creep.log('dropping path, bad destination', JSON.stringify(pos), JSON.stringify(path.target), options.range);
             delete creep.memory[memory];
             path = false;
         }
         if (!path) {
             // check reachability
             // creep.log('no path');
+/* this is expensive and seldom used (almost as expensive as finding the path)
             let range = this.checkReachable(creep, pos, options.range);
             if (range !== options.range) {
-                // creep.log('unreachable tile, widening');
+                creep.log('unreachable tile, widening');
                 options.range = range + 1;
             }
+*/
             // creep.log('computing path to', JSON.stringify(pos), JSON.stringify(options));
             path = this.safeMoveTo2(creep, pos, options);
 
@@ -577,7 +579,7 @@ class Util {
 
     avoidHostilesCostMatrix(creepOrRoom, options) {
         let room = creepOrRoom.room ? creepOrRoom.room : creepOrRoom;
-        return this.avoidCostMatrix(room, (options && options.ignoreHostiles) ? [] : room.find(FIND_HOSTILE_CREEPS), 4, options);
+        return this.avoidCostMatrix(room, (options && options.ignoreHostiles) ? [] : room.find(FIND_HOSTILE_CREEPS), 3, options);
     }
     debugCostMatrix (room, matrix) {
         for(let x = 0; x < 49; x++) {
@@ -836,6 +838,44 @@ class Util {
         }, result);
         return result;
     }
+
+    /**
+     *
+     * @param {BODYPART[]} body
+     * @return {string}
+     */
+    bodyToString(body) {
+        return body.reduce((s, part)=>s + partsToChar[part], '');
+    }
+    /**
+     *
+     * @param {string} s
+     * @return {BODYPART[]} body
+     */
+    stringToBody(s) {
+        let body = [];
+        for (let i in s) {
+            body.push(charToParts[s.charAt(i)]);
+        }
+        return body;
+    }
 }
+var partsToChar = {};
+partsToChar[MOVE] = 'M';
+partsToChar[WORK] = 'W';
+partsToChar[CARRY] = 'C';
+partsToChar[ATTACK] = 'A';
+partsToChar[RANGED_ATTACK] = 'R';
+partsToChar[TOUGH] = 'T';
+partsToChar[HEAL] = 'H';
+partsToChar[CLAIM] = 'D';
+var charToParts = {};
+_.pairs(partsToChar).forEach(pair=>{
+    'use strict';
+    charToParts[pair[1]] = pair[0];
+});
+
+
 Util.ROOM_NAME_PATTERN = /([EW])(\d+)([NS])(\d+)/;
+require('./profiler').registerClass(Util, 'Util');
 module.exports = new Util();

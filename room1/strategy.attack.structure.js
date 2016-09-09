@@ -27,7 +27,7 @@ class AttackStructureStrategy extends Base {
             creep.log('targetStructure', targetStructure);
             if (!targetStructure) {
                 let structures = creep.room.find(FIND_STRUCTURES, (s) => {
-                    return [STRUCTURE_CONTAINER, /*STRUCTURE_WALL, */STRUCTURE_RAMPART].indexOf(s.structureType) >= 0 && (!structure.owner || structure.owner.username !== creep.owner.username )
+                    return [STRUCTURE_CONTAINER, /*STRUCTURE_WALL, */STRUCTURE_RAMPART].indexOf(s.structureType) >= 0 && (!structure.owner || structure.owner.username !== creep.owner.username );
                 });
                 targetStructure = creep.pos.findClosestByPath(structures);
                 if (!targetStructure) {
@@ -48,4 +48,4 @@ class AttackStructureStrategy extends Base {
         return targetStructure? this:null;
     }
 }
-module.exports = AttackStructureStrategy;
+require('./profiler').registerClass(AttackStructureStrategy, 'AttackStructureStrategy'); module.exports = AttackStructureStrategy;

@@ -205,4 +205,4 @@ class RoleRemoteCarry {
         return this.travelingBuild.accepts(creep);
     }
 }
-module.exports = RoleRemoteCarry;
+require('./profiler').registerClass(RoleRemoteCarry, 'RoleRemoteCarry'); module.exports = RoleRemoteCarry;

@@ -74,4 +74,4 @@ class DismantleStrategy extends BaseStrategy {
     }
 }
 
-module.exports = DismantleStrategy;
+require('./profiler').registerClass(DismantleStrategy, 'DismantleStrategy'); module.exports = DismantleStrategy;

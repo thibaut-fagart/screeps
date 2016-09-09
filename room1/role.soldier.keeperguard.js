@@ -78,7 +78,10 @@ class RoleKeeperGuard extends RoleRemoteRoomGuard {
 
     }
 
+    onNoHostiles(creep) {
+        // keeper guards don't move
+    }
 }
 
 
-module.exports = RoleKeeperGuard;
+require('./profiler').registerClass(RoleKeeperGuard, 'RoleKeeperGuard'); module.exports = RoleKeeperGuard;

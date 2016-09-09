@@ -14,7 +14,7 @@ class RoleRemoteUpgrader extends RoleUpgrader{
    	}
     
     run(creep) {
-        if (creep.room.find(FIND_MY_CREEPS,{filter:(c)=>c.memory.role  === 'harvester' || c.memory.role ==='remoteHarvester'}).length ===0) {
+        if (!(creep.room.find(FIND_MY_CREEPS).find(c=>c.memory.role  === 'harvester' || c.memory.role ==='remoteHarvester'))) {
             this.loadStrategies.push(new HarvestEnergySourceStrategy());
         }
         // if (this.fleeStrategy.accepts(creep)) {return;}
@@ -28,4 +28,4 @@ class RoleRemoteUpgrader extends RoleUpgrader{
         }
     }
 }
-module.exports = RoleRemoteUpgrader;
+require('./profiler').registerClass(RoleRemoteUpgrader, 'RoleRemoteUpgrader'); module.exports = RoleRemoteUpgrader;

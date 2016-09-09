@@ -16,14 +16,15 @@ class RoleLinkOperator {
 
         let isStorageLink = creep.room.storage && link.pos.getRangeTo(creep.room.storage) <= 2;
         let isControllerLink = link.pos.getRangeTo(creep.room.controller) < 5;
-        let drops = creep.pos.findInRange(FIND_DROPPED_ENERGY, 1);
+        let drops = creep.room.glanceForAround(LOOK_ENERGY, creep.pos, 1, true).map(d=>d.energy);
+        // let drops = creep.pos.findInRange(FIND_DROPPED_ENERGY, 1);
         let creepCarry = _.sum(creep.carry);
         if (drops.length && creepCarry < creep.carryCapacity) {
             creep.pickup(drops[0]);
             return;
         }
         // creep.log(`controller ? ${isControllerLink}, storage? ${isStorageLink}, link ${link}`);
-        if (isControllerLink/*|| isStorageLink*/) {
+        if (isControllerLink || (isStorageLink && creep.room.storage.store.energy < 10000)) {
             // keep link empty
             let container = isControllerLink ? this.getContainer(creep) : creep.room.storage;
             this.getInPosition(creep, link, container);
@@ -103,7 +104,9 @@ class RoleLinkOperator {
 
     getLink(creep) {
         if (!creep.memory.link) {
-            let links = creep.room.controller.pos.findInRange(FIND_STRUCTURES, 5).filter(s=>s.structureType === STRUCTURE_LINK && !s.operator);
+            // let links = creep.room.controller.pos.findInRange(FIND_STRUCTURES, 5)
+            let links = creep.room.glanceForAround(LOOK_STRUCTURES, creep.room.controller.pos, 5, true).map(d=>d.structure)
+                .filter(s=>s.structureType === STRUCTURE_LINK && !s.operator);
             creep.log('found links', links.length, links[0]);
             if (links.length) {
                 creep.memory.link = links[0].id;
@@ -120,7 +123,9 @@ class RoleLinkOperator {
     getContainer(creep) {
         if (!creep.memory.container) {
             let link = this.getLink(creep);
-            let containers = link.pos.findInRange(FIND_STRUCTURES, 2, {filter: s=>s.structureType===STRUCTURE_CONTAINER || s.structureType===STRUCTURE_STORAGE});
+            let containers = creep.room.glanceForAround(LOOK_STRUCTURES, link.pos, 2, true).map(d=>d.structure)
+            // let containers = link.pos.findInRange(FIND_STRUCTURES, 2)
+                .filter(s=>s.structureType===STRUCTURE_CONTAINER || s.structureType===STRUCTURE_STORAGE);
             creep.log('found containers', containers.length, containers[0], link);
             if (containers.length) {
                 creep.memory.container = containers[0].id;
@@ -131,5 +136,4 @@ class RoleLinkOperator {
         return Game.getObjectById(creep.memory.container);
     }
 }
-
-module.exports = RoleLinkOperator;
+require('./profiler').registerClass(RoleLinkOperator, 'RoleLinkOperator'); module.exports = RoleLinkOperator;

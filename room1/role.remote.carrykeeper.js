@@ -13,12 +13,19 @@ class RoleRemoteCarryKeeper extends RoleRemoteCarry {
     constructor() {
         super();
         this.fleeStrategy = new AvoidRespawnStrategy(1);
-        this.pickupStrategy = new KeeperPickupStrategy(RESOURCE_ENERGY, function(creep) {return (drop) => drop.pos.findInRange(FIND_HOSTILE_CREEPS, 5).length === 0 && creep.pos.getRangeTo(drop) < 1;});
+        this.pickupStrategy = new KeeperPickupStrategy(RESOURCE_ENERGY, function (creep) {
+            return (drop) => drop.pos.findInRange(FIND_HOSTILE_CREEPS, 5).length === 0 && creep.pos.getRangeTo(drop) < 1;
+        });
         this.loadStrategies = [
             this.pickupStrategy,
-            new KeeperPickupStrategy(undefined, function(creep) {return  (drop)  =>(drop.pos.findInRange(FIND_HOSTILE_CREEPS, 5).length === 0);}),
+            new KeeperPickupStrategy(undefined, function (creep) {
+                return (drop) =>( !(creep.room.glanceForAround(LOOK_CREEPS, drop.pos, 5, true).map(d=>d.creep).find(c=>!c.my)));
+                // drop.pos.findInRange(FIND_HOSTILE_CREEPS, 5).length === 0);
+            }),
             new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, function (creep) {
-                return (s)=>s.pos.findInRange(FIND_HOSTILE_CREEPS, 4).length === 0;
+                return (s)=>
+                    !(creep.room.glanceForAround(LOOK_CREEPS, s.pos, 4, true).map(d=>d.creep).find(c=>!c.my));
+                // s.pos.findInRange(FIND_HOSTILE_CREEPS, 4).length === 0;
             })
         ];
         this.unloadStrategies = [
@@ -59,12 +66,14 @@ class RoleRemoteCarryKeeper extends RoleRemoteCarry {
      */
     seekBoosts(creep) {
         // creep.log('seekBoosts');
-        if (creep.memory.boosted) {return ;}
+        if (creep.memory.boosted) {
+            return;
+        }
         let wantsBoosts = _.keys(_.groupBy(creep.body, (p)=>p.type)).find((partType) => {
             let parts = _.filter(creep.body, (p)=>p.type === partType && !p.boost);
             return !!(parts.length && this.boostPartType(creep, parts));
         });
-        if (! wantsBoosts) creep.memory.boosted = true;
+        if (!wantsBoosts) creep.memory.boosted = true;
         return wantsBoosts;
 
 
@@ -75,4 +84,4 @@ class RoleRemoteCarryKeeper extends RoleRemoteCarry {
     }
 }
 
-module.exports = RoleRemoteCarryKeeper;
+require('./profiler').registerClass(RoleRemoteCarryKeeper, 'RoleRemoteCarryKeeper'); module.exports = RoleRemoteCarryKeeper;

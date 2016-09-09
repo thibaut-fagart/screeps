@@ -14,8 +14,8 @@ class RemoteHealStrategy extends BaseStrategy {
     }
 
     findHealingTargets(creep) {
-        let damagedFilter = {filter: (c) => (c.hits < c.hitsMax)};
-        let targets = (this.range) ? creep.pos.findInRange(FIND_MY_CREEPS, this.range, damagedFilter) : creep.room.find(FIND_MY_CREEPS, damagedFilter);
+        let damagedFilter = (c) => (c.hits < c.hitsMax);
+        let targets = (this.range) ? creep.pos.findInRange(FIND_MY_CREEPS, this.range).filter(damagedFilter) : creep.room.find(FIND_MY_CREEPS).filter(damagedFilter);
         // creep.log('findHealingTargets', this.range, targets.length);
         targets = targets.filter(this.predicate(creep));
         // creep.log('findHealingTargets filtered', this.range, targets.length);
@@ -51,12 +51,11 @@ class RemoteHealStrategy extends BaseStrategy {
             } else if (damaged.id !== creep.id) {
                 // creep.log('damaged, not me', hasRangedAttack, hasAttack, damaged.name,damaged.id);
                 let range = creep.pos.getRangeTo(damaged.pos);
+                let heal;
                 if (range > 1) {
                     this.moveToAndHeal(creep, damaged);
                     return true;
-                }
-                let heal;
-                if (hasRangedAttack && range == 1) {
+                } else if ((hasRangedAttack && range == 1) ||hostiles.length ===0) {
                     heal = creep.heal(damaged);
                     creep.log(`healing ${damaged.name} at (${damaged.pos.x},${damaged.pos.y}), heal ${heal}`);
                 } else if (hasRangedAttack) {
@@ -72,7 +71,7 @@ class RemoteHealStrategy extends BaseStrategy {
                     heal = creep.rangedHeal(damaged);
                     creep.log(`healing ${damaged.name} at (${damaged.pos.x},${damaged.pos.y}), heal ${heal}`);
                 }
-                return hostiles.length;
+                return 0 == hostiles.length;
             } else {
                 // creep.log('damaged, me', hasRangedAttack, hasAttack, damaged.name);
                 // creep.log('hasRangedAttack', hasRangedAttack, '!hasAttack', !hasAttack);
@@ -150,4 +149,4 @@ class RemoteHealStrategy extends BaseStrategy {
     }
 }
 
-module.exports = RemoteHealStrategy;
+require('./profiler').registerClass(RemoteHealStrategy, 'RemoteHealStrategy'); module.exports = RemoteHealStrategy;

@@ -7,7 +7,10 @@ var PickupStrategy = require('./strategy.pickup');
 class KeeperPickupStrategy extends PickupStrategy {
     constructor(resource) {
         super(resource, function(creep){
-            return ((drop) => drop.pos.findInRange(FIND_HOSTILE_CREEPS,5).length === 0);
+            return ((drop) =>
+                !(creep.room.glanceForAround(LOOK_CREEPS, drop.pos, 5, true).map(d=>d.creep).find(c=>!c.my))
+            // drop.pos.findInRange(FIND_HOSTILE_CREEPS,5).length === 0
+            );
         });
         this.PATH_TO_SOURCE_PATH = 'pickupPath';
     }
@@ -26,7 +29,10 @@ class KeeperPickupStrategy extends PickupStrategy {
     accepts(creep) {
         let oldid = creep.memory[this.PATH];
         let oldDrop = Game.getObjectById(oldid);
-        if (!oldDrop || oldDrop.pos.findInRange(FIND_HOSTILE_CREEPS, 3).length > 0) {
+        if (!oldDrop ||
+            creep.room.glanceForAround(LOOK_CREEPS, oldDrop.pos, 3, true).map(d=>d.creep).find(c=>!c.my)
+            // oldDrop.pos.findInRange(FIND_HOSTILE_CREEPS, 3).length > 0
+        ) {
             // if (oldDrop)creep.log('giving up pickup, keeper nearby', oldDrop.pos);
             delete creep.memory[this.PATH];
         }
@@ -34,4 +40,4 @@ class KeeperPickupStrategy extends PickupStrategy {
     }
 }
 
-module.exports = KeeperPickupStrategy;
+require('./profiler').registerClass(KeeperPickupStrategy, 'KeeperPickupStrategy'); module.exports = KeeperPickupStrategy;

@@ -74,11 +74,9 @@ class PickupStrategy extends BaseStrategy {
             }
         }
         // creep.log("pickup ? ", !!source);
-        let accepted = !!(creep.memory[this.PATH] && source && source.room.name ===creep.room.name);
+        let accepted = !!(source && source.room.name ===creep.room.name);
         if (!accepted) this.clearMemory(creep);
         return accepted;
-
-
     }
 
     findSource(creep) {
@@ -92,4 +90,4 @@ class PickupStrategy extends BaseStrategy {
     }
 }
 
-module.exports = PickupStrategy;
+require('./profiler').registerClass(PickupStrategy, 'PickupStrategy'); module.exports = PickupStrategy;

@@ -9,8 +9,9 @@ var RegroupStrategy = require('./strategy.regroup');
 
 class RoleCarry {
     constructor() {
-        this.pickupStrategy = new ClosePickupStrategy(RESOURCE_ENERGY, 5);
+        this.travelingPickupStrategy = new ClosePickupStrategy(RESOURCE_ENERGY, 1);
         this.loadStrategies = [
+            // new ClosePickupStrategy(RESOURCE_ENERGY, 1),
             new PickupStrategy(undefined, (creep)=>((d)=>(d.amount > 50))),
             new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (creep)=> ((s)=>s.room.isHarvestContainer(s))),
             new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (creep)=> ((s)=>s.pos.getRangeTo(creep) < 2)),
@@ -24,11 +25,12 @@ class RoleCarry {
             new DropToEnergyStorageStrategy(STRUCTURE_TOWER),
             new DropToEnergyStorageStrategy(STRUCTURE_SPAWN),
             new DropToEnergyStorageStrategy(STRUCTURE_EXTENSION),
-            new DropToContainerStrategy(undefined, STRUCTURE_STORAGE),
             // new DropToContainerStrategy(RESOURCE_ENERGY,STRUCTURE_LINK),
             new DropToContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (creep)=> {
-                return ((s)=>!s.room.isHarvestContainer(s));
-            })
+                if (creep.carry.energy)  return ((s)=>!s.room.isHarvestContainer(s));
+                else return ()=>false;
+            }),
+            new DropToContainerStrategy(undefined, STRUCTURE_STORAGE),
         ];
         this.ACTION_UNLOAD = 'unload';
         this.ACTION_FILL = 'fill';
@@ -60,6 +62,7 @@ class RoleCarry {
             delete creep.memory.currentStrategy;
         }
         if (creep.memory.action == this.ACTION_FILL) {
+            this.travelingPickupStrategy.accepts(creep);
             strategy = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);
             if (!strategy) {
                 strategy = _.find(this.loadStrategies, (strat)=>(strat.accepts(creep)));
@@ -72,6 +75,7 @@ class RoleCarry {
 
         }
         else {
+            if (_.sum(creep.carry)<creep.carryCapacity) this.travelingPickupStrategy.accepts(creep);
             let strategy = util.getAndExecuteCurrentStrategy(creep, this.unloadStrategies);
             if (!strategy) {
                 strategy = _.find(this.unloadStrategies, (strat)=>(strat.accepts(creep)));
@@ -97,5 +101,6 @@ class RoleCarry {
         this.regroupStrategy.accepts(creep);
     }
 }
+require('./profiler').registerClass(RoleCarry, 'RoleCarry');
 
 module.exports = RoleCarry;

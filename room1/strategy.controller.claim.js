@@ -55,4 +55,4 @@ class ClaimControllerStrategy extends BaseStrategy {
     }
 }
 
-module.exports = ClaimControllerStrategy;
+require('./profiler').registerClass(ClaimControllerStrategy, 'ClaimControllerStrategy'); module.exports = ClaimControllerStrategy;

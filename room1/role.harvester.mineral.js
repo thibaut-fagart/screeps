@@ -50,5 +50,6 @@ class RoleMineralHarvester {
         creep.log('should resign?');
     }
 }
+require('./profiler').registerClass(RoleMineralHarvester, 'RoleMineralHarvester');
 
 module.exports = RoleMineralHarvester;

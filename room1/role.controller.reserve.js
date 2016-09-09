@@ -56,5 +56,6 @@ class RoleReserveController {
         }
     }
 }
+require('./profiler').registerClass(RoleReserveController, 'RoleReserveController');
 
 module.exports = RoleReserveController;

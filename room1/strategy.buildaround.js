@@ -14,7 +14,10 @@ class BuildAroundStrategy extends BuildStrategy {
         let target = util.objectFromMemory(creep.memory, this.BUILD_TARGET, this.predicate(creep));
         if (!target || target.pos.getRangeTo(creep.pos) > this.range) {
             // console.log('finding target for  ', creep.name);
-            let targets = creep.pos.findInRange(FIND_CONSTRUCTION_SITES, this.range, {filter: this.predicate(creep)});
+            let targets =
+                creep.room.glanceForAround(LOOK_CONSTRUCTION_SITES, creep.pos, this.range, true).map(d=>d.constructionSite)
+                // creep.pos.findInRange(FIND_CONSTRUCTION_SITES, this.range)
+                    .filter(this.predicate(creep));
             if (targets.length) {
                 target = _.max(targets, cs=>cs.progress);
                 if (target) {
@@ -42,4 +45,4 @@ class BuildAroundStrategy extends BuildStrategy {
     }
 }
 
-module.exports = BuildAroundStrategy;
+require('./profiler').registerClass(BuildAroundStrategy, 'BuildAroundStrategy'); module.exports = BuildAroundStrategy;

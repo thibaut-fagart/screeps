@@ -11,7 +11,7 @@ class MoveToActiveKeeperLair extends BaseStrategy {
     }
 
     findBrothers(creep) {
-        return creep.pos.findInRange(FIND_MY_CREEPS, 10, {filter: (c) => c.memory.role == creep.memory.role});
+        return creep.pos.findInRange(FIND_MY_CREEPS, 10).filter((c) => c.memory.role == creep.memory.role);
     }
 
     /**
@@ -72,4 +72,4 @@ class MoveToActiveKeeperLair extends BaseStrategy {
         return JSON.stringify(_.sortBy(_.map(keepers, (k)=>JSON.stringify(k.pos))));
     }
 }
-module.exports = MoveToActiveKeeperLair;
+require('./profiler').registerClass(MoveToActiveKeeperLair, 'MoveToActiveKeeperLair'); module.exports = MoveToActiveKeeperLair;

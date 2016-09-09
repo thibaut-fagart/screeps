@@ -70,4 +70,4 @@ class HarvestEnergySourceStrategy extends BaseStrategy {
     }
 }
 
-module.exports = HarvestEnergySourceStrategy;
+require('./profiler').registerClass(HarvestEnergySourceStrategy, 'HarvestEnergySourceStrategy'); module.exports = HarvestEnergySourceStrategy;

@@ -256,4 +256,4 @@ class SquadAttackStrategy extends Base {
     }
 }
 SquadAttackStrategy.REFRESH_SQUAD = 10;
-module.exports = SquadAttackStrategy;
+require('./profiler').registerClass(SquadAttackStrategy, 'SquadAttackStrategy'); module.exports = SquadAttackStrategy;

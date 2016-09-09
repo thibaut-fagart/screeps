@@ -62,7 +62,7 @@ class RemoteTargetStrategy extends BaseStrategy {
     findTargets(creep) {
         let targetPredicate = this.predicate(creep);
 
-        return this.range?creep.pos.findInRange(FIND_HOSTILE_CREEPS, this.range,{filter:targetPredicate}): creep.room.find(FIND_HOSTILE_CREEPS,{filter: targetPredicate});
+        return this.range?creep.pos.findInRange(FIND_HOSTILE_CREEPS, this.range).filter(targetPredicate): creep.room.find(FIND_HOSTILE_CREEPS,{filter: targetPredicate});
     }
 
     performAttack(creep, target) {
@@ -91,4 +91,4 @@ class RemoteTargetStrategy extends BaseStrategy {
     }
 }
 
-module.exports = RemoteTargetStrategy;
+require('./profiler').registerClass(RemoteTargetStrategy, 'RemoteTargetStrategy'); module.exports = RemoteTargetStrategy;

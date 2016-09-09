@@ -23,4 +23,4 @@ class RoleMineralGatherer extends RoleCarry{
         // creep.memory.role = 'energyFiller';
     }
 }
-module.exports = RoleMineralGatherer;
+require('./profiler').registerClass(RoleMineralGatherer, 'RoleMineralGatherer'); module.exports = RoleMineralGatherer;

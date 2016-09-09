@@ -86,4 +86,4 @@ class RoleAttacker {
     }
 };
 
-module.exports = RoleAttacker;
+require('./profiler').registerClass(RoleAttacker, 'RoleAttacker'); module.exports = RoleAttacker;
