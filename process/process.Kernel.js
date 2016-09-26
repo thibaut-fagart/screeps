@@ -1,5 +1,5 @@
-var util = require('./../room1/util');
 var _ = require('lodash');
+var Process = require('./process');
 
 /**
  * @typed {NEW|READY|WAITING|RUNNING|TERMINATED} Status
@@ -12,14 +12,15 @@ var _ = require('lodash');
  * @property {Object} state
  * @property {Status} status
  */
-module.exports = class Kernel {
+class Kernel extends Process {
     /**
      **/
-    constructor() {
-        super(Kernel.TYPE);
+    constructor(state) {
+        super(state);
     }
 
     run() {
     }
-};
+}
+module.exports = Kernel;
 Kernel.TYPE = 'kernel';

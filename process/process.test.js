@@ -5,8 +5,8 @@ var expect = chai.expect;
 // var it = require('mocha')({ui:'tdd'});
 
 var Process = require('./process');
-var ProcessRoom = require('./process.room.js');
-var ProcessHarvest = require('./process.harvest.js');
+var ProcessRoom = require('./process.OwnedRoom.js');
+var ProcessHarvest = require('./process.Harvest.js');
 
 
 describe('process', function () {
@@ -31,11 +31,8 @@ describe('process', function () {
             let processTable = new (require('./process.table'))();
             let root = processTable.register(new Process());
 
-            let child = processTable.register(new ProcessRoom(root,{roomName:'room1'}));
-            Process.lookup = function (id) {
-                return  processTable[id];
-            };
-            expect(child.lookup(child.parentid)).to.be.equal(root);
+            let child = processTable.register(new ProcessRoom(root.id,{roomName:'room1'}));
+            expect(processTable.get(child.parentid)).to.be.equal(root);
 
         });
     });

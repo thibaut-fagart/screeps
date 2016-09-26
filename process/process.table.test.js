@@ -4,8 +4,8 @@ var chai = require('chai');
 var expect = chai.expect;
 
 var Process = require('./process');
-var ProcessRoom = require('./process.room.js');
-var ProcessHarvest = require('./process.harvest.js');
+var ProcessRoom = require('./process.OwnedRoom.js');
+var ProcessHarvest = require('./process.Harvest.js');
 
 
 let root = new Process();

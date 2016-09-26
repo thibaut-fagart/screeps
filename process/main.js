@@ -1,13 +1,12 @@
 var _ = require('lodash');
-var util = require('./util');
 
 var ProcessTable = require('./process.table');
-var Kernel = require('./process.kernel');
-var RoomProcess = require('./process.room');
+var Kernel = require('./process.Kernel');
+var OwnedRoomProcess = require('./process.OwnedRoom');
 var Process = require('./process');
 
-var profiler = require('./screeps-profiler');
-profiler.enable();
+// var profiler = require('./screeps-profiler');
+// profiler.enable();
 Creep.prototype.log = function () {
     console.log([this.name, this.pos, this.memory.role].concat(Array.prototype.slice.call(arguments)));
 };
@@ -17,6 +16,7 @@ Spawn.prototype.log = function () {
 Room.prototype.log = function () {
     console.log([this.name, this.controller.level].concat(Array.prototype.slice.call(arguments)));
 };
+
 Structure.prototype.log = function () {
     console.log([this.structureType, this.id].concat(Array.prototype.slice.call(arguments)));
 };
@@ -40,7 +40,7 @@ function boot() {
 
     let kernel = new Kernel();
     processTable.register(kernel);
-    let roomProcess = new RoomProcess(kernel, home);
+    let roomProcess = new OwnedRoomProcess(kernel.id, home.name);
     processTable.register(roomProcess);
     return processTable;
 }
@@ -54,6 +54,15 @@ module.exports.loop = function () {
         processTable = new ProcessTable();
         processTable.load(Memory.processes);
     }
-    processTable.forEach((p)=>p.run(processTable));
+    processTable.processes.forEach((p)=>
+    {
+        try {
+            p.run(processTable);
+        } catch (e) {
+            console.log('error', e, e.stack);
+
+        }
+    });
+    Memory.processes = processTable.save();
     // });
 };

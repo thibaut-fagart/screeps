@@ -12,7 +12,7 @@ class ProcessTable {
      */
     save() {
         let array = [];
-        this.processes.forEach((p)=> array.push(ProcessTable.save(p)))
+        this.processes.forEach((p)=> array.push(ProcessTable.save(p)));
         return array;
     }
 
@@ -23,10 +23,32 @@ class ProcessTable {
     register(process) {
         this.processes.push(process);
         this.processes = this.processes.sort((p)=> p.priority);
-        if (process.parentid) {
-            this.processes.find((p)=>p.id === process.parentid).children.push(process);
-        }
         return process;
+    }
+
+    /**
+     *
+     * @param {Process} process
+     * @returns {Process}
+     */
+    getParent(process) {
+        return this.processes.find((p)=>p.id === process.parentid);
+    }
+    /**
+     *
+     * @param {Process} process
+     * @returns {Process}
+     */
+    getChildren(process) {
+        return _.values(this.processes).filter((p)=>p.parentid === process.id);
+    }
+    /**
+     *
+     * @param {string} pid
+     * @returns {Process}
+     */
+    get(pid) {
+        return this.processes.find((p)=>p.id === pid);
     }
     /**
      *
@@ -34,7 +56,11 @@ class ProcessTable {
      */
     load(array) {
         this.processes = [];
-        _.forEach(array,(o) => this.processes.push(ProcessTable.loadProcess(o)));
+        _.forEach(array,(o) => {
+            let process = ProcessTable.loadProcess(o);
+            process.processTable = this;
+            this.processes.push(process);
+        });
         this.processes = this.processes.sort((p)=> p.priority);
         return this;
     }
@@ -47,6 +73,7 @@ class ProcessTable {
         "use strict";
 
         process.type = process.constructor.name;
+        delete process.processTable;
         return process;
     }
     static load(object) {
@@ -59,7 +86,7 @@ class ProcessTable {
      * @returns {Process}
      */
     static loadProcess(object) {
-        "use strict";
+        'use strict';
         let file;
         let type = object.type;
         if (/Process$/.exec(type)) {
@@ -68,12 +95,11 @@ class ProcessTable {
             file = './process.'+[type];
         }
         /** {Process}*/
-
-        let process = new (require(file))().load(object);
+        let clazz = require(file);
+        let process = new clazz(object);
         // process.state = object;
         return process;
     }
-
 }
 
 module.exports = ProcessTable;
