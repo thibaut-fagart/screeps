@@ -52,7 +52,7 @@ class RoleRemoteBuilder extends RoleBuilder {
     }
 
     run(creep) {
-        if (this.seekBoosts(creep)) return;
+        if (creep.seekBoosts(WORK,['LH'])) return;
         if (this.fleeStrategy.accepts(creep))return;
         this.healStrategy.accepts(creep);
         if (!creep.memory.action) creep.memory.action = 'go_remote_room;';

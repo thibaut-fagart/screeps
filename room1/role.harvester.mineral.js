@@ -28,6 +28,16 @@ class RoleMineralHarvester {
                 return;
             }
         } else {
+            let container = creep.pos.lookFor(LOOK_STRUCTURES).find(s=>s.structureType === STRUCTURE_CONTAINER);
+            if (container && container.storeCapacity - _.sum(container.store) < 100) {
+                return;
+            }
+
+            let drops = creep.pos.lookFor(LOOK_RESOURCES);
+            // creep.log('drop', JSON.stringify(drops));
+            if (drops && drops.length && _.sum(drops, d=>d.amount)>=2000) {
+                return;
+            }
             strategy = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);
             if (!strategy) {
                 strategy = _.find(this.loadStrategies, (strat)=> (strat.accepts(creep)));
@@ -47,7 +57,9 @@ class RoleMineralHarvester {
         }
     }
     onNoLoadStrategy(creep) {
-        creep.log('should resign?');
+        Game.notify(`${Game.time} ${creep.room.name} ${creep.name} resigning, mineral depleted`);
+        creep.log('resigning, mineral depleted');
+        creep.memory.role = 'recycle';
     }
 }
 require('./profiler').registerClass(RoleMineralHarvester, 'RoleMineralHarvester');

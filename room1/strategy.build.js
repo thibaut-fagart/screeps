@@ -111,9 +111,13 @@ class BuildStrategy extends BaseStrategy {
                 return undefined;
             }
 
-
+            if (position) {
+                creep.memory.buildFrom = util.posToString(position);
+            } else {
+                return undefined;
+            }
             // creep.log('upgrading from '+creep.memory.buildFrom);
-            creep.memory.buildFrom = util.posToString(position);
+
         }
         // creep.log('upgrading from '+creep.memory.buildFrom);
         return util.posFromString(creep.memory.buildFrom, creep.room.name);

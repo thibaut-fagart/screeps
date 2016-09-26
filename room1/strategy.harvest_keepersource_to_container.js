@@ -7,7 +7,7 @@ var HarvestEnergySourceToContainerStrategy = require('./strategy.harvest_source_
  */
 class HarvestKeeperEnergySourceToContainerStrategy extends HarvestEnergySourceToContainerStrategy {
     constructor(resourceType) {
-        super(resourceType);
+        super({resourceType: resourceType, nooverflow:true});
     }
 
 
@@ -18,22 +18,22 @@ class HarvestKeeperEnergySourceToContainerStrategy extends HarvestEnergySourceTo
 
 
     findSources(creep) {
-        creep.log('findSources');
+        // creep.log('findSources');
         let sources = creep.room.find(FIND_SOURCES);
-        if (creep.room.structures[STRUCTURE_EXTRACTOR].length) {
+        if (creep.room.structures[STRUCTURE_EXTRACTOR].length>0) {
             sources = sources.concat(creep.room.find(FIND_MINERALS).filter(m=>m.mineralAmount>0));
         }
-        // creep.log('raw sources', sources.length);
+        // creep.log('raw sources', sources.length, sources.map(s=>s.id));
         if (creep.room.memory.sources) {
             // creep.log('only mining ', JSON.stringify(creep.room.memory.sources));
             let allowedSources = _.isString(creep.room.memory.sources) ? [creep.room.memory.sources] : creep.room.memory.sources;
             sources = sources.filter((s)=>allowedSources.indexOf(s.id) >= 0);
-            // creep.log('subset ', sources.length);
+            // creep.log('subset ', sources.length , sources.map(s=>s.id));
         }
         if (!creep.memory.isFighter) {
             sources = sources.filter((s)=>s.pos.findInRange(FIND_HOSTILE_CREEPS, 4).length === 0);
         }
-        // creep.log('safe subset ', sources.length);
+        // creep.log('safe subset ', sources.length, sources.map(s=>s.id));
 
         return sources;
     }

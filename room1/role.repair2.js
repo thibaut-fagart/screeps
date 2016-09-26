@@ -92,7 +92,7 @@ class RoleRepair2 {
                     // creep.log("no repair target");
                 } else {
                     // creep.log('3',target.hits, target.hitsMax, target.pos);
-                    let repairPos = this.findRepairPos(creep, target);
+                    let repairPos = creep.room.findValidParkingPosition(creep, target.pos, 3);
                     if (repairPos && !creep.pos.isEqualTo(repairPos)) {
                         util.moveTo(creep, repairPos, this.constructor.name + 'Path', {range: 0});
                     } else {

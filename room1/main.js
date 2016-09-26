@@ -94,16 +94,27 @@ Object.defineProperty(StructureLink.prototype, 'operator',
     });
 
 function wrapPathFinder() {
-    "use strict";
+    'use strict';
     let basePathFinderSearch = PathFinder.search;
     PathFinder.search = function () {
-        "use strict";
+        'use strict';
         PathFinder.callCount = (PathFinder.callCount || 0) + 1;
         // console.log('called PathFinder.search', PathFinder.callCount);
         return basePathFinderSearch.apply(this, arguments);
     };
 }
 let roomTasks = {
+    runSpawn: (r)=> {
+        'use strict';
+        try {
+            if (r.controller && r.controller.my && r.controller.level >0) {
+                roleSpawn.run(r);
+            }
+        } catch (e) {
+            Game.notify(e.stack);
+            console.log(e.stack);
+        }
+    },
     operateTowers: (r)=> r.operateTowers(),
     operateLinks: (r)=>r.operateLinks(),
     harvestContainers: (r)=>(r.memory.harvestContainers = r.memory.harvestContainers || []),
@@ -126,16 +137,16 @@ function innerLoop() {
     let updateStats = true;
     let messages = [], skipped = [];
     wrapPathFinder();
-    if (updateStats) Memory.stats = Memory.stats || {};
     Memory.stats.deaths = 0;
     let globalStart = Game.cpu.getUsed();
     let oldSeenTick = Game.time || (Memory.counters && Memory.counters.seenTick);
     Memory.counters = {tick: Game.time, seenTick: oldSeenTick + 1};
+    Memory.stats.room = Memory.stats.room||{};
     if (/*0 == Game.time % 100*/true) {
         _.keys(Memory.creeps).forEach((name)=> {
             if (!Game.creeps[name]) {
                 let creepMem = Memory.creeps[name];
-                if (creepMem.role !=='recycle') {
+                if (creepMem.role !== 'recycle') {
                     let age;
                     if (creepMem.birthTime) {
                         age = Game.time - creepMem.birthTime; // TODO if not run every tick
@@ -162,17 +173,20 @@ function innerLoop() {
             }
         });
     }
-    let cpu = {}, roomCpu = {}, remoteCpu = {};
+    let cpu = {creeps: {}, roomTasks: {}}, roomCpu = {}, remoteCpu = {};
     let availableCpu = Game.cpu.tickLimit;
-    if (updateStats) _.keys(handlers).forEach((k)=>cpu['creeps.' + k] = 0);
-    let sortedRooms = _.sortBy(_.values(Game.rooms), (r)=> r.controller && r.controller.my ? r.controller.level : 10);
-    if (updateStats && Game.cpu.tickLimit < 500 && debugPerfs) console.log('room, controller, roomTasks , creeps ,spawns , labs , stats, room');
+
+    if (updateStats) {
+        cpu.creeps = cpu.creeps || {};
+        _.keys(handlers).forEach((k)=>cpu.creeps[k] = 0);
+    }
+    let rooms = _.groupBy(_.values(Game.rooms),r=>!!(r.controller && r.controller.my && r.controller.level > 0));
+    let ownedRooms  = rooms['true'];
+    let remoteRooms = rooms['false'];
     let taskPairs = _.pairs(roomTasks);
-    sortedRooms.forEach((room)=> {
-        // for (var roomName in Game.rooms) {
-        //     var room = Game.rooms[roomName];
+    ownedRooms.concat(remoteRooms).forEach(room=> {
+        'use strict';
         let roomName = room.name;
-        let roomStartCpu = Game.cpu.getUsed();
         taskPairs.forEach((pair)=> {
             'use strict';
             let taskName = pair[0], task = pair[1];
@@ -187,13 +201,24 @@ function innerLoop() {
             } else {
                 if (updateStats) skipped.push(`${roomName}.task`);
             }
-            if (updateStats) cpu['roomTasks.' + taskName] = (cpu['roomTasks.' + taskName] || 0) + Game.cpu.getUsed() - start;
+            if (updateStats) {
+                cpu.roomTasks[taskName] = (cpu.roomTasks[taskName] || 0) + Game.cpu.getUsed() - start;
+            }
         });
-        let roomTasksCpu = Game.cpu.getUsed();
+    });
+    _.sortBy(ownedRooms, r=>(r.memory.emergency?-1:8-r.controller.level));
+    let sortedRooms = ownedRooms.concat(remoteRooms);
+        // _.sortBy(_.values(Game.rooms), (r)=> r.controller && r.controller.my ? r.controller.level : 10);
+    if (updateStats && Game.cpu.tickLimit < 500 && debugPerfs) console.log('room, controller, roomTasks , creeps ,spawns , labs , stats, room');
+    sortedRooms.forEach((room)=> {
+        // for (var roomName in Game.rooms) {
+        //     var room = Game.rooms[roomName];
         // cpu['roomTasks'] = (cpu['roomTasks'] || 0) + roomTasksCpu - roomStartCpu;
         // roomManager.run(room); // todo manager
         // room.prototype.sourceConsumers = {};
-        if (Game.cpu.getUsed() < availableCpu - 100) {
+        let roomName = room.name;
+        let roomStartCpu = Game.cpu.getUsed();
+        if (roomStartCpu < availableCpu - 100) {
             var creeps = room.find(FIND_MY_CREEPS);
             // room.creeps = creeps;
             creeps.forEach(function (creep) {
@@ -203,7 +228,7 @@ function innerLoop() {
                         creep.memory.birthTime = creep.memory.birthTime || Game.time;
                         let start = Game.cpu.getUsed();
                         if (start < availableCpu - 100) {
-                            if (creep.memory.tasks) {
+                            if (creep.memory.tasks && creep.memory.tasks.length) {
                                 let task = new (require('task.' + creep.memory.tasks[0].name))(creep.memory.tasks[0].args);
                                 let taskComplete = task.run(creep);
                                 if (taskComplete) {
@@ -224,7 +249,7 @@ function innerLoop() {
                         }
                         let end = Game.cpu.getUsed();
                         if (updateStats) {
-                            cpu['creeps.' + creep.memory.role] = (cpu['creeps.' + creep.memory.role] || 0) + (end - start);
+                            cpu.creeps[creep.memory.role] = (cpu.creeps[creep.memory.role] || 0) + (end - start);
                             if (creep.memory.remoteRoom) {
                                 remoteCpu[creep.memory.remoteRoom] = (remoteCpu[creep.memory.remoteRoom] || 0) + (end - start);
                             }
@@ -240,36 +265,33 @@ function innerLoop() {
         }
         let creepsCpu = Game.cpu.getUsed();
         // room.log('creepsCpu', creepsCpu);
-        if (Game.cpu.getUsed() < availableCpu - 100) {
-            try {roleSpawn.run(room);}
-            catch (e) {console.log(e); console.log(e.stack);}
-        } else {
-            if (updateStats) skipped.push(`${roomName}.spawn`);
-
-        }
-        let spawnCpu = Game.cpu.getUsed();
-        if (updateStats) cpu['spawns'] = (cpu['spawns'] || 0) + spawnCpu - creepsCpu;
-
+        let spawnCpu = creepsCpu;
         let labsCpu = spawnCpu;
 
-        if (Game.cpu.getUsed() < availableCpu - 100) if (updateStats) room.updateCheapStats();
         if (Game.cpu.getUsed() < availableCpu - 100 && updateStats) {
-            Memory.stats['room.' + room.name + '.energyInStructures'] = _.sum(_.map(room.find(FIND_MY_STRUCTURES), (s)=> s.store ? s.store.energy : 0));
-            Memory.stats['room.' + room.name + '.energyDropped'] = _.sum(_.map(room.find(FIND_DROPPED_RESOURCES).filter(r => r.resourceType == RESOURCE_ENERGY), (s)=> s.amount));
-            if (0 == Game.time % 100) {
-                let regexp = new RegExp(`room.${room.name}.efficiency`);
-                _.keys(Memory.stats).filter((k)=>regexp.exec(k)).forEach((k)=>delete Memory [k]);
+            room.updateCheapStats();
+        }
+        if (Game.cpu.getUsed() < availableCpu - 100 && updateStats) {
+            Memory.stats.room = Memory.stats.room || {};
+            Memory.stats.room[room.name] = Memory.stats.room[room.name] || {};
+            let roomStat = Memory.stats.room[room.name];
+            roomStat.energyInStructures = room.find(FIND_MY_STRUCTURES).reduce((sum, s)=>sum + (s.store ? s.store.energy : (s.energy || 0)), 0);
+            // roomStat.energyDropped = _.sum(_.map(room.find(FIND_DROPPED_RESOURCES).filter(r => r.resourceType == RESOURCE_ENERGY), (s)=> s.amount));
+            // room.log('stat efficiency',Game.time % 50);
+            if (0 == (Game.time % 50)) {
                 let roomEfficiency = Room.efficiency(roomName);
                 if (roomEfficiency && roomEfficiency.remoteMining) {
-                    Memory.stats['room.' + room.name + '.efficiency.remoteMining'] = _.sum(roomEfficiency.remoteMining);
-                    _.keys(roomEfficiency.remoteMining).forEach((r)=>Memory.stats['room.' + room.name + '.efficiency.remoteMining.' + r] = roomEfficiency.remoteMining[r]);
+                    roomStat.efficiency = {
+                        remoteMining: roomEfficiency.remoteMining,
+                        remoteMiningBalance: _.sum(roomEfficiency.remoteMining)
+                    };
                 }
             }
 
             let strangers = room.find(FIND_HOSTILE_CREEPS);
-            let hostiles = _.filter(strangers, (c)=>_.sum(c.body, (p)=>p == ATTACK || p == RANGED_ATTACK) > 0);
-            //            {'pos':{'x':11,'y':28,'roomName':'E37S14'},'body':[{'type':'work','hits':100},{'type':'carry','hits':100},{'type':'move','hits':100},{'type':'carry','hits':100},{'type':'work','hits':100},{'type':'move','hits':100},{'type':'move','hits':100},{'type':'work','hits':100},{'type':'carry','hits':100},{'type':'move','hits':100},{'type':'carry','hits':100},{'type':'work','hits':100},{'type':'move','hits':100},{'type':'move','hits':100}],'owner':{'username':'Finndibaen'}'hits':1400,'hitsMax':1400}
+            let hostiles = _.filter(strangers, (c)=>_.sum(c.getActiveBodyparts(ATTACK) + c.getActiveBodyparts(RANGED_ATTACK) > 0));
 
+/*
             if (hostiles.length > 0) {
                 messages.push(' strangers ' + JSON.stringify(_.map(hostiles, (h) => {
                         let subset = _.pick(h, ['name', 'pos', 'body', 'owner', 'hits', 'hitsMax']);
@@ -277,17 +299,16 @@ function innerLoop() {
                         return subset;
                     })));
             }
-            Memory.stats['room.' + room.name + '.strangers'] = _.size(strangers);
-            Memory.stats['room.' + room.name + '.hostiles'] = _.size(hostiles);
-            let roster = util.roster(room);
-            _.keys(handlers).forEach((k)=> Memory.stats['room.' + room.name + '.creeps.' + k] = roster[k] || 0);
+*/
+            roomStat.strangers = _.size(strangers);
+            roomStat.hostiles = _.size(hostiles);
+            roomStat.creeps = util.roster(room);
         }
         let statsCpu = Game.cpu.getUsed();
         if (updateStats) cpu ['stats'] = (cpu ['stats'] || 0) + statsCpu - labsCpu;
         if (updateStats) roomCpu[roomName] = Game.cpu.getUsed() - roomStartCpu;
         if (updateStats && Game.cpu.tickLimit < 500 && debugPerfs) room.log(
-            (roomTasksCpu - roomStartCpu).toFixed(1),
-            (creepsCpu - roomTasksCpu).toFixed(1),
+            (creepsCpu - roomStartCpu).toFixed(1),
             (spawnCpu - creepsCpu).toFixed(1),
             (labsCpu - spawnCpu).toFixed(1),
             (statsCpu - labsCpu).toFixed(1),
@@ -295,15 +316,12 @@ function innerLoop() {
         );
     });
     if (updateStats) skipped.forEach((s)=> console.log('skipped', s));
+    Memory.stats.remoteRooms = {};
     _.keys(Memory.rooms).forEach((k)=> {
-        Memory.stats['cpu.rooms.' + k] = roomCpu[k] || 0;
-        // console.log(`cpu.room, ${k},${roomCpu[k] || 0}`);
-    });
-    _.keys(Memory.rooms).forEach((k)=> {
-        Memory.stats['cpu.remoteRooms.' + k] = remoteCpu[k] || 0;
-        let stat = Memory.stats['room.' + k + '.efficiency.remoteMining'];
+        let stat = _.get(Memory.stats, 'room.' + k + '.efficiency.remoteMining', undefined);
         if (stat && remoteCpu[k] || 0) {
-            Memory.stats[`remoteRooms.${k}.cpu_efficiency`] = stat / remoteCpu[k];
+            Memory.stats.remoteRooms[k] = Memory.stats.remoteRooms[k] || {};
+            Memory.stats.remoteRooms[k].cpu_efficiency = stat / remoteCpu[k];
         }
         // console.log(`cpu.room, ${k},${roomCpu[k] || 0}`);
     });
@@ -311,17 +329,18 @@ function innerLoop() {
         Game.notify(messages);
     }
     if (updateStats) {
-        Memory.stats['cpu_bucket'] = Game.cpu.bucket;
-        _.keys(cpu).forEach((k)=>Memory.stats['cpu_.' + k] = cpu[k]);
-        Memory.stats['cpu_.main'] = Game.cpu.getUsed() - _.sum(cpu) - globalStart;
-        Memory.stats['cpu'] = Game.cpu.getUsed();
-        Memory.stats['gcl.progress'] = Game.gcl.progress;
+        Memory.stats.cpu_bucket = Game.cpu.bucket;
+        Memory.stats.cpu_ = cpu;
+        Memory.stats.cpu_.rooms = roomCpu;
+        Memory.stats.cpu_.remoteRooms = remoteCpu;
+        Memory.stats.cpu_.main = Game.cpu.getUsed() - _.sum(cpu) - globalStart;
+        Memory.stats.cpu = Game.cpu.getUsed();
+        Memory.stats.gcl = Game.gcl;
         // console.log('PathFinder.callCount', (PathFinder.callCount || 0));
-        Memory.stats['performance.PathFinder.search'] = (PathFinder.callCount || 0);
-        let roster = util.roster();
-        _.keys(handlers).forEach((k)=> Memory.stats['roster.' + k] = roster[k] || 0);
+        Memory.stats.performance = {'PathFinder.search': (PathFinder.callCount || 0)};
+        Memory.stats.roster = util.roster();
+        // _.keys(handlers).forEach((k)=> Memory.stats['roster.' + k] = roster[k] || 0);
 
-        Memory.stats['gcl.progressTotal'] = Game.gcl.progressTotal;
     }
 
     // counting walkable tiles neer location:
@@ -332,14 +351,20 @@ function innerLoop() {
 module.exports.loop = function () {
     let mainStart = Game.cpu.getUsed();
     Memory.stats = Memory.stats || {};
-    Memory.stats['cpu_.init'] = mainStart;
+    Memory.stats.cpu_ = Memory.stats.cpu_ || {};
+    Memory.stats.cpu_.init = mainStart;
 
-    if (Game.cpu.bucket > 200 && !Game.rooms['sim']) {
-        profiler.wrap(innerLoop);
-        // innerLoop();
-    } else if (Game.rooms['sim']) {
-        try {innerLoop();}
-        catch (e) {console.log(e); console.log(e.stack);}
+    try {
+        if (Game.cpu.bucket > 200 && !Game.rooms['sim'] && !Memory.disableProfiler) {
+            profiler.wrap(innerLoop);   
+            // innerLoop();
+        } else {
+            innerLoop();
+        }
+    }
+    catch (e) {
+        console.log(e);
+        console.log(e.stack);
     }
     if (Game.cpu.tickLimit < 500) console.log(mainStart, Game.cpu.getUsed(), Game.cpu.bucket);
 

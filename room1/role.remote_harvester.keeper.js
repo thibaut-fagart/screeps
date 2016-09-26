@@ -81,18 +81,13 @@ class RoleRemoteHarvesterKeeper extends RoleRemoteHarvester {
         }
 
         if (creep.memory.remoteRoom === creep.room.name && creep.memory.isFighter) {
-            if (creep.room.glanceForAround(LOOK_CREEPS, creep.pos, 4, true).map(d=>d.creep).find(c=>!c.my)
-            // creep.pos.findInRange(FIND_HOSTILE_CREEPS, 4).length
-            ) {
-                if (creep.room.glanceForAround(LOOK_CREEPS, creep.pos, 1, true).map(d=>d.creep).find(c=>!c.my)
-                    // creep.pos.findInRange(FIND_HOSTILE_CREEPS, 1).length
-            ) {
-                    this.healStrategy.accepts(creep);
-                }
+            if (creep.room.glanceForAround(LOOK_CREEPS, creep.pos, 4, true).map(d=>d.creep).find(c=>!c.my)) {
+                // creep.log('in range, attacking');
                 this.attackStrategy.accepts(creep);
             } else {
                 this.healStrategy.accepts(creep);
                 if (this.isNearSource(creep)) {
+                    // creep.log('near source');
                     if (!creep.memory.lair) {
                         let keeperLairs =
                             creep.room.glanceForAround(LOOK_STRUCTURES, creep.pos, 7, true).map(s=>s.structure)
@@ -104,7 +99,7 @@ class RoleRemoteHarvesterKeeper extends RoleRemoteHarvester {
                     }
                     let ticks = Game.getObjectById(creep.memory.lair).ticksToSpawn;
                     if (ticks && ticks > Game.time && ticks + 10 < Game.time) {
-                        creep.log('moving to lair, about to respawn');
+                        // creep.log('moving to lair, about to respawn');
                         // almost respawn, move to lair
                         creep.moveTo(Game.getObjectById(creep.memory.lair));
                         return;
@@ -112,7 +107,6 @@ class RoleRemoteHarvesterKeeper extends RoleRemoteHarvester {
 
                 }
                 super.run(creep);
-
             }
         } else {
             this.healStrategy.accepts(creep);

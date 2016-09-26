@@ -24,7 +24,6 @@ class PickupStrategy extends BaseStrategy {
      */
     constructor(resource, predicate) {
         super();
-        if (!resource) resource = null;
         this.resource = resource;
         this.predicate = (predicate || function (creep) {
             return ((drop)=> true);

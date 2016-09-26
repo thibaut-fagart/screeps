@@ -1,13 +1,14 @@
 var util = require('./util');
 var RoleDismantler = require('./role.dismantler');
 var MoveToRoomTask = require('./task.move.toroom');
+var DismantleStrategy = require('./strategy.dismantle');
 
 class RoleRemoteDismantler extends RoleDismantler {
     constructor() {
         super();
 
-        this.moveTask = new MoveToRoomTask('remotebuild', 'homeroom', 'remoteRoom');
-        this.goHomeTask = new MoveToRoomTask('remotebuild', 'remoteRoom', 'homeroom');
+        this.moveTask = new MoveToRoomTask('dismantleRoom', 'homeroom', 'remoteRoom');
+        this.goHomeTask = new MoveToRoomTask('dismantleRoom', 'remoteRoom', 'homeroom');
     }
 
     onNoLoadStrategy(creep) {
@@ -25,21 +26,26 @@ class RoleRemoteDismantler extends RoleDismantler {
         if (!creep.memory.action) {
             creep.memory.action = 'go_remote_room;';
         }
+        if (! creep.memory.homeroom) {
+            creep.memory.homeroom = creep.room.name;
+        }
+        if (creep.room.name === creep.memory.homeroom && creep.seekBoosts(WORK,['LH']RoleRemoteDismantler.WANTED_BOOSTS)) {
+            return;
+        }
         if (creep.room.glanceForAround(LOOK_CREEPS, creep.pos, 6,true).map(p=>p.creep).filter(c=>!c.my && c.getActiveBodyparts(ATTACK)>0)) {
-            creep.memory.action = 'go_home_room';
+            creep.log('hostiles around, fleeing home');
+            // creep.memory.action = 'go_home_room';
         } else if (_.sum(creep.carry) === 0 && creep.memory.action === 'go_home_room') {
             creep.memory.action = 'go_remote_room';
         }
         if (creep.memory.action === 'go_remote_room') {
             if (!this.moveTask.accepts(creep)) {
-                creep.memory.action = 'LOAD';
+                // creep.memory.action = 'LOAD';
                 super.run(creep);
             }
-        } else if ((creep.carryCapacity !== 0 && creep.carryCapacity === _.sum(creep.carry)) && creep.memory.action === 'LOAD') {
-            creep.memory.action = 'go_home_room';
         } else if (creep.memory.action === 'go_home_room') {
             if (!this.goHomeTask.accepts(creep)) {
-                creep.memory.action = 'UNLOAD';
+                // creep.memory.action = 'UNLOAD';
             }
             super.run(creep);
         } else if (creep.room.name !== creep.memory.remoteRoom && creep.memory.action !== 'go_remote_room' && creep.memory.action !== 'go_home_room') {
@@ -65,7 +71,59 @@ class RoleRemoteDismantler extends RoleDismantler {
         // creep.log('super.run');
 
     }
+    boostPartType(creep, parts) {
+        creep.seekBoosts(RoleRemoteDismantler.WANTED_BOOSTS[part_type]);
+        let part_type = parts[0].type;
+        let labs = creep.room.memory.labs;
+//        creep.log('labs?', JSON.stringify(labs));
+        if (!labs) return false;
+        labs = _.keys(labs).map((id)=>Game.getObjectById(id));
+        let lab;
+        for (let i = 0; i < RoleRemoteDismantler.WANTED_BOOSTS[part_type].length && !lab; i++) {
+            let boost = RoleRemoteDismantler.WANTED_BOOSTS[part_type][i];
+            // creep.log('testing ', boost);
+            lab = labs.find((lab)=> {
+                return lab.mineralType && boost == lab.mineralType && lab.mineralAmount > 10;
+            });
+            // creep.log('found', lab);
+            if (lab) break;
+        }
+
+        if (!lab) {
+            creep.log('NO LAB???', JSON.stringify(labs));
+            return false;
+        }
+        let boosted = lab.boostCreep(creep);
+        // creep.log('boosted', boosted);
+        if (boosted == ERR_NOT_IN_RANGE) {
+            // creep.log('moving to lab', JSON.stringify(lab.pos));
+            util.moveTo(creep, lab.pos, 'labMove');
+            return true;
+        } else if (boosted == OK) {
+            return false;
+        }
+
+        // }
+
+    }
+    seekBoosts(creep) {
+
+        let boostingPart = _.keys(RoleRemoteDismantler.WANTED_BOOSTS).find((partType) => {
+            let parts = _.filter(creep.body, (p)=>p.type === partType && !p.boost);
+            if (parts.length && this.boostPartType(creep, parts)) {
+                return true;
+            } else {
+                return false;
+            }
+        });
+        return boostingPart;
+    }
 }
+RoleRemoteDismantler.WANTED_BOOSTS = {};
+RoleRemoteDismantler.WANTED_BOOSTS[HEAL] = [RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE, RESOURCE_LEMERGIUM_ALKALIDE, RESOURCE_LEMERGIUM_OXIDE];
+RoleRemoteDismantler.WANTED_BOOSTS[TOUGH] = [RESOURCE_GHODIUM_OXIDE];
+RoleRemoteDismantler.WANTED_BOOSTS[WORK] = [RESOURCE_GHODIUM_OXIDE];
+
 require('./profiler').registerClass(RoleRemoteDismantler, 'RoleRemoteDismantler');
 
 module.exports = RoleRemoteDismantler;

@@ -37,7 +37,7 @@ class MoveToRoomTask extends BaseStrategy {
             let exit ;
             if (this.isRoomTooFar(creep.room.name, creep.memory[this.CREEP_REMOTE_PATH])) {
                 let portals = creep.room.structures[STRUCTURE_PORTAL];
-                if (portals) {
+                if (portals.length) {
                     creep.log('took the portal !');
                     creep.log('stepping back into ',creep.moveTo(portals[0]));
                     return;

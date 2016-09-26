@@ -47,7 +47,7 @@ class CloseAttackStrategy extends BaseStrategy {
                     creep.moveTo(target);
                 }
             } else if (attack !== OK) {
-                creep.log('attack?', attack);
+                creep.log('attack?', target, attack);
             }
             // let moveTo = util.moveTo(creep, target.pos,this.constructor.name);
             // creep.log(this.constructor.name,this.range, 'attacking', JSON.stringify(target.pos),moveTo);

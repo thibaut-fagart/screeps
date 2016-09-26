@@ -37,7 +37,7 @@ class ClosePickupStrategy extends PickupStrategy{
     findSource(creep) {
         delete creep.memory[this.constructor.name + "Path"];
         delete creep.memory[this.PATH];
-        let resources =  creep.room.glanceForAround(LOOK_RESOURCES, creep.pos, this.range , true).map((r)=>r.resource).filter((r)=>
+        let resources =  creep.room.glanceForAround(LOOK_RESOURCES, creep.pos, this.range , true).map((r)=>r.resource).filter((r)=> this.acceptsResource(r) &&
             !(r.room.glanceForAround(LOOK_CREEPS, r.pos, 3, true).map(d=>d.creep).find(c=>!c.my)))
         // r.pos.findInRange(FIND_HOSTILE_CREEPS,3).length==0)
         ;

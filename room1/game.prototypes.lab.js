@@ -12,4 +12,5 @@ StructureLab.prototype.requiresEmptying = function () {
     return (this.mineralType && this.mineralType !== this.room.expectedMineralType(this)) || this.mineralAmount > 0.66 * this.mineralCapacity;
 };
 
+
 module.exports = Room.prototype;

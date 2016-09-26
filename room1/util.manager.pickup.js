@@ -88,7 +88,7 @@ class PickupManager {
      * @returns {Resource|undefined}
      */
     allocateDrop(creep, resourceType, predicate) {
-
+        predicate= predicate?predicate(creep):()=>true;
         if (!this.state) {
             this.updateState(Game.rooms[this.roomName]);
         }
@@ -97,7 +97,7 @@ class PickupManager {
         map = map.filter((drop)=>drop.amount> 0);
         // creep.log('pickupManager', 'available', map.length);
         let availableDrops = map
-            .filter((drop)=> /*drop.amount > 50 && */(this.typeMatches(drop, resourceType, predicate?predicate(creep):()=>true)));
+            .filter((drop)=> /*drop.amount > 50 && */(this.typeMatches(drop, resourceType, predicate)));
         // creep.log(`availableDrops ${availableDrops.map((d)=>'' + d.pos.getRangeTo(creep.pos) + ' ' + d.amount)}`);
         // creep.log('typeMatches', resourceType, availableDrops.length);
         if (availableDrops.length) {

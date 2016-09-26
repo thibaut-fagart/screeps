@@ -63,14 +63,14 @@ module.exports = function(grunt) {
         copy: {
             coverage: {
                 expand: true,
-                src: ['process/**.test.js', 'lib/mocks/**'],
+                src: ['room1/**.test.js', 'lib/mocks/**'],
                 dot: true,
                 dest: 'lib-cov/'
             },
             deploy: {
                 expand: true,
                 flatten: true,
-                src: ['process/**'],
+                src: ['room1/**'],
                 dest: 'build/deploy'
             }
         },
@@ -84,7 +84,7 @@ module.exports = function(grunt) {
         },
         mochaTest: {
             test: {
-                src: 'process/**/*test.js',
+                src: 'room1/**/*test.js',
                 options: {
                     slow: 10
                 }

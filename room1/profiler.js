@@ -141,7 +141,7 @@ const Profiler = {
   },
 
   emailProfile() {
-    Game.notify(Profiler.output());
+    Game.notify(Profiler.output(), 0);
   },
 
   output(numresults) {

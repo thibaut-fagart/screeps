@@ -16,8 +16,17 @@ class RoleHarvester {
 
     run(creep) {
         let strategy;
+        if (creep.carryCapacity > 0) {
+            if (creep.carry.energy == creep.carryCapacity){
+                creep.memory.action = 'unload';
+            } else if (creep.carry.energy == 0) {
+                creep.memory.action = 'mining';
+            }
+        } else {
+            creep.memory.action = 'mining';
+        }
         // creep.log(creep.carry.energy, creep.carryCapacity, creep.memory.currentStrategy);
-        if (creep.carry.energy == creep.carryCapacity && creep.carryCapacity > 0) {
+        if (creep.memory.action ==='unload') {
             strategy = util.getAndExecuteCurrentStrategy(creep, this.unloadStrategies);
             if (!strategy) {
                 strategy = _.find(this.unloadStrategies, (strat)=> (strat.accepts(creep)));

@@ -33,7 +33,8 @@ class SquadAttackStrategy extends Base {
         let leader = (isAtBorder) ? creep : _.sortBy(squad, (b)=>b.name)[0];
         // creep.log(JSON.stringify(_.sortBy(squad, (b)=>b.name).map((c)=> c.name)))
         let isLeader = (!leader || leader.name === creep.name);
-        let brotherFurthestToLeader = _.sortBy(squad, (c)=>-c.pos.getRangeTo(leader))[0];
+        let brotherFurthestToLeader = _.sortBy(squad, (c)=>-c.pos.getRangeTo(leader)).find(()=>true) || creep;
+
         let maxDistanceToLeader = brotherFurthestToLeader.pos.getRangeTo(leader);
         let myDistanceToLeader = creep.pos.getRangeTo(leader);
         // if roster is not enough, regroup to exit

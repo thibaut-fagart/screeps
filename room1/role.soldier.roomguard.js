@@ -29,7 +29,7 @@ class RoleRemoteRoomGuard {
             this.healStrategy, new RegroupStrategy(COLOR_WHITE), new RemoteAttackStrategy(5, toleratePredicate),
             new SquadAttackStrategy(3, toleratePredicate), new RemoteAttackStrategy(undefined, toleratePredicate),
             new HealStrategy(), new CloseAttackStrategy(undefined, toleratePredicate)/*,new AttackStructureStrategy()*/];
-        this.regroupStrategy = new RegroupStrategy(COLOR_ORANGE);
+        this.regroupStrategy = new RegroupStrategy(COLOR_BROWN);
         this.moveTask = new MoveToRoomTask('attack', 'homeroom', 'remoteRoom');
         util.indexStrategies(this.attackStrategies);
     }
@@ -106,9 +106,7 @@ class RoleRemoteRoomGuard {
             // creep.moveTo(exit.x, exit.y, {reusePath: 50});
         } else if (creep.memory.action == 'defend'/* && creep.memory.remoteRoom == creep.room.name*/) {
             if (creep.room.find(FIND_HOSTILE_CREEPS).length == 0) {
-                if (!healing) {
-                    this.onNoHostiles(creep);
-                }
+                this.onNoHostiles(creep);
             }
             /*
              let atDoor = util.isAtDoor(creep);
@@ -232,7 +230,10 @@ class RoleRemoteRoomGuard {
             let invadedRooms = rooms.find(room=>room.find(FIND_HOSTILE_CREEPS).filter(c=>c.owner.username === 'Invader'));
             if (invadedRooms.length) {
                 creep.log(`re assigning to invaded room ${invadedRooms[0]}}`);
-                Game.notify(`re assigning ${creep.name} to invaded room ${invadedRooms[0]}}`);
+                if (!creep.memory.lastNotify || creep.memory.lastNotify !== invadedRooms[0]) {
+                    // Game.notify(`re assigning ${creep.name} to invaded room ${invadedRooms[0]}}`);
+                    creep.memory.lastNotify = invadedRooms[0];
+                }
                 creep.memory.remoteRoom = invadedRooms[0];
                 creep.memory.action = 'go_remote_room';
                 return;
@@ -241,17 +242,18 @@ class RoleRemoteRoomGuard {
 
                 // creep.log('room cleared, finding target');
                 let roomNameAndHarvested = _.keys(Memory.rooms)
-                    .map(name=>[name, _.get(Memory.rooms[name],'threatAssessment.harvested'),0]);
+                    .map(name=>[name, _.get(Memory.rooms[name], 'threatAssessment.harvested'), 0]);
                 // creep.log(`roomNameAndHarvested ${JSON.stringify(roomNameAndHarvested.filter(pair=>pair[1] < 150000))}`);
                 let threatenedRooms = roomNameAndHarvested
-                    .filter(pair=>pair[1] < 150000);
+                    .filter(pair=>pair[1] < 150000)
+                    .filter(pair=>!Game.rooms[pair[0]] || Game.rooms[pair[0]].structures[STRUCTURE_TOWER].length===0);
                 // creep.log(`threatenedRooms ${JSON.stringify(threatenedRooms)}`);
                 if (threatenedRooms.length) {
                     let mostThreatened = threatenedRooms
                         .reduce((maxPair, pair)=>pair[1] > maxPair[1] ? pair : maxPair, ['none', -Infinity]);
                     if (mostThreatened[0] !== creep.room.name) {
                         creep.log(`re assigning to ${mostThreatened[0]}, threat ${mostThreatened[1]}`);
-                        Game.notify(`${Game.tipme} re assigning ${creep.name} : ${creep.room.name}=>${mostThreatened[0]}, threat ${mostThreatened[1]}`);
+                        // Game.notify(`${Game.time} re assigning ${creep.name} : ${creep.room.name}=>${mostThreatened[0]}, threat ${mostThreatened[1]}`);
                         creep.memory.remoteRoom = mostThreatened[0];
                         creep.memory.action = 'go_remote_room';
                     }
@@ -268,4 +270,5 @@ RoleRemoteRoomGuard.WANTED_BOOSTS[HEAL] = [RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE
 RoleRemoteRoomGuard.WANTED_BOOSTS[MOVE] = [RESOURCE_CATALYZED_ZYNTHIUM_ALKALIDE, RESOURCE_ZYNTHIUM_ALKALIDE, RESOURCE_ZYNTHIUM_OXIDE];
 
 
-require('./profiler').registerClass(RoleRemoteRoomGuard, 'RoleRemoteRoomGuard'); module.exports = RoleRemoteRoomGuard;
+require('./profiler').registerClass(RoleRemoteRoomGuard, 'RoleRemoteRoomGuard');
+module.exports = RoleRemoteRoomGuard;

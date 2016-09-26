@@ -112,7 +112,7 @@ class DropToContainerStrategy extends BaseStrategy {
 
     findTarget(creep, excludedContainers, target) {
         let structureTypePredicate = this.structure ? ((s)=> s.structureType === this.structure) : (()=>true);
-        let matchingStructures = this.findCandidates(creep).filter(structureTypePredicate);
+        let matchingStructures = this.findCandidates(creep).filter(s=>(s.my || !s.owner) && structureTypePredicate(s));
         // creep.log('matchingStructures ?', matchingStructures.length,matchingStructures.find((c)=>c.structureType === STRUCTURE_STORAGE));
         var allContainers =
             matchingStructures
@@ -183,8 +183,8 @@ class DropToContainerStrategy extends BaseStrategy {
     isAllowed(creep, resource) {
         let theResource = _.isFunction(this.resource) ? this.resource(creep) : this.resource;
         return !theResource
-            || (theResource === util.ANY_MINERAL && resource !== RESOURCE_ENERGY)
-            || theResource === resource;
+            || (theResource === util.ANY_MINERAL && resource !== RESOURCE_ENERGY && _.sum(creep.carry)-(creep.carry.energy||0)>0)
+            || (theResource === resource && creep.carry[theResource]>0);
     }
 
     /**

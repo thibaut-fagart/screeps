@@ -38,6 +38,7 @@ class RemoteTargetStrategy extends BaseStrategy {
             }
             // if(creep instanceof Creep) creep.log(target);
             target = target || creep.pos.findClosestByRange(hostiles);
+            if (creep.pos.getRangeTo(target)<2 && creep.getActiveBodyparts(ATTACK)>0) return false;
             this.setRemoteTarget(creep, target);
             // creep.attack(remoteTarget);
             if (creep instanceof Creep) {

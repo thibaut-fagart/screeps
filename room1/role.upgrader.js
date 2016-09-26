@@ -13,6 +13,7 @@ class RoleUpgrader {
             new PickupStrategy(RESOURCE_ENERGY)/*,
              new HarvestEnergySourceStrategy()*/];
         this.ACTION_FILL = 'fill';
+        util.indexStrategies(this.loadStrategies);
     }
 
     /** @param {Creep} creep **/
@@ -22,8 +23,8 @@ class RoleUpgrader {
             delete creep.memory.source;
         } else if (creep.carry.energy == creep.carryCapacity) {
             creep.memory.action ='upgrade';
-
         }
+        if (creep.room.controller.level < 8  && creep.seekBoosts(WORK, ['XGH2O', 'GH2O', 'GH'])) return;
         if (creep.memory.action == this.ACTION_FILL) {
             delete creep.memory.upgradeFrom;
             let strategy = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);
@@ -44,6 +45,7 @@ class RoleUpgrader {
             creep.memory.workParts = creep.memory.workParts || creep.getActiveBodyparts(WORK);
             let upgradePos = this.findUpgradePos(creep);
             if (upgradePos && !upgradePos.isEqualTo(creep.pos)) {
+                creep.upgradeController(creep.room.controller);
                 util.moveTo(creep, upgradePos, this.constructor.name + 'Path', {range: 0});
             } else {
                 if (creep.upgradeController(creep.room.controller) == ERR_NOT_IN_RANGE) {
@@ -66,9 +68,9 @@ class RoleUpgrader {
 
     getContainer(creep) {
         if (!creep.memory.containerId) {
-            let nearbyContainersAndLinks = creep.room.glanceForAround(LOOK_STRUCTURES, creep.room.controller.pos, 3, true).map(s=>s.structure).filter(s=>s.storeCapacity || s.energyCapacity);
+            let nearbyContainersAndLinks = creep.room.glanceForAround(LOOK_STRUCTURES, creep.room.controller.pos, 4, true).map(s=>s.structure).filter(s=>s.storeCapacity || s.energyCapacity);
             if (nearbyContainersAndLinks.length) {
-                let nearbyContainers = nearbyContainersAndLinks.filter(s=>s.store);
+                let nearbyContainers = nearbyContainersAndLinks.filter(s=>s.store && !s.send);
                 if (nearbyContainers.length) {
                     let container = nearbyContainers[0];
                     creep.memory.containerId = container.id;
@@ -86,6 +88,7 @@ class RoleUpgrader {
      * @returns {RoomPosition}
      */
     findUpgradePos(creep) {
+
         if (creep.memory.upgradeFrom) {
             let pos = util.posFromString(creep.memory.upgradeFrom, creep.room.name);
             let creepAtPos = pos.lookFor(LOOK_CREEPS).filter(c=>c.name !== creep.name);

@@ -38,11 +38,6 @@ class BuildAroundStrategy extends BuildStrategy {
     findBuildPos(creep, target) {
         return creep.pos;
     }
-
-    requestConstructionSite(creep) {
-        creep.log('requesting contrucution site ');
-        return super.requestConstructionSite(creep);
-    }
 }
 
 require('./profiler').registerClass(BuildAroundStrategy, 'BuildAroundStrategy'); module.exports = BuildAroundStrategy;

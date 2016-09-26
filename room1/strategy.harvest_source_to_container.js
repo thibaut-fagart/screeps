@@ -37,16 +37,23 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
         // creep.log('findSourceAndContainer', source, container);
         if (source && container) {
             if (creep.pos.getRangeTo(container.pos) == 0) {
-                // creep.log('on container');
+                // creep.log('on container', !!creep.carryCapacity,(container.hits < 0.5 * container.hitsMax), source.energy === 0, _.sum(container.store) === container.storeCapacity);
 
-                if (creep.carryCapacity && creep.carry.energy
-                    && (container.hits < 0.25 * container.hitsMax || source.energy === 0 || _.sum(container.store) === container.carryCapacity)) {
+                if (creep.carryCapacity
+                    && ((container.hits < 0.5 * container.hitsMax) || (source.energy === 0) || _.sum(container.store) === container.storeCapacity)) {
+                    if ((creep.carry.energy || 0) < creep.getActiveBodyparts(WORK)) {
+                        creep.withdraw(container, RESOURCE_ENERGY);
+                    }
                     let repair = creep.repair(container);
                     // creep.log('repairing container?', repair);
-                    if (repair === OK) return true;
+                    if (repair === OK) {
+                        return true;
+                    } else {
+                        creep.log('repair failed', container.pos, repair);
+                    }
                 }
                 let freeCapacity = container.storeCapacity - _.sum(container.store);
-                // creep.log('freeCapacity', freeCapacity);
+                // creep.log('freeCapacity', freeCapacity, this.nooverflow);
                 if (!this.nooverflow || this.nooverflow && freeCapacity > 0) {
                     let harvestBeforeRegen = source.ticksToRegeneration * 2 * creep.getActiveBodyparts(WORK);
                     // creep.log(`harvestBeforeRegen ${harvestBeforeRegen}`);
@@ -58,6 +65,11 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
                             creep.log('harvest?', ret);
                         } else if (ERR_NOT_ENOUGH_RESOURCES === ret && source.mineralType) {
                             creep.memory.role = 'recycle';
+                        } else if (ERR_NO_BODYPART === ret) {
+                            if (creep.hits < creep.hitsMax && !creep.room.find(FIND_CREEPS).filter(c=>c.my && c.getActiveBodyparts(HEAL) > 0).find(()=>true)) {
+                                Game.notify(`${Game.time} ${creep.name},${creep.room.name} no more WORK, suiciding`);
+                                creep.suicide();
+                            }
                         }
                     }
                 }
@@ -65,11 +77,11 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
             } else {
                 if (creep.pos.getRangeTo(container.pos) == 1) {
                     let obstacleCreeps = container.pos.lookFor(LOOK_CREEPS);
-                    if (obstacleCreeps.length && ! obstacleCreeps[0].memory.role ===creep.memory.role) {
+                    if (obstacleCreeps.length && !obstacleCreeps[0].memory.role === creep.memory.role) {
                         obstacleCreeps[0].moveTo(creep.pos);
                     }
                 }
-                creep.log('moving to container');
+                // creep.log('moving to container');
                 let moveTo = this.moveTo(creep, container);
 
                 // creep.log('moveTo?', moveTo);
@@ -90,9 +102,9 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
                     creep.log('harvest?', ret);
                 }
             } else {
-                creep.log('moving to source');
+                // creep.log('moving to source');
                 let moveTo2 = this.moveTo(creep, source);
-                if (ERR_NOT_FOUND ===moveTo2) {
+                if (ERR_NOT_FOUND === moveTo2) {
                     creep.log('discarding path');
                     delete creep.memory[this.PATH_TO_SOURCE_PATH];
                 }
@@ -102,14 +114,14 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
         /*if (creep.memory.role =='remoteHarvester') {
          creep.log(source,container, undefined === source || undefined === container)
          }*/
-        let returnValue = (source && !util.isReserved(creep,source) /* && undefined !== container */)
+        let returnValue = (source && !util.isReserved(creep, source) /* && undefined !== container */)
         // creep.log('success?', returnValue, source);
         return returnValue;
 
     }
 
     moveTo(creep, source) {
-        return util.moveTo(creep, source.pos, this.constructor.name + "Path", {range: source.structureType ? 0: 1});
+        return util.moveTo(creep, source.pos, this.constructor.name + "Path", {range: source.structureType ? 0 : 1});
     }
 
 
@@ -184,23 +196,30 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
 
             } else {
                 // build a container if none near the source
-/*
-                if (source && !container) {
-                    let area = source.room.lookAtArea(source.pos.y - 1, source.pos.x - 1, source.pos.y + 1, source.pos.x + 1, true);
+                if (source && !container && creep.getActiveBodyparts(CARRY) > 0) {
+                    let area = source.room.glanceAround(source.pos, 1, true);
                     let containers = area.filter((e)=>e.type === 'structure').map((e)=>(e.structure)).filter((s)=>s.structureType === STRUCTURE_CONTAINER);
                     if (!containers.length) {
                         let containerSites = area.filter((e)=>e.type === 'constructionSite').map((e)=>(e.constructionSite)).filter((s)=>s.structureType === STRUCTURE_CONTAINER);
                         if (!containerSites.length) {
                             creep.log('building container');
-                            this.buildContainer(area, creep);
+                            this.buildContainer(source.pos, creep);
                         } else {
-                            if (creep.carry && creep.carry.energy >= creep.getActiveBodyparts(WORK)*BUILD_POWER) {
-                                creep.build(containerSites[0]);
+                            if (creep.carry) {
+                                let activeWork = creep.getActiveBodyparts(WORK);
+                                if (creep.carry.energy < activeWork * BUILD_POWER) {
+                                    let drop = creep.pos.lookFor(LOOK_RESOURCES).find(l=>l.energy);
+                                    if (drop) {
+                                        creep.pickup(drop);
+                                    }
+                                }
+                                if (creep.carry.energy === creep.carryCapacity || creep.carry.energy >= activeWork * BUILD_POWER) {
+                                    creep.build(containerSites[0]);
+                                }
                             }
                         }
                     }
                 }
-*/
                 container = null;
             }
             // creep.log('source', source);
@@ -212,25 +231,13 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
         };
     }
 
-    buildContainer(area, creep) {
-        if (creep.room.controller && creep.room.controller.level < 3) return;
-        let containerSites = area.filter((e)=>e.type === 'constructionSite').map((e)=>(e.constructionSite)).filter((s)=>s.structureType === STRUCTURE_CONTAINER);
-        if (!containerSites.length) {
-            // find a place
-            let terrain = area.filter((e)=>e.type === 'terrain');
-            let nonWallTerrain = terrain.filter((e)=>e.terrain !== 'wall');
-            let minRange = 100;
-            let minT;
-            for (let i = 0, max = nonWallTerrain.length; i < max; i++) {
-                let t = nonWallTerrain[i];
-                let range = creep.pos.getRangeTo(t.x, t.y);
-                if (range < minRange) {
-                    minT = t;
-                    minRange = range;
-                }
-            }
-            let ret = creep.room.createConstructionSite(minT.x, minT.y, STRUCTURE_CONTAINER);
-            creep.log('built a container?', ret, minT.x, minT.y);
+    buildContainer(pos, creep) {
+        if (creep.room.controller && creep.room.controller.owner && creep.room.controller.level < 3) return;
+        let buildPos = creep.room.findValidParkingPosition(creep, pos, 1);
+        creep.log('building container at', buildPos.x, buildPos.y);
+        if (buildPos) {
+            let ret = creep.room.createConstructionSite(buildPos.x, buildPos.y, STRUCTURE_CONTAINER);
+            creep.log('built a container?', ret, buildPos.x, buildPos.y);
         }
     }
 
@@ -245,16 +252,17 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
     }
 
     findSources(creep) {
-        let sources = util.findSafeSources(creep.room, (!this.resourceType) || (RESOURCE_ENERGY !==this.resourceType));
+        let sources = util.findSafeSources(creep.room, (!this.resourceType) || (RESOURCE_ENERGY !== this.resourceType));
         // creep.log('util.safeSources',RESOURCE_ENERGY !==this.resourceType, this.resourceType, sources.length, JSON.stringify(sources.map((s)=>s.pos)));
         let safeSources = sources.filter((s)=> {
             // if (!this.resourceType) return true;
             switch (this.resourceType) {
                 case RESOURCE_ENERGY :
                     return s.energy;
-                case util.ANY_MINERAL : return s.mineralAmount;
+                case util.ANY_MINERAL :
+                    return s.mineralAmount;
                 default: {
-                    return (this.resourceType ? this.mineralType === this.resourceType : true) && (s.mineralAmount||s.energyCapacity);
+                    return (this.resourceType ? this.mineralType === this.resourceType : true) && (s.mineralAmount || s.energyCapacity);
                 }
             }
         });
@@ -269,4 +277,5 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
 
 }
 
-require('./profiler').registerClass(HarvestEnergySourceToContainerStrategy, 'HarvestEnergySourceToContainerStrategy'); module.exports = HarvestEnergySourceToContainerStrategy;
+require('./profiler').registerClass(HarvestEnergySourceToContainerStrategy, 'HarvestEnergySourceToContainerStrategy');
+module.exports = HarvestEnergySourceToContainerStrategy;

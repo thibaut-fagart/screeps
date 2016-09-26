@@ -57,10 +57,15 @@ class LoadFromContainerStrategy extends BaseStrategy {
          */
 
         let resource = typeof this.resource === 'function' ? this.resource(creep) : this.resource;
+        // creep.log('resource', resource);
         switch (resource) {
             case RESOURCE_ENERGY: {
                 // ret = source.transferEnergy ? source.transferEnergy(creep) : source.transfer(creep, this.resource);
-                ret = creep.withdraw(source, RESOURCE_ENERGY);
+                let available = source.store ? source.store[RESOURCE_ENERGY] : source.energy;
+                let sourceFull = source.store ? source.storeCapacity - (_.sum(source.store)) === 0 : source.energy === source.energyCapacity;
+                if (sourceFull || available >= neededCarry || (!source.room.controller || !source.room.controller.my) || !source.my){
+                    ret = creep.withdraw(source, RESOURCE_ENERGY);
+                }
                 break;
             }
             case LoadFromContainerStrategy.ANY_MINERAL : {
@@ -82,10 +87,10 @@ class LoadFromContainerStrategy extends BaseStrategy {
             // creep.log('transfer?', ret);
             delete creep.memory[LoadFromContainerStrategy.PATH];
         } else if (ret === ERR_NOT_IN_RANGE) {
-            ret = util.moveTo(creep, source.pos, this.constructor.name + "Path");
+            ret = util.moveTo(creep, source.pos, this.constructor.name + 'Path');
             // ret = creep.moveTo(source);
             if (ret !== OK && ret !== ERR_TIRED) {
-                creep.log("no path to source");
+                creep.log('no path to source');
                 delete creep.memory[LoadFromContainerStrategy.PATH];
             }
         } else if (ret == OK) {
@@ -104,13 +109,13 @@ class LoadFromContainerStrategy extends BaseStrategy {
         delete creep.memory[LoadFromContainerStrategy.PATH];
         // creep.log('LoadFromContainerStrategy', 'finding source');
         // find a new source, if no type specified, allow links if shared links have enough energy
-        let containers = creep.room.findContainers();
+        // let containers = creep.room.findContainers();
         // creep.log('containers have labs', this.index, containers.length, _.filter(containers, (s)=>s.structureType === STRUCTURE_LAB).length);
-        let allowedContainers = containers.filter((s)=>creep.room.allowedLoadingContainer(s));
+        let allowedContainers = creep.room.faucetContainers();
+            // containers.filter((s)=>creep.room.allowedLoadingContainer(s));
+        let predicate = this.predicate ? (this.predicate(creep)):()=>true;
         let allSources = allowedContainers
-            .filter((s)=>(this.structure ? (s.structureType === this.structure ) : true)
-                && (!this.predicate || (this.predicate(creep))(s))
-            );
+            .filter((s)=>(this.structure ? (s.structureType === this.structure ) : true) && predicate (s) );
         // creep.log('allSources', allSources.length);
         // creep.log('allSources has storage ?',this.structure,  allSources.find((c)=>c.structureType === STRUCTURE_STORAGE));
         // if (creep.memory.role ==='mineralGatherer') creep.log('allSources has links?', allSources.find((c)=>c.structureType === STRUCTURE_LINK));
@@ -118,11 +123,13 @@ class LoadFromContainerStrategy extends BaseStrategy {
         // creep.log('allSources have labs', allSources.length, _.filter(allSources, (s)=>s.structureType === STRUCTURE_LAB).length);
         // creep.log(this.constructor.name, 'storage ? ',_.find(allSources,(s)=>s.structureType ==STRUCTURE_STORAGE));
 
-        let nonEmptySources = [];
-            // _.filter(allSources, (s) => this.containerQty(creep, s));
+        let nonEmptySources =
+            [];
+            // allSources.filter((s) => this.containerQty(creep, s)>0);
 
-        let fullEnoughSources =[];
-            // _.filter(nonEmptySources, (s) => this.containerQty(creep, s) >= neededCarry);
+        let fullEnoughSources =
+            [];
+            // nonEmptySources.filter((s) => this.containerQty(creep, s) >= neededCarry);
 
 
         allSources.forEach((s)=> {

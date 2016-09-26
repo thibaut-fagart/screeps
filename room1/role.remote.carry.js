@@ -2,6 +2,7 @@ var _ = require('lodash');
 var util = require('./util');
 var LoadFromContainerStrategy = require('./strategy.load_from_container');
 var PickupStrategy = require('./strategy.pickup');
+var BuildAroundStrategy = require('./strategy.buildaround');
 var ClosePickupStrategy = require('./strategy.pickup.close');
 var DropToContainerStrategy = require('./strategy.drop_to_container');
 var DropToContainerCloseStrategy = require('./strategy.drop_to_container_close');
@@ -9,7 +10,6 @@ var DropToEnergyStorageStrategy = require('./strategy.drop_to_energyStorage');
 var AvoidRespawnStrategy = require('./strategy.avoidrespawn');
 var MoveToRoomTask = require('./task.move.toroom');
 var RegroupStrategy = require('./strategy.regroup');
-var BuildAroundStrategy = require('./strategy.buildaround');
 
 class RoleRemoteCarry {
 
@@ -33,9 +33,11 @@ class RoleRemoteCarry {
         ];
         this.unloadStrategies = [
             // new DropToEnergyStorageStrategy(STRUCTURE_TOWER),
-            new DropToContainerStrategy(undefined, undefined,
+            new DropToContainerStrategy(RESOURCE_ENERGY, undefined,
                 (creep)=>((s)=>([STRUCTURE_CONTAINER, STRUCTURE_STORAGE, STRUCTURE_LINK].indexOf(s.structureType) >= 0))),
-            new DropToEnergyStorageStrategy()
+            new DropToContainerStrategy(util.ANY_MINERAL, STRUCTURE_STORAGE),
+            new DropToEnergyStorageStrategy(STRUCTURE_SPAWN),
+            new DropToEnergyStorageStrategy(STRUCTURE_EXTENSION),
         ];
         this.regroupStrategy = new RegroupStrategy(COLOR_ORANGE);
         this.avoidThreadStrategy = new AvoidRespawnStrategy();
@@ -118,29 +120,15 @@ class RoleRemoteCarry {
         } else if (creep.memory.action === this.ACTION_UNLOAD && _.sum(creep.carry) === 0) {
             // TODO check lifespan , will the creep live long enough to go and bakc ?
             if (creep.room.name !== creep.memory.remoteRoom) {
-                let tripToSources = creep.room.tripTimeToSources(creep.memory.remoteRoom);
-                let mySpeed = creep.speed();
-                let tripTime = 0;
-                for (let i in tripToSources) {
-                    tripTime += tripToSources[i] * (mySpeed.empty[i] + mySpeed.full[i]);
-                }
-                //creep.log('trip time', creep.memory.remoteRoom, tripTime);
-                if (tripTime + 10 < creep.ticksToLive) {
-                    this.setAction(creep, 'go_remote_room');
-                    this.goRemoteTask.accepts(creep);
-                } else {
-                    creep.log('ready to die, recycling', creep.ticksToLive, tripTime);
-                    creep.memory.previousRole = creep.memory.role;
-                    creep.memory.role = 'recycle';
-                    return false;
-                }
+                this.ensureYoungEnoughForAnotherTrip(creep, creep.memory.remoteRoom);
+                return;
             }
         }
 
         if (creep.memory.action == this.ACTION_FILL && creep.memory.remoteRoom == creep.room.name) {
             let strategy;
             if (!this.avoidThreadStrategy.accepts(creep)) {
-                if (!this.loadFromNeighbour.accepts(creep) && !this.travelingPickup.accepts(creep)) {
+                if (true/*!this.loadFromNeighbour.accepts(creep) && !this.travelingPickup.accepts(creep)*/) {
                     // creep.log('no pickup');
                     strategy = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);
                     // creep.log('no previous strategy');
@@ -178,6 +166,30 @@ class RoleRemoteCarry {
         }
     }
 
+    /**
+     *
+     * @param creep
+     * @returns {boolean} stop if false
+     */
+    ensureYoungEnoughForAnotherTrip (creep, remoteRoom) {
+        let tripToSources = creep.room.tripTimeToSources(remoteRoom);
+        let mySpeed = creep.speed();
+        let tripTime = 0;
+        for (let i in tripToSources) {
+            tripTime += tripToSources[i] * (mySpeed.empty[i] + mySpeed.full[i]);
+        }
+        //creep.log('trip time', creep.memory.remoteRoom, tripTime);
+        if (tripTime + 10 < creep.ticksToLive) {
+            this.setAction(creep, 'go_remote_room');
+            this.goRemoteTask.accepts(creep);
+        } else {
+            creep.log('ready to die, recycling', creep.ticksToLive, tripTime);
+            creep.memory.previousRole = creep.memory.role;
+            creep.memory.role = 'recycle';
+            return false;
+        }
+
+    }
     /**
      *
      * @param creep

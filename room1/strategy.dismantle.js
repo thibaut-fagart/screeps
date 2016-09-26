@@ -26,7 +26,7 @@ class DismantleStrategy extends BaseStrategy {
             if (flaggedStructures.length > 0) {
                 targets = flaggedStructures;
             } else {
-                targets = creep.room.find(FIND_HOSTILE_STRUCTURES, {filter: this.predicate(creep)});
+                targets = creep.room.find(FIND_HOSTILE_STRUCTURES).filter(s=>(!s.storeCapacty || _.sum(s.store)===0) && (!s.mineralCapacity || s.mineralAmount ===0) && (this.predicate(creep))(s));
             }
             if (!targets.length) {
                 targets = creep.room.dismantleTargets();
@@ -54,7 +54,7 @@ class DismantleStrategy extends BaseStrategy {
             // creep.log('dismantling', target.structureType, target.hits);
             let dismantle = creep.dismantle(target);
             if (dismantle == ERR_NOT_IN_RANGE) {
-                creep.moveTo(target);
+                util.moveTo(creep, target.pos);
                 // util.moveTo(creep, target.pos, this.constructor.name + 'Path', {range: 1, avoidCreeps:true});
                 /*
                  let moveTo = creep.moveTo(target);

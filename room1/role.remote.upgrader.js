@@ -1,14 +1,15 @@
 var RoleUpgrader = require('./role.upgrader');
 var MoveToRoomTask = require('./task.move.toroom');
-var FleeToHomeRoomStrategy = require('./strategy.flee.tohomeroom');
+var LootContainerStrategy = require('./strategy.loot_container');
 var HarvestEnergySourceStrategy = require('./strategy.harvest_source');
 
 class RoleRemoteUpgrader extends RoleUpgrader{
     constructor() {
         super();
-        // this.loadStrategies.push(new HarvestEnergySourceStrategy());
+        this.loadStrategies.push(new LootContainerStrategy(RESOURCE_ENERGY));
         // this.fleeStrategy = new FleeToHomeRoomStrategy();
         this.moveTask = new MoveToRoomTask('remoteupgrade');
+        require('./util').indexStrategies(this.loadStrategies);
     }
     resign(creep) {
    	}

@@ -324,42 +324,38 @@ class Util {
      * @returns {boolean}
      */
     checkBlocked(creep, memorySlot) {
-        if (creep.memory.lastPos
-            && creep.pos.x == creep.memory.lastPos.x && creep.pos.y == creep.memory.lastPos.y) {
+        let lpos = creep.memory.lpos;
+        let {x, y} = creep.pos;
+        let cpos = x | y << 6;
+        if (lpos && cpos ===lpos) {
             // creep.log('blocked ? ', creep.memory.triedMoved, creep.memory.blocked);
             if (creep.memory.triedMoved) { // didn't move, recompute !! todo improve
                 creep.memory.blocked = (creep.memory.blocked || 0) + 1;
-                // creep.say('blocked');
-                if (creep.memory[memorySlot]) {
-                    let path = this.restorePath(creep.memory[memorySlot].path);
-                    let idx = _.findIndex(path, (i) => i.x - i.dx == creep.pos.x && i.y - i.dy == creep.pos.y);
-                    // creep.log('pathIndex', idx);
-                    if (idx >= 0 && idx < path.length - 1) {
-                        let nextPos = path[idx + 1];
-                        let pos = new RoomPosition(nextPos.x, nextPos.y, creep.room.name);
-                        let obstacleCreeps = pos.lookFor(LOOK_CREEPS);
-                        if (obstacleCreeps.length > 0) {
-                            /* {Creep}*/
-                            let blocker = obstacleCreeps[0];
-                            // creep.log('blocker', blocker.name);
-                            if (blocker.fatigue == 0 && blocker.memory.lastMoved > Game.time - 2) {
-                                let blockerMoveDir = (path[idx + 1].direction + 4) % 8 + 1;
-                                let otherOk = blocker.move(blockerMoveDir);
-                                let ok = creep.move(path[idx + 1].direction);
-                                if (otherOk === OK && ok === OK) {
-                                    // creep.log('movedBlocker', blockerMoveDir);
-                                    // creep.log('moved', path[idx+1].direction);
-                                    return false;
-                                }
-                            }
-                        }
-                    }
-                }
+                // creep.say('blocked, looking for immobile blocker');
                 if (creep.memory.blocked > 2) {
                     // creep.log('blocked ? forgeting path');
                     delete creep.memory[memorySlot];
                     // creep.log('giving up', creep.memory[memorySlot]);
                     return true;
+                } else if (creep.memory[memorySlot]) {
+                    let path = this.restorePath(creep.memory[memorySlot].path);
+                    let idx = _.findIndex(path, (i) => i.x - i.dx == creep.pos.x && i.y - i.dy == creep.pos.y);
+                    if (idx >= 0 && idx < path.length - 1) {
+                        let nextPos = path[idx];
+                        // creep.log('pathIndex', idx, JSON.stringify(nextPos), creep.memory.blocked);
+                        let pos = new RoomPosition(nextPos.x, nextPos.y, creep.room.name);
+                        let blocker = pos.lookFor(LOOK_CREEPS).find(()=>true);
+                        if (blocker && blocker.my && blocker.fatigue == 0 && blocker.memory.lastMoved < Game.time - 2) {
+                            let blockerMoveDir = (nextPos.direction + 4) % 8 + 1;
+                            let otherOk = blocker.move(blockerMoveDir);
+                            // let ok = creep.move(path[idx + 1].direction);
+                            if (otherOk === OK /*&& ok === OK*/) {
+                                creep.log('movedBlocker', blockerMoveDir);
+                                // creep.log('moved', path[idx+1].direction);
+                                return false;
+                            }
+                        }
+                    }
                 }
             }
         } else {
@@ -384,6 +380,9 @@ class Util {
         memory = memory || 'moveInRoomPath';
         // creep.log('path before moveTo', creep.memory[memory].path);
         // creep.log('moveTo', Game.time, JSON.stringify(pos),JSON.stringify(options));
+        if (creep.pos.getRangeTo(pos) <= options.range)  {
+            return ;
+        }
         let blocked = this.checkBlocked(creep, memory);
         if (blocked) {
             options.avoidCreeps = true;
@@ -396,7 +395,7 @@ class Util {
             path = this.restorePath(path.path);
             // creep.log('restored path', JSON.stringify(path));
         } else if (path) {
-            // creep.log('dropping path, bad destination', JSON.stringify(pos), JSON.stringify(path.target), options.range);
+            creep.log('dropping path, bad destination', JSON.stringify(pos), JSON.stringify(path.target), options.range);
             delete creep.memory[memory];
             path = false;
         }
@@ -425,7 +424,8 @@ class Util {
             if (moveTo === OK) {
                 creep.say(`${pos.x},${pos.y} OK`);
                 // creep.log('move OK' , (new Error().stack));
-                creep.memory.lastPos = creep.pos;
+                let {x,y} = creep.pos;
+                creep.memory.lpos = x | y << 6;
                 creep.memory.triedMoved = true;
             } else if (moveTo !== ERR_TIRED) {
                 creep.say(`${pos.x},${pos.y} KO`);
@@ -579,7 +579,7 @@ class Util {
 
     avoidHostilesCostMatrix(creepOrRoom, options) {
         let room = creepOrRoom.room ? creepOrRoom.room : creepOrRoom;
-        return this.avoidCostMatrix(room, (options && options.ignoreHostiles) ? [] : room.find(FIND_HOSTILE_CREEPS), 3, options);
+        return this.avoidCostMatrix(room, (options && options.ignoreHostiles) ? [] : room.find(FIND_HOSTILE_CREEPS).filter(c=>0 <c.getActiveBodyparts(RANGED_ATTACK)+ c.getActiveBodyparts(ATTACK)), 3, options);
     }
     debugCostMatrix (room, matrix) {
         for(let x = 0; x < 49; x++) {
@@ -845,8 +845,12 @@ class Util {
      * @return {string}
      */
     bodyToString(body) {
-        return body.reduce((s, part)=>s + partsToChar[part], '');
+        return body.reduce(_.isString(body[0])?(s, part)=>s + partsToChar[part]:(s, part)=>s + partsToChar[part.type], '');
     }
+    bodyToShortString(body) {
+        return _.pairs(_.countBy(body,part=>part.type)).reduce((s,pair)=>s+partsToChar[pair[0]]+pair[1],'');
+    }
+
     /**
      *
      * @param {string} s
