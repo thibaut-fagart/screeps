@@ -258,10 +258,10 @@ class RoleSpawn {
         }
         let tripTimeToSources = room.tripTimeToSources(remoteRoomName);
         let remoteRoster = this.remoteRoster(remoteRoomName, ((c)=>(undefined === c.ticksToLive) || c.ticksToLive > (_.sum(tripTimeToSources) || 0) + c.body.length * 3 + 20 ));
-        let updateMem = room.memory.lastRemoteMiningUpdate = room.memory.lastRemoteMiningUpdate || {};
-        updateMem[remoteRoomName] = updateMem[remoteRoomName] || {};
-        if (!updateMem[remoteRoomName] || !updateMem[remoteRoomName].when || updateMem[remoteRoomName].when + 20 < 0 || updateMem[remoteRoomName].when + 20 < Game.time/*true*/) {
-            updateMem[remoteRoomName].when = Game.time;
+        // let updateMem = room.memory.lastRemoteMiningUpdate = room.memory.lastRemoteMiningUpdate || {};
+        // updateMem[remoteRoomName] = updateMem[remoteRoomName] || {};
+        if (/*!updateMem[remoteRoomName] || !updateMem[remoteRoomName].when || updateMem[remoteRoomName].when + 20 < 0 || updateMem[remoteRoomName].when + 20 < Game.time*/true) {
+            // updateMem[remoteRoomName].when = Game.time;
             // room.log('remoteMining', remoteRoomName);
             var requiredCarry = function (safeSourcesAndMinerals, harvestRate) {
                 if (!tripTimeToSources) return 1;
@@ -326,9 +326,9 @@ class RoleSpawn {
                         if ((harvesterHasAttack || remoteRoster['keeperGuard'] >= 1) && room.energyCapacityAvailable >= 1800) {
                             // build carry for the existing harvesters before more harvesters
 
-                            let perfectMineralHarvester = this.shapeBody(room, patterns['keeperMineralHarvester'].body);
+                            let perfectMineralHarvester = this.shapeBody(room, patterns['remoteMineralHarvester'].body);
                             let boostFactor = room.maxBoost(WORK, 'harvest');
-                            let mineralHarvestRate = boostFactor * HARVEST_MINERAL_POWER * perfectMineralHarvester.body.filter((part)=>part == WORK).length;
+                            let mineralHarvestRate = boostFactor * HARVEST_MINERAL_POWER * perfectMineralHarvester.body.filter((part)=>part == WORK).length/EXTRACTOR_COOLDOWN;
                             let requiredCarryCount = requiredCarry.call(this, safeSourcesAndMinerals, mineralHarvestRate);
                             // room.log('requiredCarry', remoteRoomName, requiredCarryCount);
                             let queuedCarries = this.queue(room, queue, 'remoteCarryKeeper', patterns, {}, remoteRoster, requiredCarryCount, {
@@ -337,6 +337,7 @@ class RoleSpawn {
                             });
                             this.queue(room, queue, 'keeperHarvester', patterns, {}, remoteRoster, safeSourcesAndMinerals.filter((s)=>s.energyCapacity).length, {remoteRoom: remoteRoomName});
                             this.queue(room, queue, 'keeperMineralHarvester', patterns, {}, remoteRoster, safeSourcesAndMinerals.filter((s)=>s.mineralAmount).length, {remoteRoom: remoteRoomName});
+                            this.queue(room, queue, 'remoteMineralHarvester', patterns, {}, remoteRoster, safeSourcesAndMinerals.filter((s)=>s.mineralAmount).length, {remoteRoom: remoteRoomName, homeroom:room.name, tasks:[{name: 'MoveToRoom', args: {room: remoteRoomName}}]});
                             // current carries = requiredCarryCount - queuedCarries
                         }
                     } else {
@@ -520,12 +521,14 @@ class RoleSpawn {
             // room.log('remoteMining rooms', JSON.stringify(rooms));
             // rooms = _.sortBy(rooms, (r)=>util.roomDistance(room.name, r));
             // only process next room when previous one is full
-            rooms.forEach((name)=> {
+            rooms.find((name)=> {
                 if (Game.rooms[name] && Game.rooms[name].find(FIND_HOSTILE_CREEPS).find(c=>c.owner.username === 'Invader')) {
                     this.queue(room, queue, 'roleSoldier', patterns, currentSplit, this.remoteRoster(name), 1, {remoteRoom: name});
                 }
                 // room.log(`queued ${queued} for ${name} remoteMining`);
+                let previousQueueLength = queue.length;
                 this.addRemoteMiningToQueue(name, room, patterns, currentSplit, queue);
+                return queue.length - previousQueueLength;
             });
 
         }

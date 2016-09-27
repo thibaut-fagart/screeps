@@ -19,7 +19,7 @@ let patterns = {
     },
     'carry': {
         body: (room, budget)=> CreepShaper.shape(CreepShaper.requirements().minimum(FULL_ROAD_SPEED, 1).minimum(CAPACITY, 800), shaperOptions(room, 'carry', budget)),
-        count: 3,
+        count: 2,
         memory: {role: 'carry'}
     },
     'energyFiller': {
@@ -195,7 +195,7 @@ let patterns = {
         memory: {role: 'remoteBuilder'}
     },
     'remoteMineralHarvester': {
-        body: (room, budget)=> CreepShaper.shape(CreepShaper.requirements().minimum(EMPTY_ROAD_SPEED, 1).maximize(HARVEST), shaperOptions(room, 'remoteMineralHarvester', budget)),
+        body: (room, budget)=> CreepShaper.shape(CreepShaper.requirements().minimum(EMPTY_ROAD_SPEED, 0.5).maximize(HARVEST), shaperOptions(room, 'remoteMineralHarvester', budget)),
         count: 0,
         memory: {role: 'remoteMineralHarvester'}
     },
