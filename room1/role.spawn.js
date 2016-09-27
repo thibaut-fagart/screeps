@@ -658,26 +658,41 @@ class RoleSpawn {
         }
         if (room.controller.level >= 4 && room.storage) {
             if (room.storage.store.energy > 2000) {
+                let carrys = room.find(FIND_MY_CREEPS).filter(c=>'carry' === c.memory.role);
+                room.find(FIND_SOURCES).forEach(s=> {
+                    //  make sure we dont transform all carrys into gatherers
+                    if (carrys.length) {
+                        carrys.pop().memory.role = 'energyFiller';
+                    }
+                    if (carrys.length) {
+                        carrys.pop().memory.role = 'energyGatherer';
+                    }
+                });
+                while (carrys.length) {
+                    carrys.pop().memory.role = 'energyFiller';
+                }
                 patterns['carry'].count = 0;
                 patterns['energyFiller'].count = 1;
+                if (room.storage.store.energy < 10000) {
+                    patterns['upgrader'].count = 0;
+                } else if (room.controller.level < 7) {
+                    patterns['upgrader'].count = Math.floor(Math.min(room.storage.store.energy / 15000, 2));
+                } else if (room.controller.level >= 7) {
+                    patterns['upgrader'].count = Math.min(Math.floor(room.storage.store.energy / 50000), 2);
+                }
+                room.memory.cache.neededGatherers = room.memory.cache.neededGatherers || {date: 0};
+                let neededGatherers = room.memory.cache.neededGatherers;
+                if (neededGatherers.date + 1500 < Game.time) {
+                    let totalDistance = room.find(FIND_SOURCES).reduce((d, s)=>d + room.storage.pos.findPathTo(s).length, 0);
+                    let carryNeeded = 3000 * (2 * totalDistance) / 300; // 3K energy per source every 300 ticks, round trip distance
+                    neededGatherers.date = Game.time;
+                    let sampleGatherer = room.find(FIND_MY_CREEPS).find(c=>c.memory.role === 'energyGatherer');
+                    neededGatherers.value = Math.ceil(carryNeeded / (sampleGatherer ? sampleGatherer.carryCapacity : 800));
+                }
+                patterns['energyGatherer'].count = room.memory.cache.neededGatherers.value;
+            } else {
+                room.find(FIND_MY_CREEPS).filter(c=>['energyFiller','energyGatherer'].indexOf(c.memory.role)>=0).forEach(c=>c.memory.role = 'carry');
             }
-            if (room.storage.store.energy < 10000) {
-                patterns['upgrader'].count = 0;
-            } else if (room.controller.level < 7) {
-                patterns['upgrader'].count = Math.floor(Math.min(room.storage.store.energy / 15000, 2));
-            } else if (room.controller.level >= 7) {
-                patterns['upgrader'].count = Math.min(Math.floor(room.storage.store.energy / 50000), 2);
-            }
-            room.memory.cache.neededGatherers = room.memory.cache.neededGatherers || {date: 0};
-            let neededGatherers = room.memory.cache.neededGatherers;
-            if (neededGatherers.date + 1500 < Game.time) {
-                let totalDistance = room.find(FIND_SOURCES).reduce((d, s)=>d + room.storage.pos.findPathTo(s).length, 0);
-                let carryNeeded = 3000 * (2 * totalDistance) / 300; // 3K energy per source every 300 ticks, round trip distance
-                neededGatherers.date = Game.time;
-                let sampleGatherer = room.find(FIND_MY_CREEPS).find(c=>c.memory.role === 'energyGatherer');
-                neededGatherers.value = Math.ceil(carryNeeded / (sampleGatherer ? sampleGatherer.carryCapacity : 800));
-            }
-            patterns['energyGatherer'].count = room.memory.cache.neededGatherers.value;
         } else {
             patterns['carry'].count = 2;
         }
