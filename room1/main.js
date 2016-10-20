@@ -92,22 +92,28 @@ Object.defineProperty(StructureLink.prototype, 'operator',
         },
         configurable: true
     });
-
+let pathFinderCost = {time: Game.time, cost: 0, count: 0};
 function wrapPathFinder() {
     'use strict';
     let basePathFinderSearch = PathFinder.search;
     PathFinder.search = function () {
         'use strict';
-        PathFinder.callCount = (PathFinder.callCount || 0) + 1;
+        if (pathFinderCost.time !== Game.time) {
+            pathFinderCost = {time: Game.time, cost: 0, count: 0};
+        }
+        let start = Game.cpu.getUsed();
         // console.log('called PathFinder.search', PathFinder.callCount);
-        return basePathFinderSearch.apply(this, arguments);
+        let result = basePathFinderSearch.apply(this, arguments);
+        pathFinderCost.cost = pathFinderCost.cost + (Game.cpu.getUsed() - start);
+        pathFinderCost.count = pathFinderCost.count + 1;
+        return result;
     };
 }
 let roomTasks = {
     runSpawn: (r)=> {
         'use strict';
         try {
-            if (r.controller && r.controller.my && r.controller.level >0) {
+            if (r.controller && r.controller.my && r.controller.level > 0) {
                 roleSpawn.run(r);
             }
         } catch (e) {
@@ -133,6 +139,97 @@ let roomTasks = {
 
 };
 
+function handleStreamingOrders() {
+    'use strict';
+    let maxAffordable = (room, toRoomName, isEnergy)=> {
+        let distance = Game.map.getRoomLinearDistance(room.name, toRoomName);
+        let number = Math.log((distance + 9) * 0.1) + 0.1;
+        let amount = (room.terminal.store.energy || 0);
+
+        if (isEnergy) {
+            return {amount: Math.floor((amount / (1 + number))), cost: Math.ceil(amount * (number))};
+        } else {
+            return {amount: Math.ceil(amount / number), cost: amount};
+        }
+
+    };
+    if (Memory.streamingOrders) {
+        Memory.streamingOrders.forEach(order=> {
+            let from = Game.rooms[order.from];
+            if (undefined === order.amount) {
+                order.amount = order.initialAmount;
+            }
+
+            if (from && from.terminal && order.to && order.what && (order.amount || 0) > 0) {
+                if (_.get(Game.rooms, [order.to, 'controller','my'], false) && !_.get(Game.rooms, [order.to, 'terminal'], false)) {
+                    // terminal not built
+                    return;
+                }
+                let available = _.get(from.terminal, ['store', order.what], 0);
+
+                let freeSpace = (Game.rooms[order.to] && Game.rooms[order.to].terminal)?Game.rooms[order.to].terminal.storeCapacity - _.sum(Game.rooms[order.to].terminal.store):10000;
+                let howMuch = Math.min(maxAffordable(from, order.to, order.what === RESOURCE_ENERGY).amount, order.amount, available, freeSpace, (order.step||Infinity));
+                if (howMuch > 100) {
+                    let result = from.terminal.send(order.what, howMuch, order.to);
+                    from.log(`streaming ${howMuch} ${order.what} to ${order.to}`);
+                    // Game.notify(`streaming ${howMuch} ${order.what} to ${order.to}, ${JSON.stringify(order)}`);
+                    order.transfers = order.transfers || [];
+                    order.transfers.push({time: Game.time, amount: howMuch, result: result});
+                    if (result === OK) {
+                        order.amount = order.amount - howMuch;
+                        if (order.amount < 100) {
+                            Game.notify(`completed streaming order ${JSON.stringify(order)}`);
+                        }
+                    }
+                }
+            } else if (from && from.terminal && order.deal && (order.amount || 0) > 0) {
+                let deal = Game.market.getOrderById(order.deal);
+                if (!deal) return;
+                if (deal.type === 'buy') {
+                    let available = _.get(from.terminal, ['store', deal.resourceType], 0);
+                    if (deal.remainingAmount > 0) {
+                        let howMuch = Math.min(maxAffordable(from, deal.roomName, deal.resourceType === RESOURCE_ENERGY).amount, order.amount, available, (order.step || Infinity));
+                        if (howMuch > 100) {
+                            let result = Game.market.deal(order.deal, howMuch, order.from);
+                            order.transfers = order.transfers || [];
+                            order.transfers.push({time: Game.time, amount: howMuch, result: result});
+                            // Game.notify(`streaming ${howMuch} ${order.what} to ${order.to}, ${JSON.stringify(order)}`);
+                            if (result === OK) {
+                                from.log(`sold ${howMuch} ${deal.resourceType}`);
+                                order.amount = order.amount - howMuch;
+                                if (order.amount < 100) {
+                                    Game.notify(`completed dealing order ${JSON.stringify(order)}`);
+                                }
+                            }
+                        }
+
+                    }
+                } else if (deal.type === 'sell') {
+                    let available = Game.market.credits / deal.price;
+                    if (deal.remainingAmount > 0) {
+                        let howMuch = Math.min(maxAffordable(from, deal.roomName, deal.resourceType === RESOURCE_ENERGY).amount, order.amount, available, (order.step || Infinity));
+                        if (howMuch > 100) {
+                            let result = Game.market.deal(order.deal, howMuch, order.from);
+                            order.transfers = order.transfers || [];
+                            order.transfers.push({time: Game.time, amount: howMuch, result: result});
+                            // Game.notify(`streaming ${howMuch} ${order.what} to ${order.to}, ${JSON.stringify(order)}`);
+                            if (result === OK) {
+                                from.log(`bought ${howMuch} ${deal.resourceType}`);
+                                order.amount = order.amount - howMuch;
+                                if (order.amount < 100) {
+                                    Game.notify(`completed dealing order ${JSON.stringify(order)}`);
+                                }
+                            }
+                        }
+
+                    }
+
+                }
+            }
+        });
+        // Memory.streamingOrders = Memory.streamingOrders.filter(order=>order.amount >= 100);
+    }
+}
 function innerLoop() {
     let updateStats = true;
     let messages = [], skipped = [];
@@ -141,7 +238,7 @@ function innerLoop() {
     let globalStart = Game.cpu.getUsed();
     let oldSeenTick = Game.time || (Memory.counters && Memory.counters.seenTick);
     Memory.counters = {tick: Game.time, seenTick: oldSeenTick + 1};
-    Memory.stats.room = Memory.stats.room||{};
+    Memory.stats.room = Memory.stats.room || {};
     if (/*0 == Game.time % 100*/true) {
         _.keys(Memory.creeps).forEach((name)=> {
             if (!Game.creeps[name]) {
@@ -180,10 +277,20 @@ function innerLoop() {
         cpu.creeps = cpu.creeps || {};
         _.keys(handlers).forEach((k)=>cpu.creeps[k] = 0);
     }
-    let rooms = _.groupBy(_.values(Game.rooms),r=>!!(r.controller && r.controller.my && r.controller.level > 0));
-    let ownedRooms  = rooms['true'];
+    let rooms = _.groupBy(_.values(Game.rooms), r=>!!(r.controller && r.controller.my && r.controller.level > 0));
+    let ownedRooms = rooms['true'];
     let remoteRooms = rooms['false'];
     let taskPairs = _.pairs(roomTasks);
+    try {
+        if (0 === Game.time % 100) {
+            handleStreamingOrders();
+        }
+    } catch (e) {
+        console.log(e);
+        console.log(e.stack);
+        Game.notify(e);
+        Game.notify(e.stack);
+    }
     ownedRooms.concat(remoteRooms).forEach(room=> {
         'use strict';
         let roomName = room.name;
@@ -206,9 +313,9 @@ function innerLoop() {
             }
         });
     });
-    _.sortBy(ownedRooms, r=>(r.memory.emergency?-1:8-r.controller.level));
+    _.sortBy(ownedRooms, r=>(r.memory.emergency ? -1 : 8 - r.controller.level));
     let sortedRooms = ownedRooms.concat(remoteRooms);
-        // _.sortBy(_.values(Game.rooms), (r)=> r.controller && r.controller.my ? r.controller.level : 10);
+    // _.sortBy(_.values(Game.rooms), (r)=> r.controller && r.controller.my ? r.controller.level : 10);
     if (updateStats && Game.cpu.tickLimit < 500 && debugPerfs) console.log('room, controller, roomTasks , creeps ,spawns , labs , stats, room');
     sortedRooms.forEach((room)=> {
         // for (var roomName in Game.rooms) {
@@ -289,17 +396,17 @@ function innerLoop() {
             }
 
             let strangers = room.find(FIND_HOSTILE_CREEPS);
-            let hostiles = _.filter(strangers, (c)=>_.sum(c.getActiveBodyparts(ATTACK) + c.getActiveBodyparts(RANGED_ATTACK) > 0));
+            let hostiles = _.filter(strangers, (c)=>c.hostile && _.sum(c.getActiveBodyparts(ATTACK) + c.getActiveBodyparts(RANGED_ATTACK) > 0));
 
-/*
-            if (hostiles.length > 0) {
-                messages.push(' strangers ' + JSON.stringify(_.map(hostiles, (h) => {
-                        let subset = _.pick(h, ['name', 'pos', 'body', 'owner', 'hits', 'hitsMax']);
-                        subset.body = _.countBy(subset.body, 'type');
-                        return subset;
-                    })));
-            }
-*/
+            /*
+             if (hostiles.length > 0) {
+             messages.push(' strangers ' + JSON.stringify(_.map(hostiles, (h) => {
+             let subset = _.pick(h, ['name', 'pos', 'body', 'owner', 'hits', 'hitsMax']);
+             subset.body = _.countBy(subset.body, 'type');
+             return subset;
+             })));
+             }
+             */
             roomStat.strangers = _.size(strangers);
             roomStat.hostiles = _.size(hostiles);
             roomStat.creeps = util.roster(room);
@@ -337,7 +444,8 @@ function innerLoop() {
         Memory.stats.cpu = Game.cpu.getUsed();
         Memory.stats.gcl = Game.gcl;
         // console.log('PathFinder.callCount', (PathFinder.callCount || 0));
-        Memory.stats.performance = {'PathFinder.search': (PathFinder.callCount || 0)};
+        Memory.stats.performance = {PathFinder: {search: pathFinderCost}};
+        // Memory.stats.performance = {'PathFinder.searchCost': pathFinderCost.cost};
         Memory.stats.roster = util.roster();
         // _.keys(handlers).forEach((k)=> Memory.stats['roster.' + k] = roster[k] || 0);
 
@@ -356,7 +464,7 @@ module.exports.loop = function () {
 
     try {
         if (Game.cpu.bucket > 200 && !Game.rooms['sim'] && !Memory.disableProfiler) {
-            profiler.wrap(innerLoop);   
+            profiler.wrap(innerLoop);
             // innerLoop();
         } else {
             innerLoop();

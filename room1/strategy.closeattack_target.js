@@ -23,7 +23,7 @@ class CloseAttackStrategy extends BaseStrategy {
         // find strangers
         // order by type (heal > *)  and distance
         let target = this.getRemoteTarget(creep);
-        let hostiles = (this.range) ? creep.pos.findInRange(FIND_HOSTILE_CREEPS, this.range) : creep.room.find(FIND_HOSTILE_CREEPS);
+        let hostiles = ((this.range) ? creep.pos.findInRange(FIND_HOSTILE_CREEPS, this.range) : creep.room.find(FIND_HOSTILE_CREEPS)).filter(c=>c.hostile);
         hostiles = hostiles.filter(this.predicate(creep));
         // if(creep instanceof Creep) creep.log('hostiles', hostiles.length);
         if (hostiles.length) {

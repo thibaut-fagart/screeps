@@ -27,7 +27,7 @@ class HarvestKeeperSourceStrategy extends HarvestEnergySourceStrategy {
             sources = sources.filter((s)=>allowedSources.indexOf(s.id) >= 0);
             // creep.log('subset ', sources.length);
         }
-        sources = sources.filter((s)=>s.pos.findInRange(FIND_HOSTILE_CREEPS, 4).length === 0);
+        sources = sources.filter((s)=>s.pos.findInRange(FIND_HOSTILE_CREEPS, 4).filter(c=>c.hostile).length === 0);
         // creep.log('safe subset ', sources.length);
 
         if (sources.length) {

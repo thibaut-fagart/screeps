@@ -23,8 +23,8 @@ class RoleRemoteHarvester {
         this.fleeStrategy = new AvoidRespawnStrategy();
 
         this.loadStrategies = [
-            new HarvestKeeperEnergySourceToContainerStrategy(RESOURCE_ENERGY),
-            new HarvestKeeperEnergySourceToContainerStrategy(util.ANY_MINERAL) /*,new RegroupStrategy(COLOR_ORANGE)*/];
+            new HarvestKeeperEnergySourceToContainerStrategy(RESOURCE_ENERGY)/*,
+            new HarvestKeeperEnergySourceToContainerStrategy(util.ANY_MINERAL)*/ /*,new RegroupStrategy(COLOR_ORANGE)*/];
         this.unloadStrategies = [new DropToContainerStrategy(RESOURCE_ENERGY), new DropToEnergyStorage()];
         this.goRemoteTask = new MoveToRoomTask(undefined, 'homeroom', 'remoteRoom');
         this.goHomeTask = new MoveToRoomTask(undefined, 'remoteRoom', 'homeroom');

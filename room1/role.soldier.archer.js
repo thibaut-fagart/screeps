@@ -52,7 +52,7 @@ class RoleArcher {
         }
 */
         if (creep.memory.action == 'attack' && creep.memory.remoteRoom == creep.room.name) {
-            let hostiles = creep.room.find(FIND_HOSTILE_CREEPS);
+            let hostiles = creep.room.find(FIND_HOSTILE_CREEPS).filter(c=>c.hostile);
             if (hostiles.length) {
                 let dangerous = hostiles.filter(c=>c.getActiveBodyparts(ATTACK) + c.getActiveBodyparts(RANGED_ATTACK) > 0);
                 let closest = creep.pos.findClosestByRange(dangerous.length ? dangerous : hostiles);

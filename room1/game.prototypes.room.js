@@ -19,13 +19,13 @@ Room.prototype.findLabWith = function (resource) {
 };
 Room.prototype.wallsRequiringRepair = function () {
     'use strict';
-    let currentRoomEnergy = (this.storage ? this.storage.energy || 0 : 0);
+    let currentRoomEnergy = (this.storage ? this.storage.store.energy || 0 : 0);
     return _.sortBy(
         this.structures[STRUCTURE_WALL].concat(this.structures[STRUCTURE_RAMPART].filter(s=>s.my))
             .filter(s=>
             ((currentRoomEnergy < 10000 && s.hits < 100000)
             || (currentRoomEnergy < 50000 && s.hits < 1000000)
-            || currentRoomEnergy > 50000)
+            || currentRoomEnergy > 50000 && this.controller.level === 8)
             && s.hits < s.hitsMax)
         ,
         (w)=>w.hits
@@ -594,20 +594,20 @@ Room.prototype.dismantleTargets = function () {
     return ret;
 };
 Room.prototype.findContainers = function () {
-    this.memory.cache = this.memory.cache || {};
-    this.memory.cache.containers = this.memory.cache.containers || {};
-    let containerIds = Cache.get(this.memory.cache, 'containers', ()=>(this.find(FIND_STRUCTURES).filter((s)=> (s.storeCapacity || s.energyCapacity)).map((s)=>s.id)), 50);
-    return containerIds.map((id)=> Game.getObjectById(id)).filter((s)=>!!s);
+    return Cache.get(this, '_containers', ()=> {
+        'use strict';
+        this.memory.cache = this.memory.cache || {};
+        this.memory.cache.containers = this.memory.cache.containers || {};
+        let containerIds = Cache.get(this.memory.cache, 'containers', ()=>(this.find(FIND_STRUCTURES).filter((s)=> (undefined !== s.storeCapacity || undefined !== s.energyCapacity)).map((s)=>s.id)), 150);
+        return containerIds.map((id)=> Game.getObjectById(id)).filter((s)=>!!s);
+    }, 50);
 };
 Room.prototype.faucetContainers = function () {
-    this.memory.cache = this.memory.cache || {};
-    this.memory.cache.faucetContainers = this.memory.cache.faucetContainers || {};
-    let containerIds = Cache.get(this.memory.cache, 'faucetContainers', ()=>(this.findContainers().filter(s=>this.allowedLoadingContainer(s)).map((s)=>s.id)), 50);
-    return containerIds.map((id)=> Game.getObjectById(id)).filter((s)=>!!s);
+    return this.findContainers().filter((s)=> this.allowedLoadingContainer(s));
 };
 
 Room.prototype.allowedLoadingContainer = function (structure) {
-    return structure.structureType !== STRUCTURE_TOWER && structure.structureType !== STRUCTURE_LAB && (this.energyCapacity === this.energyCapacityAvailable || [STRUCTURE_SPAWN, STRUCTURE_EXTENSION].indexOf(structure.structureType) < 0);
+    return structure.structureType !== STRUCTURE_TOWER && structure.structureType !== STRUCTURE_LAB && ((this.energyCapacity === this.energyCapacityAvailable && !this.storage) || [STRUCTURE_SPAWN, STRUCTURE_EXTENSION].indexOf(structure.structureType) < 0);
 };
 
 Room.prototype.buildStructures = function (pos) {
@@ -702,7 +702,7 @@ Room.prototype.buildStructures = function (pos) {
             }
         };
         let builders = [towerBuilder, storageBuilder, extensionsBuilder, rampartBuilder, wallsBuilder, extractorBuilder, linksBuilder, containerBuilder, roadBuilder, terminalBuilder, labsBuilder];
-        builders.find((builder)=>builder());
+        return builders.find((builder)=>builder());
 
     }
 
@@ -952,32 +952,36 @@ Room.prototype.operateLabs = function () {
         // creep.memory[]
     };
     const OVERFLOWING = 50000;
-    let availableMineral = min=>(this.storage.store[min] || 0) + (this.terminal ? this.terminal.store[min] || 0 : 0);
+    let availableMineral = min=>(this.storage.store[min] || 0) + (this.terminal ? this.terminal.store[min] || 0 : 0) + (_.sum(this.structures[STRUCTURE_LAB].filter(l=>l.mineralType === min), l=>l.mineralAmount));
     let rotateLabs = () => {
         if (Game.time < (this.memory.lab_rotated || 0) + 1500) return;
-        try{
-        let nextMin = _.min(
-            // filter out the reactions for which we don't have ingredients
-            this.memory.lab_productions.filter(min=>!handlers['labOperator'].class().reactions [min].find(ingredient=>availableMineral(ingredient) < 3000)),
-            min=>availableMineral(min));
-        if (nextMin !== Infinity) {
-            Game.notify(`${this.name} switching production ${this.lab_production}=> ${nextMin}`);
-            this.log(`switching production ${this.lab_production}=> ${nextMin}`);
-            this.memory.lab_rotated = Game.time;
-            this.lab_production = nextMin;
+        try {
+            let nextMin = _.min(
+                // filter out the reactions for which we don't have ingredients
+                this.memory.lab_productions.filter(min=>!handlers['labOperator'].class().reactions [min].find(ingredient=>availableMineral(ingredient) < 3000)),
+                min=>availableMineral(min));
+            if (nextMin !== Infinity) {
+                Game.notify(`${this.name} switching production ${this.lab_production}=> ${nextMin}`);
+                this.log(`switching production ${this.lab_production}=> ${nextMin}`);
+                this.memory.lab_rotated = Game.time;
+                this.lab_production = nextMin;
+            }
+        } catch (e) {
+            this.log(e.stack);
         }
-        } catch(e) {
-            this.log(e.stack);}
     };
+    if (_.keys(_.get(this.memory, 'labs', {})).length !== this.structures[STRUCTURE_LAB].length) {
+        this.lab_production = this.lab_production;
+    }
     let ingredients = handlers['labOperator'].class().reactions [this.memory.lab_production];
+    this.log('producing', this.memory.lab_production);
     let ran = false;
     if (this.memory.lab_productions && this.memory.lab_productions.length && this.storage && this.memory.lab_production && availableMineral(this.memory.lab_production) > OVERFLOWING) {
         // current production piles up
-        rotateLabs();
-    } else if (this.memory.lab_productions && this.memory.lab_productions.length && ingredients.filter(min=>availableMineral(min) < 1000).length > 0) {
-        // no more ingredients
+        this.log(`overflowing ${this.memory.lab_production}, rotating `);
         rotateLabs();
     } else if (!this.memory.lab_production || !this.memory.labs) {
+        this.log('no lab production');
         return;
     } else {
 
@@ -985,13 +989,14 @@ Room.prototype.operateLabs = function () {
 
         let ingredientLabs = this.memory.labs_input;
         if (!ingredientLabs) {
-            this.log('initializing ingredient labs')
+            this.log('initializing ingredient labs');
             this.lab_production = this.lab_production;
             return;
         } else {
             ingredientLabs = ingredientLabs.map(id=>Game.getObjectById(id));
         }
-        // this.log('ingredientLabs', ingredientLabs[0], ingredientLabs[1]);
+        this.log('ingredientLabs', ingredientLabs[0], ingredientLabs[1]);
+        let ingredientsExhausted = false;
         if (!ingredientLabs[0] || !ingredientLabs[1]) {
             ran = false;
         } else {
@@ -1011,6 +1016,7 @@ Room.prototype.operateLabs = function () {
                             let result = lab.runReaction(ingredientLabs[0], ingredientLabs[1]);
                             if (result !== OK) {
                                 this.log('run reaction?', lab.mineralType, result);
+                                ingredientsExhausted |= (ERR_NOT_ENOUGH_RESOURCES === result);
                             } else {
                                 ran = true;
                             }
@@ -1018,6 +1024,11 @@ Room.prototype.operateLabs = function () {
                     }
                 }
             });
+        }
+        if (this.memory.lab_productions && this.memory.lab_productions.length && ingredientsExhausted) {
+            // no more ingredients
+            this.log(`${this.memory.lab_production} out of ingredients, rotating `);
+            rotateLabs();
         }
     }
 
@@ -1062,7 +1073,7 @@ Object.defineProperty(Room.prototype, 'lab_production',
                 }
                 return acc;
             }, []);
-            this.memory.labs_input=centerLabs.map(l=>l.id);
+            this.memory.labs_input = centerLabs.map(l=>l.id);
             this.log('center labs', centerLabs);
             centerLabs.forEach((lab, idx)=> {
                 this.memory.labs[lab.id] = ingredients[idx];
@@ -1070,12 +1081,13 @@ Object.defineProperty(Room.prototype, 'lab_production',
             });
             labs.forEach(lab=> this.memory.labs[lab.id] = value);
             let myMin = this.find(FIND_MINERALS).find(()=>true).mineralType;
-            this.memory.import = this.memory.import || [];
+            this.import = this.memory.import || [];
 
             _.pull(ingredients, myMin);
+            ingredients.forEach(min=> this.memory.import.push(min));
+
+            this.import = _.difference(this.memory.import, this.memory.lab_productions);
             // do not import result of other rotations
-            ingredients.filter(min=>this.memory.import.indexOf(min) < 0 && this.memory.lab_productions.indexOf(min)< 0).forEach(min=> this.memory.import.push(min));
-            this.memory.import = _.uniq(this.memory.import);
             this.memory.exports = this.memory.exports || [];
             if (this.memory.exports.indexOf(value) < 0) {
                 this.memory.exports.push(value);
@@ -1098,7 +1110,7 @@ Object.defineProperty(Room.prototype, 'import',
             return this.memory.import || [];
         },
         set: function (value) {
-            this.memory.import = _.isString(value) ? [value] : value;
+            this.memory.import = _.uniq(_.isString(value) ? [value] : value);
         },
         configurable: true
     }

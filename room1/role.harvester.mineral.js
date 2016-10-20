@@ -66,7 +66,7 @@ class RoleMineralHarvester {
     onNoLoadStrategy(creep) {
         Game.notify(`${Game.time} ${creep.room.name} ${creep.name} resigning, mineral depleted`);
         creep.log('resigning, mineral depleted');
-        // creep.memory.role = 'recycle'; // TODO enable
+        creep.memory.role = 'recycle';
     }
 }
 require('./profiler').registerClass(RoleMineralHarvester, 'RoleMineralHarvester');

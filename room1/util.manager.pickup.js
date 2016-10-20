@@ -102,7 +102,7 @@ class PickupManager {
         // creep.log('typeMatches', resourceType, availableDrops.length);
         if (availableDrops.length) {
             let freeCapacity = creep.carryCapacity - _.sum(creep.carry);
-            let safeDrops = availableDrops.filter((drop)=>drop.pos.findInRange(FIND_HOSTILE_CREEPS,3).length ===0);
+            let safeDrops = availableDrops.filter((drop)=>drop.pos.findInRange(FIND_HOSTILE_CREEPS,3).filter(c=>c.hostile).length ===0);
             // creep.log(`safeDrops ${availableDrops.map((d)=>'' + d.pos.getRangeTo(creep.pos) + ' ' + d.amount)}`);
             let sortedDrops = _.sortBy(
                 safeDrops, (d) => (Math.min(this.freeAmount(d.id), freeCapacity)) * -1 + 4 * creep.pos.getRangeTo(d));

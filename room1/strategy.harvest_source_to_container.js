@@ -49,7 +49,7 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
                     if (repair === OK) {
                         return true;
                     } else {
-                        creep.log('repair failed', container.pos, repair);
+                        // creep.log('repair failed', container.pos, repair);
                     }
                 }
                 let freeCapacity = container.storeCapacity - _.sum(container.store);
@@ -157,8 +157,10 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
                 util.release(creep, container.id, 'harvest');
             }
             if (!source) {
-                /** @type {Source[]| Mineral[]} */
+                /** @type {(Source|Mineral)[]} */
                 let sources = this.findSources(creep).filter((s)=> s.mineralAmount || !util.isReserved(creep, s, 'harvest'));
+                // todo order sources by number of harvesters
+                // let sourcesByCreeps = _.groupBy(sources, s=>s.room.glanceForAround(LOOK_CREEPS, s.pos, 1, true).map(i=>i.creep).filter(c=>c.memory.role === creep.memory.role));
                 // creep.log('sources', this.resourceType, sources.length, JSON.stringify(sources.map((s)=>s.pos)));
 
                 // Source => [Source|Mineral, Container[]]

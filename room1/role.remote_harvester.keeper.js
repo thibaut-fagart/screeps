@@ -10,7 +10,8 @@ var CloseAttackStrategy = require('./strategy.closeattack_target');
 class RoleRemoteHarvesterKeeper extends RoleRemoteHarvester {
     constructor() {
         super();
-        this.fleeStrategy = new AvoidRespawnStrategy(-1);
+        this.fleeStrategy = {accepts:()=>false};
+
         this.healStrategy = new RemoteHealStrategy(1/*, (creep)=>((c)=>(creep.id ===c.id && creep.hits +this.healingCapacity(creep) < creep.hitsMax)) || creep.id !==c.id */);
         this.harvestStrategy = new HarvestKeeperSourceToContainerStrategy(RESOURCE_ENERGY);
         //this.harvestStrategy = new HarvestKeeperSourceStrategy();
@@ -81,6 +82,15 @@ class RoleRemoteHarvesterKeeper extends RoleRemoteHarvester {
         }
 
         if (creep.memory.remoteRoom === creep.room.name && creep.memory.isFighter) {
+            if (creep.hits < creep.hitsMax) {
+                let ennemies = creep.room.glanceForAround(LOOK_CREEPS, creep.pos, 5, true).map(d=>d.creep).filter(c=>!c.my);
+                let closest = creep.pos.findClosestByRange(ennemies);
+                if (creep.pos.getRangeTo(closest)===4) {
+                    this.healStrategy.accepts(creep);
+                    return;
+                }
+            }
+
             if (creep.room.glanceForAround(LOOK_CREEPS, creep.pos, 4, true).map(d=>d.creep).find(c=>!c.my)) {
                 // creep.log('in range, attacking');
                 this.attackStrategy.accepts(creep);

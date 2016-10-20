@@ -50,7 +50,7 @@ class SquadAttackStrategy extends Base {
             creep.log('wait for brothers', homeroomMem.attack_min[creep.memory.remoteRoom]);
             return true;
         }
-        let hostiles = creep.room.find(FIND_HOSTILE_CREEPS).filter(this.predicate(creep));
+        let hostiles = creep.room.find(FIND_HOSTILE_CREEPS).filter(c=>c.hostile).filter(this.predicate(creep));
         // creep.log('hostiles ', hostiles.length);
         if (!hostiles.length) {
             // no hostiles
@@ -81,7 +81,7 @@ class SquadAttackStrategy extends Base {
         let myRange = closestEnemy.pos.getRangeTo(creep);
         // if (isLeader) creep.log('hostiles', hostiles.length, myRange, JSON.stringify(closestEnemy.pos));
         let rangeToLeader = leader.pos.getRangeTo(closestEnemy);
-        let leaderTargets = leader.pos.findInRange(FIND_HOSTILE_CREEPS, 3);
+        let leaderTargets = leader.pos.findInRange(FIND_HOSTILE_CREEPS, 3).filter(c=>c.hostile);
         let leaderTarget = leaderTargets.length && _.min(leaderTargets, c=>c.pos.getRangeTo(leader.pos));
         if (myRange < 4) {
             // ok, attack

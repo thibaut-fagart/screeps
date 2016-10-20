@@ -14,7 +14,7 @@ var RegroupStrategy = require('./strategy.regroup');
 class RoleRemoteCarry {
 
     constructor() {
-        this.travelingPickup = new ClosePickupStrategy(util.ANY_MINERAL, 1, (creep)=>creep.room.name === creep.memory.homeroom ? ()=>false : ()=>true);
+        this.travelingPickup = new ClosePickupStrategy(undefined, 1, (creep)=>creep.room.name === creep.memory.homeroom ? ()=>false : ()=>true);
         this.travelingBuild = new BuildAroundStrategy(3);
         this.travelingDrop = new DropToContainerCloseStrategy(undefined, undefined,
             (creep)=>((s)=>([STRUCTURE_CONTAINER, STRUCTURE_STORAGE, STRUCTURE_LINK].indexOf(s.structureType) >= 0)), 1);
@@ -134,6 +134,9 @@ class RoleRemoteCarry {
                     // creep.log('no previous strategy');
                     if (!strategy) {
                         strategy = _.find(this.loadStrategies, (strat)=>(strat.accepts(creep)));
+                    }
+                    if (!strategy && creep.carry && creep.carry.energy) {
+                        this.buildAround(creep);
                     }
                 } else {
                     //creep.log('travelingPickup/load accepted');

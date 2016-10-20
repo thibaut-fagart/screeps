@@ -285,7 +285,7 @@ class Util {
     findSafeSources(remoteRoom, allowMinerals) {
         let deposits = [];
         if (!remoteRoom) return [];
-        let nonHostiles = remoteRoom.memory.tolerates || [];
+        let nonHostiles = (remoteRoom.memory.tolerates || []).concat(Memory.allies||[]);
         allowMinerals = allowMinerals && !remoteRoom.memory.ignoreMinerals;
         let hostiles = remoteRoom.find(FIND_HOSTILE_CREEPS).filter((c)=>c.owner.username !== 'Source Keeper' && (!c.owner || nonHostiles.indexOf(c.owner.username) < 0));
         let mineralsAreHarvestable = allowMinerals && remoteRoom.structures[STRUCTURE_EXTRACTOR].length;
@@ -382,6 +382,9 @@ class Util {
         // creep.log('moveTo', Game.time, JSON.stringify(pos),JSON.stringify(options));
         if (creep.pos.getRangeTo(pos) <= options.range)  {
             return ;
+        //    TODO is this worth it ? 
+        // } else if (creep.pos.getRangeTo(pos)-options.range <2) {
+        //     creep.moveTo(pos);
         }
         let blocked = this.checkBlocked(creep, memory);
         if (blocked) {
@@ -395,7 +398,7 @@ class Util {
             path = this.restorePath(path.path);
             // creep.log('restored path', JSON.stringify(path));
         } else if (path) {
-            creep.log('dropping path, bad destination', JSON.stringify(pos), JSON.stringify(path.target), options.range);
+            // creep.log('dropping path, bad destination', JSON.stringify(pos), JSON.stringify(path.target), options.range);
             delete creep.memory[memory];
             path = false;
         }
@@ -493,12 +496,6 @@ class Util {
         options = options || {};
         let callback = this.avoidHostilesCostMatrix(creep, options);
         // console.log('safeMoveTo2', creep.room.name, creep.name);
-/*
-        if (creep.room.name === 'W55S44' && !creep.name) {
-            // creep.log('matrix',callback, callback(creep.room.name));
-            this.debugCostMatrix(creep.room, callback(creep.room.name));
-        }
-*/
         let goal = (options.range) ? {pos: destination, range: options.range} : destination;
         options = _.merge({
             plainCost: 2,
@@ -563,7 +560,7 @@ class Util {
             let room = Game.rooms[roomName];
             this.cache[roomName].matrix = {
                 expires: Game.time,
-                matrix: this.avoidCostMatrix(room, room.find(FIND_HOSTILE_CREEPS), 4)
+                matrix: this.avoidCostMatrix(room, room.find(FIND_HOSTILE_CREEPS).filter(c=>c.hostile), 4)
             };
         } else {
             // creep.log('returning cachedMatrix');
@@ -579,7 +576,7 @@ class Util {
 
     avoidHostilesCostMatrix(creepOrRoom, options) {
         let room = creepOrRoom.room ? creepOrRoom.room : creepOrRoom;
-        return this.avoidCostMatrix(room, (options && options.ignoreHostiles) ? [] : room.find(FIND_HOSTILE_CREEPS).filter(c=>0 <c.getActiveBodyparts(RANGED_ATTACK)+ c.getActiveBodyparts(ATTACK)), 3, options);
+        return this.avoidCostMatrix(room, (options && options.ignoreHostiles) ? [] : room.find(FIND_HOSTILE_CREEPS).filter(c=>c.hostile).filter(c=>0 <c.getActiveBodyparts(RANGED_ATTACK)+ c.getActiveBodyparts(ATTACK)), 3, options);
     }
     debugCostMatrix (room, matrix) {
         for(let x = 0; x < 49; x++) {

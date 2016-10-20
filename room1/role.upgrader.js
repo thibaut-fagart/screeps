@@ -40,12 +40,11 @@ class RoleUpgrader {
                 return;
             }
 
-        }
-        else {
+        } else {
             creep.memory.workParts = creep.memory.workParts || creep.getActiveBodyparts(WORK);
             let upgradePos = this.findUpgradePos(creep);
             if (upgradePos && !upgradePos.isEqualTo(creep.pos)) {
-                creep.upgradeController(creep.room.controller);
+                // creep.upgradeController(creep.room.controller);
                 util.moveTo(creep, upgradePos, this.constructor.name + 'Path', {range: 0});
             } else {
                 if (creep.upgradeController(creep.room.controller) == ERR_NOT_IN_RANGE) {
@@ -115,7 +114,7 @@ class RoleUpgrader {
                 if (positions.length) {
                     position = creep.pos.findClosestByPath(positions);
                 } else {
-                    let area = creep.room.glanceAround(creep.room.controller.pos,3)
+                    let area = creep.room.glanceAround(creep.room.controller.pos, 3);
                     let walkable = util.findWalkableTiles(creep.room, area);
                     if (walkable.length) {
                         position = creep.pos.findClosestByPath(walkable);
@@ -128,7 +127,7 @@ class RoleUpgrader {
             }
         }
         // creep.log('upgrading from '+creep.memory.upgradeFrom);
-        return util.posFromString(creep.memory.upgradeFrom, creep.room.name);
+        return creep.memory.upgradeFrom?util.posFromString(creep.memory.upgradeFrom, creep.room.name):false;
     }
 }
 

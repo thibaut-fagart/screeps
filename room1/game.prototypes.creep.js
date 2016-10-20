@@ -124,6 +124,13 @@ Creep.prototype.boostPartType = function (parts) {
     }
 };
 
+Object.defineProperty(Creep.prototype, 'hostile', {
+    get: function () {
+        'use strict';
+        return !Memory.allies || !this.owner || Memory.allies.indexOf(this.owner.username) < 0;
+    }
+});
+
 /**
  *todo : account for boosts
  */

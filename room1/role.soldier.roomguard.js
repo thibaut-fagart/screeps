@@ -65,7 +65,7 @@ class RoleRemoteRoomGuard {
         let brotherCount = this.brotherCount(creep);
         if (creep.memory.action === 'wait') {
             let remoteRoom = Game.rooms[creep.memory.remoteRoom];
-            if (remoteRoom && remoteRoom.find(FIND_HOSTILE_CREEPS) == 0) {
+            if (remoteRoom && remoteRoom.find(FIND_HOSTILE_CREEPS).filter(c=>c.hostile) == 0) {
                 creep.memory.action = 'go_remote_room';
             } else {
                 // creep.log('brothers?', brotherCount);
@@ -105,7 +105,7 @@ class RoleRemoteRoomGuard {
             // var exit = this.findHomeExit(creep);
             // creep.moveTo(exit.x, exit.y, {reusePath: 50});
         } else if (creep.memory.action == 'defend'/* && creep.memory.remoteRoom == creep.room.name*/) {
-            if (creep.room.find(FIND_HOSTILE_CREEPS).length == 0) {
+            if (creep.room.find(FIND_HOSTILE_CREEPS).filter(c=>c.hostile).length == 0) {
                 this.onNoHostiles(creep);
             }
             /*

@@ -10,7 +10,7 @@ class RemoteHealKeeperGuardStrategy extends RemoteHealStrategy {
 
     findHealingTargets(creep) {
         let findHealingTargets2 = super.findHealingTargets(creep);
-        let hostilesNearby = creep.pos.findInRange(FIND_HOSTILE_CREEPS, 4).length > 0;
+        let hostilesNearby = creep.pos.findInRange(FIND_HOSTILE_CREEPS, 4).filter(c=>c.hostile).length > 0;
         // creep.log('base healing targets', findHealingTargets2.length);
         let targets = findHealingTargets2
             .filter((c)=> {
@@ -28,7 +28,7 @@ class RemoteHealKeeperGuardStrategy extends RemoteHealStrategy {
         if (creep.room.name ==='sim') debugger;
         // return super.moveToAndHeal(creep, damaged); // TODO
         let rangeToDamaged = creep.pos.getRangeTo(damaged);
-        let hostiles = damaged.pos.findInRange(FIND_HOSTILE_CREEPS, 5);
+        let hostiles = damaged.pos.findInRange(FIND_HOSTILE_CREEPS, 5).filter(c=>c.hostile);
         if (rangeToDamaged > 1) {
             if (hostiles.length) {
                 // find pos that are both at range1 of damaged and range max of hostiles

@@ -151,6 +151,29 @@ describe('CreepShaper', function () {
                 }))));
             }
         });
+        it('defender', function () {
+            let room = new Room();
+            room.name = 'my';
+            room.memory = {allowedBoosts: []};
+            room.availableBoosts = () =>[];
+
+            for (let rcl = 1; rcl <= 8; rcl++) {
+                console.log('RCL ', rcl);
+                room.energyCapacityAvailable = EXTENSION_ENERGY_CAPACITY[rcl] * CONTROLLER_STRUCTURES[STRUCTURE_EXTENSION][rcl] + SPAWN_ENERGY_CAPACITY;
+
+                let body= ((spec)=> {
+                    if (_.isFunction(spec.body)) {
+                        return spec.body(room);
+                    } else {
+                        return spec.body;
+                    }
+                })(patterns['defender']);
+                console.log(({
+                    body: body,
+                    cost: _.sum(body, (p)=>BODYPART_COST[p])
+                }));
+            }
+        });
         it('use patterns', function () {
             let patterns = patterns;
             let shaper = CreepShaper;

@@ -14,7 +14,7 @@ class RoleTowerAttacker {
             new CloseAttackStrategy(4),
             // new CloseAttackStrategy(undefined,(creep)=>((target)=>target.getActiveBodyparts(ATTACK)+target.getActiveBodyparts(HEAL)>0)),
             // new RemoteAttackStrategy(),
-            new AttackStructureStrategy(10),
+            new AttackStructureStrategy(),
             new HealStrategy()/*, new AttackWallStrategy()*/,
             new RegroupStrategy(COLOR_GREEN)
             /*new AttackStructureStrategy()*/];

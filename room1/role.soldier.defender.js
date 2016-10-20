@@ -23,7 +23,7 @@ class RoleDefender {
         if (this.seekBoosts(creep)) {
             return;
         }
-        let ennemies = creep.room.find(FIND_HOSTILE_CREEPS);
+        let ennemies = creep.room.find(FIND_HOSTILE_CREEPS).filter(c=>c.hostile);
         // search an ennemy with a free rampart in range
         // creep.log('ennemies', ennemies.length);
         let validEnnemies = ennemies.reduce((acc, c)=> {

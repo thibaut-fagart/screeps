@@ -121,9 +121,9 @@ let patterns = {
         body: (room, budget)=> {
             if (room.glanceForAround(LOOK_STRUCTURES, room.controller.pos, 4, true).map(s=>s.structure).filter(s=>s.store).length) {
                 if (room.controller.level < 8) {
-                    return CreepShaper.shape(CreepShaper.requirements().minimum(EMPTY_ROAD_SPEED, 0.5).maximize(UPGRADE_CONTROLLER).minimum(CAPACITY, 100), shaperOptions(room, 'labOperator', budget));
+                    return CreepShaper.shape(CreepShaper.requirements().minimum(EMPTY_ROAD_SPEED, 0.5).maximize(UPGRADE_CONTROLLER).minimum(CAPACITY, 100), shaperOptions(room, 'upgrader', budget));
                 } else {
-                    return CreepShaper.shape(CreepShaper.requirements().minimum(EMPTY_ROAD_SPEED, 0.5).minimum(UPGRADE_CONTROLLER, 15).minimum(CAPACITY, 50), shaperOptions(room, 'labOperator', budget));
+                    return CreepShaper.shape(CreepShaper.requirements().minimum(EMPTY_ROAD_SPEED, 0.5).minimum(UPGRADE_CONTROLLER, 15).minimum(CAPACITY, 50), shaperOptions(room, 'upgrader', budget));
                 }
             } else {
                 return [MOVE, WORK, CARRY, MOVE, WORK, CARRY, MOVE, WORK, CARRY,
@@ -176,12 +176,9 @@ let patterns = {
     },
     // 'remoteHarvester': {body: [CARRY, MOVE, WORK, MOVE, CARRY, MOVE, WORK, MOVE, CARRY, MOVE,WORK, MOVE, CARRY,MOVE, WORK, MOVE,MOVE,CARRY], scale:true, count: 2, memory: {role: 'remoteHarvester'}},
     'remoteUpgrader': {
-        body: [
-            MOVE, WORK, CARRY, MOVE, CARRY, WORK, MOVE, WORK, CARRY, MOVE, CARRY, WORK,
-            MOVE, WORK, CARRY, MOVE, CARRY, WORK, MOVE, WORK, CARRY, MOVE, CARRY, WORK,
-            MOVE, WORK, CARRY, MOVE, CARRY, WORK, MOVE, WORK, CARRY, MOVE, CARRY, WORK,
-            MOVE, WORK, CARRY, MOVE, CARRY, WORK, MOVE, WORK, CARRY, MOVE, CARRY, WORK,
-        ],
+        body: (room, budget)=> {
+            return CreepShaper.shape(CreepShaper.requirements().minimum(EMPTY_PLAIN_SPEED, 1).maximize(UPGRADE_CONTROLLER).minimum(CAPACITY, 200), shaperOptions(room, 'remoteUpgrader', budget));
+        },
         count: 0,
         memory: {role: 'remoteUpgrader'}
     },

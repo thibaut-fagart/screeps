@@ -27,7 +27,7 @@ class SwitchFocusStrategy extends Base {
             // creep.log('disabled , out of', disabledMoveParts, moveParts);
             if (2 * disabledMoveParts > moveParts) {
                 // move out of reach
-                let closest = creep.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
+                let closest = creep.pos.findClosestByRange(FIND_HOSTILE_CREEPS).filter(c=>c.hostile);
                 if (!closest || closest.pos.getRangeTo(creep) > 3) return false;
                 let matrix = new PathFinder.CostMatrix();
                 for (let x = 0; x < 50; x++) {
