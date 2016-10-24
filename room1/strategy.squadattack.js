@@ -242,7 +242,6 @@ class SquadAttackStrategy extends Base {
         if (chosenPositions.length > 0) {
             console.log('validPositions', chosenPositions.length);
             let chosen = chosenPositions.reduce((chosen,positions)=>{
-                debugger;
                 let myRange = creep.pos.getRangeTo(positions[0].x, positions[0].y);
                 if (myRange< chosen.range) {
                     chosen.range = myRange;

@@ -285,7 +285,7 @@ class Util {
     findSafeSources(remoteRoom, allowMinerals) {
         let deposits = [];
         if (!remoteRoom) return [];
-        let nonHostiles = (remoteRoom.memory.tolerates || []).concat(Memory.allies||[]);
+        let nonHostiles = (remoteRoom.memory.tolerates || []).concat(Memory.allies || []);
         allowMinerals = allowMinerals && !remoteRoom.memory.ignoreMinerals;
         let hostiles = remoteRoom.find(FIND_HOSTILE_CREEPS).filter((c)=>c.owner.username !== 'Source Keeper' && (!c.owner || nonHostiles.indexOf(c.owner.username) < 0));
         let mineralsAreHarvestable = allowMinerals && remoteRoom.structures[STRUCTURE_EXTRACTOR].length;
@@ -327,7 +327,7 @@ class Util {
         let lpos = creep.memory.lpos;
         let {x, y} = creep.pos;
         let cpos = x | y << 6;
-        if (lpos && cpos ===lpos) {
+        if (lpos && cpos === lpos) {
             // creep.log('blocked ? ', creep.memory.triedMoved, creep.memory.blocked);
             if (creep.memory.triedMoved) { // didn't move, recompute !! todo improve
                 creep.memory.blocked = (creep.memory.blocked || 0) + 1;
@@ -380,11 +380,11 @@ class Util {
         memory = memory || 'moveInRoomPath';
         // creep.log('path before moveTo', creep.memory[memory].path);
         // creep.log('moveTo', Game.time, JSON.stringify(pos),JSON.stringify(options));
-        if (creep.pos.getRangeTo(pos) <= options.range)  {
-            return ;
-        //    TODO is this worth it ? 
-        // } else if (creep.pos.getRangeTo(pos)-options.range <2) {
-        //     creep.moveTo(pos);
+        if (creep.pos.getRangeTo(pos) <= options.range) {
+            return;
+            //    TODO is this worth it ?
+            // } else if (creep.pos.getRangeTo(pos)-options.range <2) {
+            //     creep.moveTo(pos);
         }
         let blocked = this.checkBlocked(creep, memory);
         if (blocked) {
@@ -393,7 +393,7 @@ class Util {
         let path = creep.memory[memory];
         // creep.log('memory[path]',memory, JSON.stringify(path));
         // check the target pos didn't change
-        let isPathValid = path && path.target && (pos.getRangeTo(path.target.x, path.target.y)<=options.range) && pos.roomName == path.target.roomName;
+        let isPathValid = path && path.target && (pos.getRangeTo(path.target.x, path.target.y) <= options.range) && pos.roomName == path.target.roomName;
         if (isPathValid) {
             path = this.restorePath(path.path);
             // creep.log('restored path', JSON.stringify(path));
@@ -405,13 +405,13 @@ class Util {
         if (!path) {
             // check reachability
             // creep.log('no path');
-/* this is expensive and seldom used (almost as expensive as finding the path)
-            let range = this.checkReachable(creep, pos, options.range);
-            if (range !== options.range) {
-                creep.log('unreachable tile, widening');
-                options.range = range + 1;
-            }
-*/
+            /* this is expensive and seldom used (almost as expensive as finding the path)
+             let range = this.checkReachable(creep, pos, options.range);
+             if (range !== options.range) {
+             creep.log('unreachable tile, widening');
+             options.range = range + 1;
+             }
+             */
             // creep.log('computing path to', JSON.stringify(pos), JSON.stringify(options));
             path = this.safeMoveTo2(creep, pos, options);
 
@@ -427,7 +427,7 @@ class Util {
             if (moveTo === OK) {
                 creep.say(`${pos.x},${pos.y} OK`);
                 // creep.log('move OK' , (new Error().stack));
-                let {x,y} = creep.pos;
+                let {x, y} = creep.pos;
                 creep.memory.lpos = x | y << 6;
                 creep.memory.triedMoved = true;
             } else if (moveTo !== ERR_TIRED) {
@@ -450,7 +450,7 @@ class Util {
         } else if (creep.pos.getRangeTo(pos) <= options.range) {
             return OK;
         } else {
-            creep.log('empty path', pos, 'options.range',options.range, 'range',creep.pos.getRangeTo(pos));
+            creep.log('empty path', pos, 'options.range', options.range, 'range', creep.pos.getRangeTo(pos));
             creep.moveTo(pos);
         }
     }
@@ -576,18 +576,20 @@ class Util {
 
     avoidHostilesCostMatrix(creepOrRoom, options) {
         let room = creepOrRoom.room ? creepOrRoom.room : creepOrRoom;
-        return this.avoidCostMatrix(room, (options && options.ignoreHostiles) ? [] : room.find(FIND_HOSTILE_CREEPS).filter(c=>c.hostile).filter(c=>0 <c.getActiveBodyparts(RANGED_ATTACK)+ c.getActiveBodyparts(ATTACK)), 3, options);
+        return this.avoidCostMatrix(room, (options && options.ignoreHostiles) ? [] : room.find(FIND_HOSTILE_CREEPS).filter(c=>c.hostile).filter(c=>0 < c.getActiveBodyparts(RANGED_ATTACK) + c.getActiveBodyparts(ATTACK)), 3, options);
     }
-    debugCostMatrix (room, matrix) {
-        for(let x = 0; x < 49; x++) {
-            for (let y =0; y < 49; y++) {
+
+    debugCostMatrix(room, matrix) {
+        for (let x = 0; x < 49; x++) {
+            for (let y = 0; y < 49; y++) {
                 let cost = matrix.get(x, y);
-                if (cost===255) {
+                if (cost === 255) {
                     room.createFlag(x, y, this.newFlagName(), COLOR_GREY, COLOR_RED);
                 }
             }
         }
     }
+
     avoidCostMatrix(creepOrRoom, hostiles, range, options) {
         range = range || 1;
         options = options || {};
@@ -627,8 +629,8 @@ class Util {
                     let left = Math.max(0, c.pos.x - range);
                     let bottom = Math.min(49, c.pos.y + range);
                     let right = Math.min(49, c.pos.x + range);
-                    for (let x = left; x <=right;x++) {
-                        for (let y = top; y <= bottom;y++) {
+                    for (let x = left; x <= right; x++) {
+                        for (let y = top; y <= bottom; y++) {
                             matrix.set(x, y, cost);
                         }
                     }
@@ -824,14 +826,14 @@ class Util {
         return path.reduce((acc, pos)=> {
             let stepCost = 2;
             if (pos.lookFor(LOOK_STRUCTURES).find(l=> l.structureType === STRUCTURE_ROAD)) {
-                result.road =result.road + 1;
+                result.road = result.road + 1;
             } else {
                 let terrain = pos.lookFor(LOOK_TERRAIN);
                 // logWith.log('terrain', JSON.stringify(terrain));
                 result[terrain] = result[terrain] + 1;
             }
             // logWith.log('stepCost', stepCost, JSON.stringify(pos));
-            return acc ;
+            return acc;
         }, result);
         return result;
     }
@@ -842,10 +844,11 @@ class Util {
      * @return {string}
      */
     bodyToString(body) {
-        return body.reduce(_.isString(body[0])?(s, part)=>s + partsToChar[part]:(s, part)=>s + partsToChar[part.type], '');
+        return body.reduce(_.isString(body[0]) ? (s, part)=>s + partsToChar[part] : (s, part)=>s + partsToChar[part.type], '');
     }
+
     bodyToShortString(body) {
-        return _.pairs(_.countBy(body,part=>part.type)).reduce((s,pair)=>s+partsToChar[pair[0]]+pair[1],'');
+        return _.pairs(_.countBy(body, part=>part.type)).reduce((s, pair)=>s + partsToChar[pair[0]] + pair[1], '');
     }
 
     /**
@@ -860,6 +863,16 @@ class Util {
         }
         return body;
     }
+
+    hash(s) {
+        let chk = 0x12345678;
+        let len = s.length;
+        for (var i = 0; i < len; i++) {
+            chk += (s.charCodeAt(i) * (i + 1));
+        }
+
+        return (chk & 0xffffffff);
+    }
 }
 var partsToChar = {};
 partsToChar[MOVE] = 'M';
@@ -871,7 +884,7 @@ partsToChar[TOUGH] = 'T';
 partsToChar[HEAL] = 'H';
 partsToChar[CLAIM] = 'D';
 var charToParts = {};
-_.pairs(partsToChar).forEach(pair=>{
+_.pairs(partsToChar).forEach(pair=> {
     'use strict';
     charToParts[pair[1]] = pair[0];
 });

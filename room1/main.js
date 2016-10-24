@@ -110,18 +110,34 @@ function wrapPathFinder() {
     };
 }
 let roomTasks = {
+    computeTasks: (r)=> {
+        if (!Game.rooms.sim) return;
+        if (r.hash % 10 === Game.time % 10) {
+            r.computeTasks();
+        }
+    },
     runSpawn: (r)=> {
         'use strict';
-        try {
-            if (r.controller && r.controller.my && r.controller.level > 0) {
-                roleSpawn.run(r);
+        let freq = 11 - Math.ceil(Game.cpu.bucket / 1000);
+        if (r.hash %freq === Game.time %freq) {
+            try {
+                if (r.controller && r.controller.my && r.controller.level > 0) {
+                    roleSpawn.run(r);
+                }
+            } catch (e) {
+                Game.notify(e.stack);
+                console.log(e.stack);
             }
-        } catch (e) {
-            Game.notify(e.stack);
-            console.log(e.stack);
         }
     },
     operateTowers: (r)=> r.operateTowers(),
+    buildStructures: (r)=> {
+        let freq = 11 - Math.ceil(Game.cpu.bucket / 1000);
+        if (r.hash %freq === Game.time %freq) {
+            r.buildStructures();
+        }
+
+    },
     operateLinks: (r)=>r.operateLinks(),
     harvestContainers: (r)=>(r.memory.harvestContainers = r.memory.harvestContainers || []),
     updateLocks: (r)=> r.updateLocks(),
@@ -142,7 +158,7 @@ let roomTasks = {
 function handleStreamingOrders() {
     'use strict';
     let maxAffordable = (room, toRoomName, isEnergy)=> {
-        let distance = Game.map.getRoomLinearDistance(room.name, toRoomName);
+        let distance = Game.map.getRoomLinearDistance(room.name, toRoomName, true);
         let number = Math.log((distance + 9) * 0.1) + 0.1;
         let amount = (room.terminal.store.energy || 0);
 
@@ -161,14 +177,14 @@ function handleStreamingOrders() {
             }
 
             if (from && from.terminal && order.to && order.what && (order.amount || 0) > 0) {
-                if (_.get(Game.rooms, [order.to, 'controller','my'], false) && !_.get(Game.rooms, [order.to, 'terminal'], false)) {
+                if (_.get(Game.rooms, [order.to, 'controller', 'my'], false) && !_.get(Game.rooms, [order.to, 'terminal'], false)) {
                     // terminal not built
                     return;
                 }
                 let available = _.get(from.terminal, ['store', order.what], 0);
 
-                let freeSpace = (Game.rooms[order.to] && Game.rooms[order.to].terminal)?Game.rooms[order.to].terminal.storeCapacity - _.sum(Game.rooms[order.to].terminal.store):10000;
-                let howMuch = Math.min(maxAffordable(from, order.to, order.what === RESOURCE_ENERGY).amount, order.amount, available, freeSpace, (order.step||Infinity));
+                let freeSpace = (Game.rooms[order.to] && Game.rooms[order.to].terminal) ? Game.rooms[order.to].terminal.storeCapacity - _.sum(Game.rooms[order.to].terminal.store) : 10000;
+                let howMuch = Math.min(maxAffordable(from, order.to, order.what === RESOURCE_ENERGY).amount, order.amount, available, freeSpace, (order.step || Infinity));
                 if (howMuch > 100) {
                     let result = from.terminal.send(order.what, howMuch, order.to);
                     from.log(`streaming ${howMuch} ${order.what} to ${order.to}`);
@@ -206,8 +222,10 @@ function handleStreamingOrders() {
                     }
                 } else if (deal.type === 'sell') {
                     let available = Game.market.credits / deal.price;
+                    from.log('credits limit => ', available);
                     if (deal.remainingAmount > 0) {
                         let howMuch = Math.min(maxAffordable(from, deal.roomName, deal.resourceType === RESOURCE_ENERGY).amount, order.amount, available, (order.step || Infinity));
+                        from.log(`howMuch(${maxAffordable(from, deal.roomName, deal.resourceType === RESOURCE_ENERGY).amount},${order.amount},${available},${(order.step || Infinity)}) => `, howMuch);
                         if (howMuch > 100) {
                             let result = Game.market.deal(order.deal, howMuch, order.from);
                             order.transfers = order.transfers || [];
@@ -278,8 +296,8 @@ function innerLoop() {
         _.keys(handlers).forEach((k)=>cpu.creeps[k] = 0);
     }
     let rooms = _.groupBy(_.values(Game.rooms), r=>!!(r.controller && r.controller.my && r.controller.level > 0));
-    let ownedRooms = rooms['true'];
-    let remoteRooms = rooms['false'];
+    let ownedRooms = rooms['true'] || [];
+    let remoteRooms = rooms['false'] || [];
     let taskPairs = _.pairs(roomTasks);
     try {
         if (0 === Game.time % 100) {
@@ -372,8 +390,7 @@ function innerLoop() {
         }
         let creepsCpu = Game.cpu.getUsed();
         // room.log('creepsCpu', creepsCpu);
-        let spawnCpu = creepsCpu;
-        let labsCpu = spawnCpu;
+        let labsCpu = creepsCpu;
 
         if (Game.cpu.getUsed() < availableCpu - 100 && updateStats) {
             room.updateCheapStats();
@@ -416,8 +433,7 @@ function innerLoop() {
         if (updateStats) roomCpu[roomName] = Game.cpu.getUsed() - roomStartCpu;
         if (updateStats && Game.cpu.tickLimit < 500 && debugPerfs) room.log(
             (creepsCpu - roomStartCpu).toFixed(1),
-            (spawnCpu - creepsCpu).toFixed(1),
-            (labsCpu - spawnCpu).toFixed(1),
+            (labsCpu - creepsCpu).toFixed(1),
             (statsCpu - labsCpu).toFixed(1),
             (roomCpu [roomName]).toFixed(1)
         );

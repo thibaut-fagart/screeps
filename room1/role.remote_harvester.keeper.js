@@ -21,65 +21,10 @@ class RoleRemoteHarvesterKeeper extends RoleRemoteHarvester {
 
     }
 
-    seekBoosts(creep) {
-        // creep.log('seekBoosts');
-
-        let boostingPart = _.keys(RoleRemoteHarvesterKeeper.WANTED_BOOSTS).find((partType) => {
-            let parts = _.filter(creep.body, (p)=>p.type === partType && !p.boost);
-            if (parts.length && this.boostPartType(creep, parts)) {
-                return true;
-            } else {
-                return false;
-            }
-        });
-        return boostingPart;
-
-
-    }
-
-    boostPartType(creep, parts) {
-        let part_type = parts[0].type;
-        let labs = creep.room.memory.labs;
-//        creep.log('labs?', JSON.stringify(labs));
-        if (!labs) return false;
-        labs = _.keys(labs).map((id)=>Game.getObjectById(id));
-        let lab;
-        for (let i = 0; i < RoleRemoteHarvesterKeeper.WANTED_BOOSTS[part_type].length && !lab; i++) {
-            let boost = RoleRemoteHarvesterKeeper.WANTED_BOOSTS[part_type][i];
-            // creep.log('testing ', boost);
-            lab = labs.find((lab)=> {
-                return lab.mineralType && boost == lab.mineralType && lab.mineralAmount > 10;
-            });
-            // creep.log('found', lab);
-            if (lab) break;
-        }
-        if (!lab) {
-            creep.log('NO LAB???', JSON.stringify(labs));
-            return false;
-        }
-        let boosted = lab.boostCreep(creep);
-        // creep.log('boosted', boosted);
-        if (boosted == ERR_NOT_IN_RANGE) {
-            // creep.log('moving to lab', JSON.stringify(lab.pos));
-            util.moveTo(creep, lab.pos, 'labMove');
-            return true;
-        } else if (boosted == OK) {
-            return false;
-        }
-
-        // }
-
-    }
-
     /** @param {Creep} creep **/
     run(creep) {
         // creep.log('running', this.loadStrategies.length);
         creep.memory.isFighter = _.isUndefined(creep.memory.isFighter) ? !!creep.body.find(p =>p.type === ATTACK) : creep.memory.isFighter;
-        if (creep.room.name === creep.memory.homeroom) {
-            let seeking = this.seekBoosts(creep);
-            // creep.log('seeking ? ', seeking);
-            if (seeking) return;
-        }
 
         if (creep.memory.remoteRoom === creep.room.name && creep.memory.isFighter) {
             if (creep.hits < creep.hitsMax) {

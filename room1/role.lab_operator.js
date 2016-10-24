@@ -11,9 +11,8 @@ class RoleLabOperator {
     constructor() {
         this.noGoalLoadStrategies = [
             new PickupStrategy(util.ANY_MINERAL),
-            new LoadFromContainerStrategy(util.ANY_MINERAL, STRUCTURE_CONTAINER,(creep)=>((s)=>s.structureType === STRUCTURE_CONTAINER && s.store && (_.sum(s.store)-(s.store.energy||0)>creep.carryCapacity/2) )),
+            new LoadFromContainerStrategy(util.ANY_MINERAL, STRUCTURE_CONTAINER,(creep)=>((s)=>s.structureType === STRUCTURE_CONTAINER && s.store && (_.sum(s.store)-(s.store.energy||0)>0) )),
             new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_TERMINAL, (creep)=>((s)=>s.structureType === STRUCTURE_TERMINAL && s.store && s.store[RESOURCE_ENERGY] > this.TERMINAL_ENERGY_TARGET + creep.carryCapacity)),
-
         ];
         this.loadStrategies = [
             new LoadFromContainerStrategy((creep)=>creep.memory.lab_goal.mineralType || 'none', undefined,
@@ -131,17 +130,13 @@ class RoleLabOperator {
             }
             if (strategy) {
                 util.setCurrentStrategy(creep, strategy);
+            } else if (_.sum(creep.carry) > 0) {
+                // unable to load more, unload
+                creep.memory.action = this.ACTION_UNLOAD;
             } else {
-                // creep.log('no strategy', JSON.stringify(creep.memory.lab_goal));
-                if (_.sum(creep.carry) > 0 && creep.memory.lab_goal) {
-                    creep.memory.action = this.ACTION_UNLOAD;
-                } else {
-                    delete creep.memory.lab_goal;
-                }
-
-                // creep.log('no load strategy, clearing current goal');
+                delete creep.memory.lab_goal;
             }
-
+                // creep.log('no load strategy, clearing current goal');
         } else {
             if (creep.memory.lab_goal && creep.carry && !creep.carry[creep.memory.lab_goal.mineralType]) {
                 creep.log('creep empty', JSON.stringify(creep.memory.lab_goal));

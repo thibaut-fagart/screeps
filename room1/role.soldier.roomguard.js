@@ -241,7 +241,7 @@ class RoleRemoteRoomGuard {
 
 
                 // creep.log('room cleared, finding target');
-                let roomNameAndHarvested = _.keys(Memory.rooms)
+                let roomNameAndHarvested = _.keys(Game.rooms)
                     .map(name=>[name, _.get(Memory.rooms[name], 'threatAssessment.harvested'), 0]);
                 // creep.log(`roomNameAndHarvested ${JSON.stringify(roomNameAndHarvested.filter(pair=>pair[1] < 150000))}`);
                 let threatenedRooms = roomNameAndHarvested

@@ -35,7 +35,7 @@ class BuildStrategy extends BaseStrategy {
     }
 
     requestConstructionSite(creep) {
-        creep.room.buildStructures(creep.pos);
+        return creep.room.buildStructures(creep.pos);
     }
     /** @param {Creep} creep **/
     accepts(creep) {

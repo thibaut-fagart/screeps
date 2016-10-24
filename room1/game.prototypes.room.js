@@ -1,5 +1,6 @@
 var _ = require('lodash');
 var util = require('./util');
+var Cache = require('./util.cache');
 var handlers = require('./base.handlers');
 var PickupManager = require('./util.manager.pickup');
 
@@ -32,6 +33,7 @@ Room.prototype.wallsRequiringRepair = function () {
     );
 
 };
+
 Room.prototype.hasKeeperLairs = function () {
     let coords = /([EW])(\d+)([NS])(\d+)/.exec(this.name);
     let x = Math.abs(coords[2] % 10 - 5);
@@ -54,11 +56,11 @@ Room.prototype.operateLinks = function () {
     let otherLinks = links.filter((l)=> (!storageLink || (storageLink && l.id !== storageLink.id)) && (!controllerLink || (controllerLink && l.id !== controllerLink.id)));
     // this.log('dropoff links', otherLinks.length);
     otherLinks = otherLinks.filter(l=>l.energy > 0.9 * l.energyCapacity);
-    let linkAccepts = (link, amount) => link && !link.energy;
+    let linkAccepts = (link) => link && !link.energy;
     let chooseTargetLink = (amount, l1, l2)=> {
-        if (linkAccepts(l1, amount)) {
+        if (linkAccepts(l1)) {
             return l1;
-        } else if (linkAccepts(l2, amount)) {
+        } else if (linkAccepts(l2)) {
             return l2;
         }
     };
@@ -116,8 +118,6 @@ Room.prototype.assessThreat = function () {
     } else {
         this.memory.threatAssessment.invaders = false;
     }
-    let lastSeen = this.memory.threatAssessment.lastSeen;
-    let oldHarvested = this.memory.threatAssessment.harvested;
 
     this.memory.threatAssessment.sources = (this.memory.threatAssessment.sources) || {};
     if (this.memory.threatAssessment.sources.length) {
@@ -397,7 +397,7 @@ Room.prototype.tripTimeToSources = function (toRoom, force) {
         let tripTime = {plain: 0, swamp: 0, road: 0};
 
         let exitTo = Room.getExitTo(roomCursor, toRoom);
-        let containers = this.findContainers().filter(s=>[STRUCTURE_CONTAINER, STRUCTURE_LINK, STRUCTURE_STORAGE].indexOf(s.structureType) >= 0)
+        let containers = this.findContainers().filter(s=>[STRUCTURE_CONTAINER, STRUCTURE_LINK, STRUCTURE_STORAGE].indexOf(s.structureType) >= 0);
         startPoint = containers.length ? exitTo.findClosestByRange(containers).pos : new RoomPosition(25, 25, this.name);
         this.log(`tripTime to ${toRoom} using ${startPoint} as drop point`);
 
@@ -563,18 +563,6 @@ Room.prototype.glanceAround = function (pos, range, asarray) {
         asarray
     );
 };
-var Cache = {
-    get: function (memory, path, fetcher, ttl) {
-        if (!memory[path] || !memory[path].expires || ( Game.time > memory[path].expires)) {
-            // console.log('Cache.get, expired ', path, memory[path].expires, Game.time);
-            memory[path] = {value: fetcher(), expires: Game.time + ttl};
-        } else {
-            //console.log('Cache.get, !expired ',path, memory[path].expires+ttl- Game.time);
-
-        }
-        return memory[path].value;
-    }
-};
 Room.prototype.dismantleTargets = function () {
     'use strict';
     let targets = this.memory.dismantle || [];
@@ -607,12 +595,15 @@ Room.prototype.faucetContainers = function () {
 };
 
 Room.prototype.allowedLoadingContainer = function (structure) {
-    return structure.structureType !== STRUCTURE_TOWER && structure.structureType !== STRUCTURE_LAB && ((this.energyCapacity === this.energyCapacityAvailable && !this.storage) || [STRUCTURE_SPAWN, STRUCTURE_EXTENSION].indexOf(structure.structureType) < 0);
+    return structure.structureType !== STRUCTURE_TOWER
+        && structure.structureType !== STRUCTURE_LAB
+        && structure.structureType !== STRUCTURE_NUKER
+        && ((this.energyCapacity === this.energyCapacityAvailable && !this.storage) || [STRUCTURE_SPAWN, STRUCTURE_EXTENSION].indexOf(structure.structureType) < 0);
 };
 
 Room.prototype.buildStructures = function (pos) {
     'use strict';
-    if (this.lastChecked && this.lastChecked === Game.gtime) return;
+    if (this.lastChecked && this.lastChecked +10 >= Game.time) return;
     this.lastChecked = Game.time;
     let genericBuilder = (type)=> {
         let colors = util.buildColors(type);
@@ -701,7 +692,7 @@ Room.prototype.buildStructures = function (pos) {
                 return true;
             }
         };
-        let builders = [towerBuilder, storageBuilder, extensionsBuilder, rampartBuilder, wallsBuilder, extractorBuilder, linksBuilder, containerBuilder, roadBuilder, terminalBuilder, labsBuilder];
+        let builders = [extractorBuilder, terminalBuilder, towerBuilder, storageBuilder, rampartBuilder, wallsBuilder, linksBuilder, containerBuilder, roadBuilder, extensionsBuilder, labsBuilder];
         return builders.find((builder)=>builder());
 
     }
@@ -973,7 +964,6 @@ Room.prototype.operateLabs = function () {
     if (_.keys(_.get(this.memory, 'labs', {})).length !== this.structures[STRUCTURE_LAB].length) {
         this.lab_production = this.lab_production;
     }
-    let ingredients = handlers['labOperator'].class().reactions [this.memory.lab_production];
     this.log('producing', this.memory.lab_production);
     let ran = false;
     if (this.memory.lab_productions && this.memory.lab_productions.length && this.storage && this.memory.lab_production && availableMineral(this.memory.lab_production) > OVERFLOWING) {
@@ -1041,7 +1031,7 @@ Object.defineProperty(Room.prototype, 'lab_productions', {
         return this.memory.lab_productions;
     },
     set: function (value) {
-        "use strict";
+        'use strict';
         this.memory.lab_productions = _.isArray(value) ? value : [value];
         if (this.memory.lab_productions.indexOf(this.lab_production) < 0) {
             this.lab_production = _.min(this.memory.lab_productions, (min=>this.storage.store[min] || 0));
@@ -1115,6 +1105,15 @@ Object.defineProperty(Room.prototype, 'import',
         configurable: true
     }
 );
+Object.defineProperty(Room.prototype, 'hash',
+    {
+        get: function () {
+            this.memory.hash = /*this.memory.hash ||*/ util.hash(this.name);
+            return this.memory.hash;
+        },
+        configurable: true
+    }
+);
 Object.defineProperty(Room.prototype, 'export',
     {
         get: function () {
@@ -1142,6 +1141,7 @@ Object.defineProperty(Room.prototype, 'structures',
     }
 );
 Object.defineProperty(Room.prototype, 'avoidCostMatrix', {
+    configurable:true,
     get: function () {
         return Cache.get(this, '_avoidCostMatrix', ()=> {
             'use strict';
@@ -1168,6 +1168,7 @@ Object.defineProperty(Room.prototype, 'avoidCostMatrix', {
         }, 20);
     }
 });
+
 /**
  * energy suppliers
  *  harvestContainers, importContainers, storage, terminal, upgradeContainers
