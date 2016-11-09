@@ -13,7 +13,7 @@ class RoleBuilder {
         this.travelingPickup = new ClosePickupStrategy(RESOURCE_ENERGY, 2);
         this.loadStrategies = [
             new ClosePickupStrategy(RESOURCE_ENERGY, 5),
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, undefined, (creep)=> ((s)=>s.pos.getRangeTo(creep) < 5)),
+            new LoadFromContainerStrategy(RESOURCE_ENERGY, undefined, (creep)=> ((s)=>s.pos.getRangeTo(creep) < 5 && (s.energy||_.get(s,['store','energy'],0)) > (creep.carryCapacity-(creep.carry.energy||0)))),
             new LoadFromContainerStrategy(RESOURCE_ENERGY, undefined),
             new PickupStrategy(RESOURCE_ENERGY),
             new DropToContainerStrategy(util.ANY_MINERAL),
@@ -85,6 +85,10 @@ class RoleBuilder {
             }
         } else {
             this.travelingPickup.accepts(creep);
+            if (creep.room.storage && _.sum(creep.room.findContainers(),c=>_.get(c,['store','energy'],0))<5000 ) {
+                // do not deplete storage
+                return;
+            }
             let strategy = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);
 
             if (!strategy) {

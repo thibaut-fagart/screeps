@@ -13,10 +13,14 @@ class RoleRemoteCarryKeeper extends RoleRemoteCarry {
     constructor() {
         super();
         this.fleeStrategy = new AvoidRespawnStrategy(1);
-        this.pickupStrategy = new KeeperPickupStrategy(RESOURCE_ENERGY, function (creep) {
+        this.pickupStrategy = new KeeperPickupStrategy(undefined, function (creep) {
             return (drop) => drop.pos.findInRange(FIND_HOSTILE_CREEPS, 5).filter(c=>c.hostile).length === 0 && creep.pos.getRangeTo(drop) < 1;
         });
         this.loadStrategies = [
+            new KeeperPickupStrategy(util.ANY_MINERAL, function (creep) {
+                return (drop) =>( !(creep.room.glanceForAround(LOOK_CREEPS, drop.pos, 5, true).map(d=>d.creep).find(c=>!c.my)));
+                // drop.pos.findInRange(FIND_HOSTILE_CREEPS, 5).length === 0);
+            }),
             new KeeperPickupStrategy(undefined, function (creep) {
                 return (drop) =>( !(creep.room.glanceForAround(LOOK_CREEPS, drop.pos, 5, true).map(d=>d.creep).find(c=>!c.my)));
                 // drop.pos.findInRange(FIND_HOSTILE_CREEPS, 5).length === 0);

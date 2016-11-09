@@ -12,7 +12,7 @@ class HarvestKeeperEnergySourceToContainerStrategy extends HarvestEnergySourceTo
 
 
     moveTo(creep, source) {
-        return util.moveTo(creep, source.pos, this.constructor.name + "Path", {range: source.structureType ? 0: 1, ignoreHostiles: creep.memory.isFighter});
+        return util.moveTo(creep, source.pos, this.constructor.name + 'Path', {range: source.structureType ? 0: 1, ignoreHostiles: creep.memory.isFighter});
     }
 
 
@@ -43,7 +43,7 @@ class HarvestKeeperEnergySourceToContainerStrategy extends HarvestEnergySourceTo
             }
         });
         if (!creep.memory.isFighter) {
-            sources = sources.filter((s)=>s.pos.findInRange(FIND_HOSTILE_CREEPS, 4).filter(c=>c.hostile).length === 0);
+            sources = sources.filter((s)=>!s.pos.findInRange(FIND_HOSTILE_CREEPS, 4).find(c=>c.hostile));
         }
         // creep.log('safe subset ', sources.length, sources.map(s=>s.id));
 

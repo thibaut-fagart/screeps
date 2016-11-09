@@ -15,7 +15,7 @@ class RoleEnergyFiller extends RoleCarry {
             // new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_LINK, (creep)=> creep.room.energyCapacityAvailable===creep.room.energyAvailable?()=>true:()=>false),
             new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_STORAGE),
             // new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_LINK),
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_TERMINAL , (creep)=> ((s)=>creep.room.energyAvailable < creep.room.energyCapacityAvailable || s.store.energy > 5000)),
+            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_TERMINAL , (creep)=> (creep.room.energyAvailable < creep.room.energyCapacityAvailable?((s)=>true):((s)=>false))),
         ];
         this.unloadStrategies = [
             new DropToEnergyStorageStrategy(STRUCTURE_SPAWN),
@@ -35,6 +35,7 @@ class RoleEnergyFiller extends RoleCarry {
             new DropToContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (creep)=> {
                 return ((s)=>!s.room.isHarvestContainer(s) && (Math.abs(25-s.pos.x)<20 )&& (Math.abs(25-s.pos.y)<20 ));
             }),
+            new DropToEnergyStorageStrategy(STRUCTURE_NUKER),
             new DropToContainerStrategy(util.ANY_MINERAL, STRUCTURE_STORAGE),
             // new DropToContainerStrategy(undefined, STRUCTURE_STORAGE),
         ];

@@ -21,12 +21,12 @@ class DismantleStrategy extends BaseStrategy {
                     color: COLOR_RED,
                     secondaryColor: COLOR_RED
                 }
-            }).map(f=>f.pos.lookFor(LOOK_STRUCTURES)).filter(s=>s.length > 0).map(l=>l[0]);
+            }).map(f=>f.pos.lookFor(LOOK_STRUCTURES).concat(f.pos.lookFor(LOOK_CONSTRUCTION_SITES))).filter(s=>s.length > 0).map(l=>l[0]);
             let targets;
             if (flaggedStructures.length > 0) {
                 targets = flaggedStructures;
             } else {
-                targets = creep.room.find(FIND_HOSTILE_STRUCTURES).filter(s=>(!s.storeCapacty || _.sum(s.store)===0) && (!s.mineralCapacity || s.mineralAmount ===0) && (this.predicate(creep))(s));
+                targets = creep.room.find(FIND_HOSTILE_STRUCTURES).filter(s=>(!s.storeCapacity || _.sum(s.store)===0) && (!s.mineralCapacity || s.mineralAmount ===0) && (this.predicate(creep))(s));
             }
             if (!targets.length) {
                 targets = creep.room.dismantleTargets();

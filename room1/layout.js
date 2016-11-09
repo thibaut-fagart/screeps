@@ -68,7 +68,7 @@ module.exports = {
     fromSourcesTo: function (object) {
         'use strict';
         let room = object.room;
-        let sources = room.find(FIND_SOURCES).concat(room.find(FIND_MINERALS).filter((m)=>m.pos.lookFor(LOOK_STRUCTURES).length > 0));
+        let sources = room.find(FIND_SOURCES).concat(room.find(FIND_MINERALS).filter((m)=>m.pos.lookFor(LOOK_STRUCTURES).find(s=>s.my && s === STRUCTURE_EXTRACTOR)));
         if (room.memory.sources) sources = sources.filter((s)=>room.memory.sources.indexOf(s.id) >= 0);
         sources.forEach((s)=> this.createFlags(this.findPath(room, object.pos, s.pos, 2), room), room);
     },

@@ -78,13 +78,7 @@ class RemoteHealStrategy extends BaseStrategy {
                 // creep.log('damaged, me', hasRangedAttack, hasAttack, damaged.name);
                 // creep.log('hasRangedAttack', hasRangedAttack, '!hasAttack', !hasAttack);
                 if (hasRangedAttack) {
-                    if (creep.pos.findInRange(FIND_HOSTILE_CREEPS, 3).filter(c=>c.hostile).length ==0) {
-                        creep.log('no threat, self healing');
-                        let ret = creep.heal(creep);
-                        if (OK !== ret) {
-                            creep.log('heal?', ret);
-                        }
-                    }
+                    creep.heal(creep);
                     // creep.log('being hurt, pressing on');
                     return creep.pos.findInRange(FIND_HOSTILE_CREEPS, 5).filter(c=>c.hostile).length == 0;
                 } else if (!hasAttack) {
@@ -92,14 +86,14 @@ class RemoteHealStrategy extends BaseStrategy {
                     if (OK !== ret) {
                         creep.log('heal?', ret);
                     }
-                }else {
-                    if (!creep.pos.findInRange(FIND_HOSTILE_CREEPS, 3).filter(c=>c.hostile).length) {
+                } else {
+                    if (!creep.pos.findInRange(FIND_HOSTILE_CREEPS, 3).find(c=>c.hostile)) {
                         // creep.log('no hostiles, self healing');
                         creep.heal(creep);
                         // first heal before moving into range
-                        return creep.pos.findInRange(FIND_HOSTILE_CREEPS, 5).filter(c=>c.hostile).length>0;
+                        return !!creep.pos.findInRange(FIND_HOSTILE_CREEPS, 5).find(c=>c.hostile);
                     } else {
-                        if (!creep.pos.findInRange(FIND_HOSTILE_CREEPS, 1).filter(c=>c.hostile).length)  {
+                        if (!creep.pos.findInRange(FIND_HOSTILE_CREEPS, 1).find(c=>c.hostile))  {
                             creep.heal(creep);
                         }
                         return false;

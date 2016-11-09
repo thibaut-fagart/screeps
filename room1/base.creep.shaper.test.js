@@ -133,9 +133,10 @@ describe('CreepShaper', function () {
             room.name = 'my';
             room.memory = {allowedBoosts: []};
             room.availableBoosts = () =>['ZO'];
-
             for (let rcl = 1; rcl <= 8; rcl++) {
                 console.log('RCL ', rcl);
+                room.controller = {level: rcl};
+                room.glanceForAround=()=> ([{structure:{store:{}}}]);
                 room.energyCapacityAvailable = EXTENSION_ENERGY_CAPACITY[rcl] * CONTROLLER_STRUCTURES[STRUCTURE_EXTENSION][rcl] + SPAWN_ENERGY_CAPACITY;
 
                 let bodies = _.mapValues(patterns, (spec)=> {
@@ -175,12 +176,13 @@ describe('CreepShaper', function () {
             }
         });
         it('use patterns', function () {
-            let patterns = patterns;
             let shaper = CreepShaper;
             let room = new Room();
             room.memory = {allowedBoosts: []};
             room.energyCapacityAvailable = 2300;
+            room.controller = {level: 6};
             room.availableBoosts = ()=>([/*'UH2O', 'ZO', 'LO'*/]);
+            room.glanceForAround=()=> ([{structure:{store:{}}}]);
             let bodies = _.mapValues(patterns, (spec)=> {
                 console.log(spec.memory.role);
                 if (_.isFunction(spec.body)) {
@@ -207,6 +209,8 @@ describe('CreepShaper', function () {
             room.memory = {allowedBoosts: []};
             room.energyCapacityAvailable = 2300;
             room.availableBoosts = ()=>([/*'UH2O', 'ZO', 'LO'*/]);
+            room.controller = {level: 6};
+            room.glanceForAround=()=> ([{structure:{store:{}}}]);
             let bodies = _.mapValues(patterns, (spec)=> {
                 console.log(spec.memory.role);
                 if (_.isFunction(spec.body)) {

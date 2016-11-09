@@ -14,7 +14,7 @@ class CautiousBuidStrategy extends BuildStrategy {
         var target = util.objectFromMemory(creep.memory, this.BUILD_TARGET, undefined,this.predicate(creep));
         if (!target) {
             // console.log("finding target for  ", creep.name);
-            var targets = creep.room.find(FIND_CONSTRUCTION_SITES).filter(this.predicate);
+            var targets = creep.room.find(FIND_CONSTRUCTION_SITES).filter(c=>c.my && this.predicate(c));
             if (targets.length) {
                 target = creep.pos.findClosestByRange(targets);
                 if (target) creep.memory[this.BUILD_TARGET] = target.id;

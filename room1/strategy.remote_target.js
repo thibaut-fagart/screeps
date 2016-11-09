@@ -57,7 +57,7 @@ class RemoteTargetStrategy extends BaseStrategy {
                 creep.attack(target);
             }
         }
-        return target;
+        return target && (creep.structureType || (creep.getActiveBodyparts(ATTACK) ===0));
     }
 
     findTargets(creep) {

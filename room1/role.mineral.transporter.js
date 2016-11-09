@@ -40,7 +40,7 @@ class RoleMineralTransporter extends RoleRemoteCarry {
             // creep.log('checking reverse import');
             let remoteRoom = Game.rooms[creep.memory.remoteRoom];
             let remoteMem = remoteRoom.memory;
-            if (remoteMem.minerals && remoteMem.minerals.import  && remoteMem.minerals.import[creep.memory.homeroom]  && creep.room.storage) {
+            if (remoteMem.import && remoteMem.import[creep.memory.homeroom]  && creep.room.storage) {
                 let eligibleMinerals = [remoteMem.minerals.import[creep.memory.homeroom]] // todo allow importing several minerals
                     .filter((min)=>remoteRoom.storage.store[min] < 50000 && creep.room.storage.store[min] > 50000);
                 if (eligibleMinerals.length) {

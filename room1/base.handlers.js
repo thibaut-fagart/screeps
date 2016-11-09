@@ -37,6 +37,7 @@ let handlers = {
     'mineralGatherer': new Handler('mineralGatherer', './role.mineralgatherer'),
     'keeperMineralHarvester': new Handler('keeperMineralHarvester', './role.remote_mineralharvester.keeper'),
     'mineralTransport': new Handler('mineralTransport', './role.mineral.transporter'),
+    'energyTransporter': new Handler('energyTransporter', './role.energy.transporter'),
     'upgrader': new Handler('upgrader', './role.upgrader'),
     'repair2': new Handler('repair2', './role.repair2'),
     'towerAttacker': new Handler('towerAttacker', './role.soldier.towerAttacker'),

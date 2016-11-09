@@ -26,6 +26,9 @@ class RoleRemoteCarry {
                 };
             });
         this.loadStrategies = [
+            new PickupStrategy(util.ANY_MINERAL, function (creep) {
+                return ((drop)=>drop.amount > 50);
+            }),
             new PickupStrategy(undefined, function (creep) {
                 return ((drop)=>drop.resourceType !== RESOURCE_ENERGY || drop.amount > 50);
             }),
@@ -87,6 +90,7 @@ class RoleRemoteCarry {
             this.init(creep);
         }
         // creep.log('action?', creep.memory.action);
+
         if (creep.carry && creep.carry.energy && this.repairAround(creep)) {
             creep.log('badly hit, repairing');
             return;
@@ -94,7 +98,6 @@ class RoleRemoteCarry {
             // creep.log('building');
             return;
         }
-
         this.travelingPickup.accepts(creep);
         creep.memory.startTrip = creep.memory.startTrip || Game.time; // remember when the trip started, will allow to know when need to come back
         if (creep.memory.action === 'go_remote_room') {
@@ -174,7 +177,7 @@ class RoleRemoteCarry {
      * @param creep
      * @returns {boolean} stop if false
      */
-    ensureYoungEnoughForAnotherTrip (creep, remoteRoom) {
+    ensureYoungEnoughForAnotherTrip(creep, remoteRoom) {
         let tripToSources = creep.room.tripTimeToSources(remoteRoom);
         let mySpeed = creep.speed();
         let tripTime = 0;
@@ -193,6 +196,7 @@ class RoleRemoteCarry {
         }
 
     }
+
     /**
      *
      * @param creep
@@ -203,12 +207,22 @@ class RoleRemoteCarry {
         let repairCapacity = creep.repairCapacity;
         let structures = creep.room.lookForAtArea(LOOK_STRUCTURES, Math.max(0, creep.pos.y - range), Math.max(0, creep.pos.x - range),
             Math.min(creep.pos.y + range, 49), Math.min(49, creep.pos.x + range), true);
-        let needRepair = structures.filter((s)=>s.ticksToDecay && s.hits + repairCapacity < s.hitsMax);
+        let needRepair = structures.filter((s)=>s.ticksToVanish && s.hits + repairCapacity < s.hitsMax)
+
         if (needRepair.length) {
             creep.log('repairing');
-            creep.repair(needRepair[0]);
-            return needRepair[0].hits < needRepair[0].hitsMax / 2;
+            let target = _.min(needRepair, s=>s.ticksToVanish);
+            creep.repair(target);
+            return target.ticksToVanish < 1500;
+        } else if (creep.fatigue > 0) {
+            if (this.buildAround(creep)) {
+                return true;
+            } else {
+                creep.room.buildStructures(creep.pos);
+                return false;
+            }
         }
+
     }
 
     /**
@@ -220,4 +234,5 @@ class RoleRemoteCarry {
         return this.travelingBuild.accepts(creep);
     }
 }
-require('./profiler').registerClass(RoleRemoteCarry, 'RoleRemoteCarry'); module.exports = RoleRemoteCarry;
+require('./profiler').registerClass(RoleRemoteCarry, 'RoleRemoteCarry');
+module.exports = RoleRemoteCarry;

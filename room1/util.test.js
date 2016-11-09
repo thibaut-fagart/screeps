@@ -211,7 +211,14 @@ describe('util', function () {
 
     });
 });
+describe('findWalkableTiles', function () {
+    "use strict";
+    let room = new Room('test');
+    let squares = {"12":{"21":[{"type":"terrain","terrain":"wall"}],"22":[{"type":"terrain","terrain":"wall"}],"23":[{"type":"terrain","terrain":"wall"}]},"13":{"21":[{"type":"terrain","terrain":"plain"}],"22":[{"type":"mineral","mineral":{"room":{"name":"W52S41","mode":"world","energyAvailable":9850,"energyCapacityAvailable":12900},"pos":{"x":22,"y":13,"roomName":"W52S41"},"id":"579fab83b1f02a3b0cff002c","mineralType":"Z","mineralAmount":31171,"density":3}},{"type":"structure","structure":{"room":{"name":"W52S41","mode":"world","energyAvailable":9850,"energyCapacityAvailable":12900},"pos":{"x":22,"y":13,"roomName":"W52S41"},"id":"580c677a8a4ea2104d9133bf","cooldown":3,"owner":{"username":"Finndibaen"},"my":true,"hits":500,"hitsMax":500,"structureType":"extractor"}},{"type":"terrain","terrain":"wall"}],"23":[{"type":"terrain","terrain":"wall"}]},"14":{"21":[{"type":"creep","creep":{"room":{"name":"W52S41","mode":"world","energyAvailable":9850,"energyCapacityAvailable":12900},"pos":{"x":21,"y":14,"roomName":"W52S41"},"id":"581f76b7f39956bf59ed284f","name":"mineralHarvester_W52S41_614","body":[{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"work","hits":100},{"type":"move","hits":100},{"type":"move","hits":100},{"type":"move","hits":100},{"type":"move","hits":100},{"type":"move","hits":100},{"type":"move","hits":100}],"my":true,"owner":{"username":"Finndibaen"},"spawning":false,"ticksToLive":312,"carryCapacity":0,"carry":{"energy":0},"fatigue":0,"hits":4900,"hitsMax":4900}},{"type":"structure","structure":{"room":{"name":"W52S41","mode":"world","energyAvailable":9850,"energyCapacityAvailable":12900},"pos":{"x":21,"y":14,"roomName":"W52S41"},"id":"580c782ad20740f87ed129b5","store":{"energy":0,"Z":172},"storeCapacity":2000,"ticksToDecay":263,"hits":128800,"hitsMax":250000,"structureType":"container"}},{"type":"terrain","terrain":"plain"}],"22":[{"type":"terrain","terrain":"wall"}],"23":[{"type":"terrain","terrain":"wall"}]}};
 
+
+    util.findWalkableTiles(room, squares, {ignoreCreeps: true});
+});
 describe('reactions', function() {
     'use strict';
     let constants = require('../lib/mocks/constants');
@@ -254,3 +261,7 @@ describe('serializations', function () {
         }
     })
 });
+JSON.stringify(_.keys(Memory.rooms).filter(k=>Memory.rooms[k].scouted && Memory.rooms[k].scouted.sourceCount === 2).reduce((total, k)=> {
+    total[k] = {s: Memory.rooms[k].scouted.sourceCount, m: _.head(Memory.rooms[k].scouted.minerals)};
+    return total;
+}, {}));

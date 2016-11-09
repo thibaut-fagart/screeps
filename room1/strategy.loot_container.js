@@ -30,12 +30,7 @@ class StrategyLootContainer extends LoadFromContainerStrategy {
         if (source) {
             // creep.log('LoadFromContainerStrategy', 'loading',JSON.stringify(source.pos));
             // try transfering/moving
-            if (source.transfer || source.transferEnergy) {
-                this.transferFromSource(source, creep, neededCarry);
-            } else {
-                creep.log('source!transfer', source.structureType, source.prototype, JSON.stringify(source));
-                return null;
-            }
+            this.transferFromSource(source, creep, neededCarry);
 
         }
 
@@ -58,6 +53,19 @@ class StrategyLootContainer extends LoadFromContainerStrategy {
         let containers = creep.room.findContainers();
         creep.log('containers', containers.length);
         let nonEmptySources = [];
+        if (creep.room.memory.loot && !_.isString(creep.room.memory.loot)) {
+            let sourceid = creep.room.memory.loot.find(id=> {
+                let c = Game.getObjectById(id);
+                if (c && this.containerQty(creep, c)) {
+                    return c;
+                } else {
+                    return false;
+                }
+            });
+            if (sourceid) {
+                return Game.getObjectById(sourceid);
+            }
+        }
         containers.forEach((s)=> {
             let qty = this.containerQty(creep, s);
             if (qty > 0) {
@@ -85,6 +93,8 @@ class StrategyLootContainer extends LoadFromContainerStrategy {
             return structure.energy;
         } else if (structure.store) {
             return _.sum(structure.store);
+        } else if (structure.mineralAmount) {
+            return structure.mineralAmount; // lab
         } else {
             return 0;
         }

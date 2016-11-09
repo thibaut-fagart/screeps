@@ -3,6 +3,7 @@ var util = require('./util');
 var Cache = require('./util.cache');
 var handlers = require('./base.handlers');
 var PickupManager = require('./util.manager.pickup');
+const reactions = require('./role.lab_operator').reactions;
 
 Room.prototype.findLabWith = function (resource) {
     let pairs = _.pairs(this.memory.labs);
@@ -20,18 +21,21 @@ Room.prototype.findLabWith = function (resource) {
 };
 Room.prototype.wallsRequiringRepair = function () {
     'use strict';
-    let currentRoomEnergy = (this.storage ? this.storage.store.energy || 0 : 0);
-    return _.sortBy(
-        this.structures[STRUCTURE_WALL].concat(this.structures[STRUCTURE_RAMPART].filter(s=>s.my))
+    if (!this._wallsRequiringRepair) {
+        let currentRoomEnergy = _.get(this,['storage','store','energy'],0 );
+        let myWalls = this.structures[STRUCTURE_WALL].concat(this.structures[STRUCTURE_RAMPART].filter(s=>s.my));
+        this.log('myWalls ', myWalls.length, currentRoomEnergy);
+        let needRepair = myWalls
             .filter(s=>
-            ((currentRoomEnergy < 10000 && s.hits < 100000)
-            || (currentRoomEnergy < 50000 && s.hits < 1000000)
-            || currentRoomEnergy > 50000 && this.controller.level === 8)
-            && s.hits < s.hitsMax)
-        ,
-        (w)=>w.hits
-    );
-
+                s.hits < s.hitsMax
+                && ((currentRoomEnergy < 10000 && s.hits < 100000)
+                || ( currentRoomEnergy > 10000 && s.hits < 1000000)
+                || currentRoomEnergy > 100000)
+            );
+        this.log('needRepair ', needRepair.length);
+        this._wallsRequiringRepair = _.sortBy(needRepair,(w)=>w.hits);
+    }
+    return this._wallsRequiringRepair;
 };
 
 Room.prototype.hasKeeperLairs = function () {
@@ -69,7 +73,10 @@ Room.prototype.operateLinks = function () {
         'use strict';
         let target = chooseTargetLink(l.energy, controllerLink, storageLink);
         if (target) {
-            l.transferEnergy(target);
+            let ret = l.transferEnergy(target);
+            if (ret !== OK && ret !== ERR_TIRED) {
+                this.log(`failed link transfer ${l.pos}=>${target.pos} ${ret}`);
+            }
         } else {
             // this.log('no valid link target');
         }
@@ -207,13 +214,60 @@ Room.prototype.updateLocks = function () {
 };
 Room.prototype.operateTowers = function () {
     this.memory.towersCache = this.memory.towersCache || {date: 0};
+    let towers;
     if (!this.memory.towersCache.towers || this.memory.towersCache.date + 500 < Game.time) {
-        this.memory.towersCache.towers = this.find(FIND_MY_STRUCTURES).filter(s => s.structureType == STRUCTURE_TOWER).map((s) => s.id);
+        towers = this.find(FIND_MY_STRUCTURES).filter(s => s.structureType == STRUCTURE_TOWER);
+        this.memory.towersCache.towers = towers.map((s) => s.id);
     }
-    this.memory.towersCache.towers.forEach((towerid)=> {
-        let tower = Game.getObjectById(towerid);
-        if (tower) handlers['tower'].run(tower);
-        else this.memory.towersCache.towers = this.find(FIND_MY_STRUCTURES).filter(s => s.structureType == STRUCTURE_TOWER).map((s) => s.id);
+    towers = towers || this.memory.towersCache.map(id=>Game.getObjectById(id)).filter(t=>t);
+    if (towers.length && this.find(FIND_HOSTILE_CREEPS).length > 0) {
+        let target = this.memory.target ? Game.getObjectById(this.memory.target) : undefined;
+        if (!target || target.room.name !== this.name) {
+            target = undefined;
+        }
+        if (!target) {
+            let ignoredStructures = [STRUCTURE_ROAD, STRUCTURE_EXTRACTOR];
+            let targets = this.find(FIND_HOSTILE_CREEPS).filter((target) => {
+                let ranged = target.getActiveBodyparts(RANGED_ATTACK);
+                let attack = target.getActiveBodyparts(ATTACK);
+                let work = target.getActiveBodyparts(WORK);
+                let endangeredStructures = (attack + ranged + work > 0) ? this.glanceForAround(LOOK_STRUCTURES, target.pos, 5, true).map(p=>p.structure).filter((s)=>ignoredStructures.indexOf(s.structureType) < 0) : [];
+                let endangeredCreeps = (attack + ranged > 0) ? this.glanceForAround(LOOK_CREEPS, target.pos, 5, true).map(p=>p.creep).filter((c)=>c.my) : [];
+                // tower.log(`target ${JSON.stringify(target.pos)}, ${target.owner.username} endangeredStructures ${endangeredStructures.length}, endangeredCreeps ${endangeredCreeps.length}`);
+                if ('Invader' !== target.owner.username) {
+                    Game.notify(`target ${JSON.stringify(target.pos)}, ${target.owner.username} endangeredStructures ${endangeredStructures.length}, endangeredCreeps ${endangeredCreeps.length}`);
+                }
+                return (target.owner.username === 'Invader') || ((endangeredStructures.length + endangeredCreeps.length) > 0);
+            });
+            if (targets.length) {
+                target = _.head(targets);
+                // todo prioritize
+            }
+        }
+        if (target) {
+            this.log(`firing at ${target.owner.username} ${target.pos}`);
+            towers.forEach((tower)=> tower.attack(target));
+            return;
+        }
+    }
+    let expectedHeal = (creep, tower)=> {
+        'use strict';
+        let range = creep.pos.getRangeTo(tower);
+        let effectiveRange = Math.min(Math.max(5, range), 20);
+        return 500 - 20 * effectiveRange;
+    };
+    let hurtCreeps = _.sortBy(this.find(FIND_MY_CREEPS).filter(c=>c.hits < c.hitsMax && c.getActiveBodyparts(HEAL) == 0), c=>c.hits - c.hitsMax);
+    hurtCreeps.forEach(c=> {
+        'use strict';
+        if (towers.length) {
+            let missingHealth = c.hitsMax - c.hits;
+            while (towers.length > 0 && missingHealth > 0) {
+                _.sortBy(towers, (t=>t.pos.getRangeTo(c)));
+                let healBy = _.head(_.pullAt(towers, 0));
+                missingHealth = missingHealth - expectedHeal(c, healBy);
+                healBy.heal(c);
+            }
+        }
     });
 };
 Room.prototype.gc = function () {
@@ -466,45 +520,46 @@ Room.prototype.updateCheapStats = function () {
         Memory.stats.room = Memory.stats.room || {};
         Memory.stats.room [this.name] = Memory.stats.room [this.name] || {};
         let roomStats = Memory.stats.room [this.name];
-        roomStats.queueLength = this.memory.queueLength;
-        let building = this.memory.building;
-        if (mySpawns.length) {
-            let buildingRoles = building ? _.countBy(_.values(building).map((spec)=>spec.memory.role)) : {};
-            roomStats.spawns = roomStats.spawns || {};
-            roomStats.spawns.queue = this.memory.queue;
-            roomStats.spawns.building = buildingRoles;
-            roomStats.energyAvailable = this.energyAvailable;
-            roomStats.energyCapacityAvailable = this.energyCapacityAvailable;
-        }
-        let remoteRooms = _.isString(this.memory.remoteMining) ? [this.memory.remoteMining] : this.memory.remoteMining;
-        if (remoteRooms && remoteRooms.length) {
-            roomStats.remoteRooms = roomStats.remoteRooms || {};
-            let c = (trip)=>5 * (trip.swamp || 0) + 2 * (trip.plain || 0) + (trip.road || 0);
-            remoteRooms.forEach(remoteRoom=> {
-                roomStats.remoteRooms[remoteRoom] = roomStats.remoteRooms[remoteRoom] || {};
-                roomStats.remoteRooms[remoteRoom].tripTime = c(this.tripTimeToSources(remoteRoom));
-            });
-        } else {
-            delete roomStats.remoteRooms;
-        }
-        if (this.storage || this.terminal) {
-            roomStats.resources = roomStats.resources || {};
-            roomStats.resources.storage = this.storage ? this.storage.store : {};
-            roomStats.resources.terminal = this.terminal ? this.terminal.store : {};
-        } else {
-            delete roomStats.resources;
-        }
-        if (this.terminal) {
-            roomStats.transfers = _.keys(this.memory.transfers || {}).reduce((acc, slot)=> _.merge(acc, this.memory.transfers[slot], (a, b)=>_.isNumber(a) ? a + b : undefined), {});
-            delete roomStats.transfers.lastUpdate;
-        } else {
-            delete roomStats.transfers;
-        }
         roomStats.threats = roomStats.threats || {};
         roomStats.threats.harvested = (this.memory.threatAssessment || {harvested: 0}).harvested;
-        roomStats.reservedCount = _.size(this.memory.reserved);
         roomStats.energyInSources = _.sum(_.map(this.find(FIND_SOURCES_ACTIVE), (s)=> s.energy));
+
         if (this.controller && this.controller.my) {
+            roomStats.queueLength = this.memory.queueLength;
+            let building = this.memory.building;
+            if (mySpawns.length) {
+                let buildingRoles = building ? _.countBy(_.values(building).map((spec)=>spec.memory.role)) : {};
+                roomStats.spawns = roomStats.spawns || {};
+                roomStats.spawns.queue = this.memory.queue;
+                roomStats.spawns.building = buildingRoles;
+                roomStats.energyAvailable = this.energyAvailable;
+                roomStats.energyCapacityAvailable = this.energyCapacityAvailable;
+            }
+            let remoteRooms = _.isString(this.memory.remoteMining) ? [this.memory.remoteMining] : this.memory.remoteMining;
+            if (remoteRooms && remoteRooms.length) {
+                roomStats.remoteRooms = roomStats.remoteRooms || {};
+                let c = (trip)=>5 * (trip.swamp || 0) + 2 * (trip.plain || 0) + (trip.road || 0);
+                remoteRooms.forEach(remoteRoom=> {
+                    roomStats.remoteRooms[remoteRoom] = roomStats.remoteRooms[remoteRoom] || {};
+                    roomStats.remoteRooms[remoteRoom].tripTime = c(this.tripTimeToSources(remoteRoom));
+                });
+            } else {
+                delete roomStats.remoteRooms;
+            }
+            if (this.storage || this.terminal) {
+                roomStats.resources = roomStats.resources || {};
+                roomStats.resources.storage = this.storage ? this.storage.store : {};
+                roomStats.resources.terminal = this.terminal ? this.terminal.store : {};
+            } else {
+                delete roomStats.resources;
+            }
+            if (this.terminal) {
+                roomStats.transfers = _.keys(this.memory.transfers || {}).reduce((acc, slot)=> _.merge(acc, this.memory.transfers[slot], (a, b)=>_.isNumber(a) ? a + b : undefined), {});
+                delete roomStats.transfers.lastUpdate;
+            } else {
+                delete roomStats.transfers;
+            }
+            roomStats.reservedCount = _.size(this.memory.reserved);
             roomStats.controller = roomStats.controller || {};
             roomStats.controller.progress = this.controller.progress;
             roomStats.controller.progressTotal = this.controller.progressTotal;
@@ -581,6 +636,7 @@ Room.prototype.dismantleTargets = function () {
     this.memory.dismantle = newids;
     return ret;
 };
+
 Room.prototype.findContainers = function () {
     return Cache.get(this, '_containers', ()=> {
         'use strict';
@@ -603,7 +659,7 @@ Room.prototype.allowedLoadingContainer = function (structure) {
 
 Room.prototype.buildStructures = function (pos) {
     'use strict';
-    if (this.lastChecked && this.lastChecked +10 >= Game.time) return;
+    if (this.lastChecked && this.lastChecked + 10 >= Game.time) return;
     this.lastChecked = Game.time;
     let genericBuilder = (type)=> {
         let colors = util.buildColors(type);
@@ -712,27 +768,20 @@ Room.prototype.allowedBoosts = function (role) {
     'use strict';
     let boosts = [];
     switch (role) {
-        case 'keeperGuard':
         case 'roleSoldier':
         case 'roleRemoteGuard':
-        case 'keeperMineralHarvester':
         case 'towerDrainer': {
             return this.availableBoosts();
-        }
-        case 'mineralHarvester':
-        case 'remoteCarry' :
-        case 'mineralTransport':
-        case 'remoteCarryKeeper': {
-            let key = `room.${this.name}.spawns.spawning`;
-            let spawning = _.get(Memory.stats, key, 0);
-            if (spawning / this.find(FIND_MY_SPAWNS).length > 1300) {
-                boosts = _.keys(BOOSTS[FATIGUE]).concat(_.keys(BOOSTS[CARRY]).concat(_.keys(BOOSTS[WORK])));
-            }
-            break;
         }
         case 'upgrader':
             boosts = boosts.concat(_.keys(BOOSTS[WORK]));
             break;
+        case 'keeperGuard':
+        case 'keeperMineralHarvester':
+        case 'mineralHarvester':
+        case 'remoteCarry' :
+        case 'mineralTransport':
+        case 'remoteCarryKeeper':
         default: {
             // boosts = boosts.concat(_.keys(BOOSTS[WORK]));
         }
@@ -799,6 +848,9 @@ Room.prototype.isValidParkingPos = function (creep, pos) {
  * @returns {Array}
  */
 Room.prototype.findValidParkingPositions = function (creep, options) {
+    if (!_.isArray(options)) {
+        options = [options];
+    }
     let aroundYX = this.glanceAround(options[0].pos, options[0].range, false);
     let candidates = [];
     options.shift();
@@ -899,8 +951,10 @@ Room.prototype.recordTransfer = function (mineral, qty, toRoom, cost) {
      */
     this.memory.transfers = this.memory.transfers || {lastUpdate: Game.time};
     let slot = Math.floor(Game.time / slotSize) % 10;
-    if (this.memory.transfers.lastUpdate - Game.time > slotSize) {
+    let previousSlot = Math.floor(this.memory.transfers.lastUpdate / slotSize) % 10;
+    if (slot !== previousSlot) {
         this.memory.transfers [slot] = {};
+        this.memory.transfers.lastUpdate = Game.time;
     } else {
         this.memory.transfers [slot] = this.memory.transfers [slot] || {};
     }
@@ -942,19 +996,23 @@ Room.prototype.operateLabs = function () {
 
         // creep.memory[]
     };
-    const OVERFLOWING = 50000;
-    let availableMineral = min=>(this.storage.store[min] || 0) + (this.terminal ? this.terminal.store[min] || 0 : 0) + (_.sum(this.structures[STRUCTURE_LAB].filter(l=>l.mineralType === min), l=>l.mineralAmount));
+    const OVERFLOWING = 10000;
     let rotateLabs = () => {
         if (Game.time < (this.memory.lab_rotated || 0) + 1500) return;
         try {
-            let nextMin = _.min(
-                // filter out the reactions for which we don't have ingredients
-                this.memory.lab_productions.filter(min=>!handlers['labOperator'].class().reactions [min].find(ingredient=>availableMineral(ingredient) < 3000)),
-                min=>availableMineral(min));
-            if (nextMin !== Infinity) {
+            let nextMin = Memory.stats.ledger.produceable.find(min=>_.contains(this.memory.lab_productions, min));
+            if (!nextMin) {
+                // ingredients locally available ?
+                let localIndex = Memory.stats.ledger.produceable.map(min=>[min, reactions[min].reduce((available, i)=>available + (this.currentLedger[i] || 0) > 2000 ? 1 : 0, 0)]);
+                if (localIndex.length) {
+                    localIndex = _.sortBy(localIndex, pair=>pair[1]);
+                    nextMin = _.head(localIndex)[0];
+                }
+            }
+            nextMin = nextMin || _.head(Memory.stats.ledger.produceable);
+            if (nextMin && this.lab_production !== nextMin) {
                 Game.notify(`${this.name} switching production ${this.lab_production}=> ${nextMin}`);
                 this.log(`switching production ${this.lab_production}=> ${nextMin}`);
-                this.memory.lab_rotated = Game.time;
                 this.lab_production = nextMin;
             }
         } catch (e) {
@@ -964,9 +1022,10 @@ Room.prototype.operateLabs = function () {
     if (_.keys(_.get(this.memory, 'labs', {})).length !== this.structures[STRUCTURE_LAB].length) {
         this.lab_production = this.lab_production;
     }
+    let overflowing = (mineral)=>_.get(this.terminal, ['store', mineral], 0) > OVERFLOWING;
     this.log('producing', this.memory.lab_production);
     let ran = false;
-    if (this.memory.lab_productions && this.memory.lab_productions.length && this.storage && this.memory.lab_production && availableMineral(this.memory.lab_production) > OVERFLOWING) {
+    if (overflowing(this.memory.lab_production)) {
         // current production piles up
         this.log(`overflowing ${this.memory.lab_production}, rotating `);
         rotateLabs();
@@ -974,9 +1033,7 @@ Room.prototype.operateLabs = function () {
         this.log('no lab production');
         return;
     } else {
-
         let labPairs = _.pairs(this.memory.labs);
-
         let ingredientLabs = this.memory.labs_input;
         if (!ingredientLabs) {
             this.log('initializing ingredient labs');
@@ -985,10 +1042,9 @@ Room.prototype.operateLabs = function () {
         } else {
             ingredientLabs = ingredientLabs.map(id=>Game.getObjectById(id));
         }
-        this.log('ingredientLabs', ingredientLabs[0], ingredientLabs[1]);
         let ingredientsExhausted = false;
         if (!ingredientLabs[0] || !ingredientLabs[1]) {
-            ran = false;
+            this.log('missing ingredients ');
         } else {
             labPairs.forEach((pair)=> {
                 let labid = pair[0];
@@ -998,8 +1054,7 @@ Room.prototype.operateLabs = function () {
                 if (!lab.cooldown && this.lab_production === reaction) {
                     // this.log('testing ', labid);
                     // this.log('using ', reaction);
-                    let overflowing = _.get(this, ['storage', 'store', reaction], 0) > OVERFLOWING;
-                    if (reaction && !overflowing) {
+                    if (reaction) {
                         // this.log('searching labs with ingredients', ingredients, !!ingredients);
                         if (ingredientLabs[0] && ingredientLabs[1]) {
                             // this.log('running with ', JSON.stringify(ingredientLabs.map((lab)=>lab.id)));
@@ -1015,7 +1070,7 @@ Room.prototype.operateLabs = function () {
                 }
             });
         }
-        if (this.memory.lab_productions && this.memory.lab_productions.length && ingredientsExhausted) {
+        if (this.lab_productions.length && ingredientsExhausted) {
             // no more ingredients
             this.log(`${this.memory.lab_production} out of ingredients, rotating `);
             rotateLabs();
@@ -1025,9 +1080,15 @@ Room.prototype.operateLabs = function () {
     updateCounters({producing: (ran ? 1 : 0), idle: (ran ? 0 : 1)});
 };
 
-
+Object.defineProperty(Room.prototype, 'spawnWait', {
+    get: function () {
+        'use strict';
+        return _.sum(this.find(FIND_MY_SPAWNS), s=>_.get(s, ['memory', 'spawns', 'waitFull'], 0));
+    }
+});
 Object.defineProperty(Room.prototype, 'lab_productions', {
     get: function () {
+        this.memory.lab_productions = this.memory.lab_productions || [];
         return this.memory.lab_productions;
     },
     set: function (value) {
@@ -1036,6 +1097,7 @@ Object.defineProperty(Room.prototype, 'lab_productions', {
         if (this.memory.lab_productions.indexOf(this.lab_production) < 0) {
             this.lab_production = _.min(this.memory.lab_productions, (min=>this.storage.store[min] || 0));
         }
+        this.updateImportExports();
     },
     configurable: true
 });
@@ -1045,10 +1107,13 @@ Object.defineProperty(Room.prototype, 'lab_production',
             return this.memory.lab_production;
         },
         set: function (value) {
-            let ingredients = require('./role.lab_operator').reactions[value];
+            let ingredients = reactions[value];
             this.log('ingredients', JSON.stringify(ingredients));
             if (!ingredients || ingredients.length < 2) return;
             this.memory.lab_production = value;
+            if (!_.contains(this.lab_productions, value)) {
+                this.lab_productions = this.lab_productions.concat([value]);
+            }
             this.memory.labs = {};
             _.merge(this.memory.labs, this.memory.reserved_labs);
             let excluded = _.keys(this.memory.reserved_labs) || [];
@@ -1070,18 +1135,8 @@ Object.defineProperty(Room.prototype, 'lab_production',
                 _.pull(labs, lab);
             });
             labs.forEach(lab=> this.memory.labs[lab.id] = value);
-            let myMin = this.find(FIND_MINERALS).find(()=>true).mineralType;
-            this.import = this.memory.import || [];
-
-            _.pull(ingredients, myMin);
-            ingredients.forEach(min=> this.memory.import.push(min));
-
-            this.import = _.difference(this.memory.import, this.memory.lab_productions);
-            // do not import result of other rotations
-            this.memory.exports = this.memory.exports || [];
-            if (this.memory.exports.indexOf(value) < 0) {
-                this.memory.exports.push(value);
-            }
+            this.updateImportExports();
+            this.importMinerals();
         },
         configurable: true
     }
@@ -1089,14 +1144,6 @@ Object.defineProperty(Room.prototype, 'lab_production',
 Object.defineProperty(Room.prototype, 'import',
     {
         get: function () {
-            if (this.memory.minerals && this.memory.minerals.import && !this.memory.import) {
-                this.memory.import = _.uniq(_.keys(this.memory.minerals.import).reduce((acc, fromRoom)=> {
-                    return acc.concat(
-                        _.isString(this.memory.minerals.import[fromRoom]) ? [this.memory.minerals.import[fromRoom]] : this.memory.minerals.import[fromRoom]);
-                }, []));
-                this.log('import', this.memory.import);
-                delete this.memory.minerals;
-            }
             return this.memory.import || [];
         },
         set: function (value) {
@@ -1141,7 +1188,7 @@ Object.defineProperty(Room.prototype, 'structures',
     }
 );
 Object.defineProperty(Room.prototype, 'avoidCostMatrix', {
-    configurable:true,
+    configurable: true,
     get: function () {
         return Cache.get(this, '_avoidCostMatrix', ()=> {
             'use strict';
@@ -1166,6 +1213,265 @@ Object.defineProperty(Room.prototype, 'avoidCostMatrix', {
             });
             return matrix;
         }, 20);
+    }
+});
+Room.prototype.scout = function () {
+    this.memory.scouted = this.memory.scouted || {time: -Infinity};
+    let scouted = this.memory.scouted;
+    if (scouted.time < Game.time + 10000) {
+        Memory.scouting = Memory.scouting || {};
+        Memory.scouting.needScouting = _.pull(Memory.scouting.needScouting || [], this.name);
+        Memory.scouting.scouted = Memory.scouting.scouted || [];
+        scouted.time = Game.time;
+        if (!_.includes(Memory.scouting.scouted, this.name)) {
+            Memory.scouting.scouted.push(this.name);
+        }
+        scouted.minerals = this.find(FIND_MINERALS).map(min=>min.mineralType + min.density);
+        scouted.owner = this.controller && this.controller.owner && this.controller.owner.username;
+        scouted.level = this.controller && this.controller.level;
+        scouted.sourceCount = this.find(FIND_SOURCES).length;
+    }
+};
+/**
+ * relies on memory.observeOffset (of the form :'-5,4', relative to current room).
+ * if the room is visible and scouting report is old, updates the scouting info, else proceed to next room (left to right, top to bottom)
+ */
+Room.prototype.runObserver = function () {
+    'use strict';
+    let observers = this.structures[STRUCTURE_OBSERVER];
+    let observer = observers ? _.head(observers) : undefined;
+    if (!observer) {
+        return;
+    }
+    let nameToCoords = (name)=> {
+        let coords = /([EW])(\d+)([NS])(\d+)/.exec(name);
+        if ('W' === coords[1]) {
+            coords[2] = -coords[2];
+        }
+        if ('S' === coords[3]) {
+            coords[4] = -coords[4];
+        }
+        // this.log('nameToCoords', coords[2], coords[4]);
+        return [coords[2], coords[4]];
+    };
+    let coordsToName = (coords)=> {
+        let EW = coords[0] < 0 ? 'W' : 'E';
+        let NS = coords[0] < 0 ? 'S' : 'N';
+        // this.log('coordsToName', EW+Math.abs(coords[0])+NS+Math.abs(coords[1]));
+        return EW + Math.abs(coords[0]) + NS + Math.abs(coords[1]);
+    };
+    let offset = (offsetVector)=> {
+        let coords1 = nameToCoords(this.name);
+        let offsetCooords = [coords1[0], coords1[1] + offsetVector[0],
+            coords1[2], coords1[3] + offsetVector[1]];
+        if (coords1[1] * offsetCooords[1] <= 0) {
+            if (offsetCooords[0] === 'W') {
+                offsetCooords[0] = 'E';
+                offsetCooords[1] = offsetCooords[1] + 1;
+            } else {
+                offsetCooords[0] = 'W';
+                offsetCooords[1] = offsetCooords[1] - 1;
+            }
+        }
+        if (coords1[3] * offsetCooords[3] <= 0) {
+            if (offsetCooords[0] === 'S') {
+                offsetCooords[0] = 'N';
+                offsetCooords[3] = offsetCooords[3] + 1;
+            } else {
+                offsetCooords[0] = 'S';
+                offsetCooords[3] = offsetCooords[3] - 1;
+            }
+        }
+        // this.log('offset', JSON.stringify(offsetVector));
+        return coordsToName(offsetCooords);
+    };
+    let nextOffsetVector = (vector)=> {
+        if (vector[0] >= OBSERVER_RANGE) {
+            vector[0] = -OBSERVER_RANGE;
+            vector[1] = vector[1] >= OBSERVER_RANGE ? -OBSERVER_RANGE : vector[1] + 1;
+        } else {
+            vector[0] = vector[0] + 1;
+        }
+        return vector;
+    };
+    if (!this.memory.observeOffset) {
+        this.memory.observeOffset = '-10,-10';
+    }
+    let offsetVector = this.memory.observeOffset.split(',');
+    if (Math.abs(offsetVector[0]) > 100 || Math.abs(offsetVector[1]) > 100) {
+        // this.log('invalid offset');
+        this.memory.observeOffset = '-10,-10';
+        offsetVector = this.memory.observeOffset.split(',');
+    }
+    offsetVector[0] = Number.parseInt(offsetVector[0]);
+    offsetVector[1] = Number.parseInt(offsetVector[1]);
+    let observeRoom = offset(offsetVector);
+    let lastScouted = _.get(Memory.rooms, [observeRoom, 'scouted', 'time'], 0);
+    if (lastScouted < Game.time - 1500) {
+        if (!Game.rooms[observeRoom]) {
+            // observe
+            // this.log(`observing ${observeRoom}`);
+            observer.observeRoom(observeRoom);
+        } else {
+            // scout
+            // this.log(`scouting ${observeRoom}`);
+            Game.rooms[observeRoom].scout();
+            this.memory.observeOffset = nextOffsetVector(offsetVector).join(',');
+        }
+    } else {
+        // this.log(`skipping ${observeRoom}, lastScouted = ${lastScouted}`);
+        this.memory.observeOffset = nextOffsetVector(offsetVector).join(',');
+    }
+};
+
+/**
+ * import minerals missing from desiredLedger, import minerals required for production
+ *
+ */
+Room.prototype.updateImportExports = function () {
+    'use strict';
+    let desired = this.desiredLedger;
+    let current = this.currentLedger;
+    let imports = [];
+    let exports = [];
+    const mix = _.uniq(_.keys(desired).concat(_.keys(current)));
+    mix.forEach(m=> {
+        if (desired[m] > 0 && (!current[m] || current[m] < desired[m])) {
+            imports.push(m);
+        } else if (RESOURCE_ENERGY !== m && current[m] && (!desired[m] || current[m] > desired[m])) {
+            exports.push(m);
+        }
+    });
+    _.pull(exports, RESOURCE_ENERGY);
+    this.import = imports;
+    // do not import result of other rotations
+    this.memory.exports = exports;
+};
+
+
+Room.prototype.importMinerals = function () {
+    'use strict';
+    // room.log('importCache', JSON.stringify(room.memory.cache.import));
+    if (!this.storage || this.storage.energy < 5000) return;
+    if (!this.memory.cache.import || !this.memory.cache.import.lastRun || (this.memory.cache.import.lastRun + 20 < Game.time)) {
+        this.memory.cache.import = this.memory.cache.import || {};
+        this.memory.cache.import.lastRun = Game.time;
+        //  cost : Math.ceil(amount * (Math.log((distance + 9) * 0.1) + 0.1));
+        let maxAffordable = (room, theRoom, isEnergy)=> {
+            let distance = Game.map.getRoomLinearDistance(room.name, theRoom.name, true);
+            let number = Math.log((distance + 9) * 0.1) + 0.1;
+            let amount = (room.terminal.store.energy || 0);
+
+            if (isEnergy) {
+                return {amount: Math.floor((amount / (1 + number))), cost: Math.ceil(amount * (number))};
+            } else {
+                return {amount: Math.ceil(amount / number), cost: amount};
+            }
+        };
+        this.memory.import.forEach((mineral)=> {
+            let offeringRooms = _.values(Game.rooms).filter(
+                (r)=> r.name !== this.name
+                && r.export && _.contains(r.export, mineral) // exports
+                && _.get(r, ['terminal', 'store', mineral], 0) > 100// has available
+                && (r.currentLedger[mineral] || 0) > (r.desiredLedger[mineral] || 0)
+            );
+            // room.log(`trying to import ${mineral}, offering rooms ${offeringRooms}`);
+            let offeringRoomsWithEnergy = offeringRooms.filter((r)=> r.terminal.store.energy && r.terminal.store.energy > 1000);
+            // room.log(`trying to import ${mineral}, offeringRoomsWithEnergy ${offeringRoomsWithEnergy}`);
+            // if there's an exporting room without energy, send energy to it
+            if (offeringRoomsWithEnergy.length === 0 && offeringRooms.length > 0 && this.terminal && this.terminal.store && this.terminal.store.energy > 2000) {
+                let offeringRoomsWithTerminal = offeringRooms.filter((r)=>r.terminal);
+                offeringRoomsWithTerminal.forEach((r)=> {
+                    let _maxAffordable = maxAffordable(this, r, RESOURCE_ENERGY);
+                    let amount = _maxAffordable.amount;
+                    this.log(`would be sending ${amount} energy to ${r.name}`);
+                    // Game.notify(`${room.name}sending ${amount} energy to ${r.name}`);
+                    // TODO disabled
+                    // room.terminal.send(RESOURCE_ENERGY, amount, r.name);
+                });
+            } else if (offeringRoomsWithEnergy.length > 0) {
+                let theRoom = _.min(offeringRooms, (r)=>(Game.map.getRoomLinearDistance(r.name, this.name, true)));
+                // this.log(`importing ${mineral} from ${theRoom === Infinity ? 'none' : theRoom.name}`);
+                if (Infinity !== theRoom) {
+                    if (this.currentLedger[mineral] || 0 < (this.desiredLedger[mineral] || 0)) {
+                        if (this.terminal) {
+                            // use terminal to import
+                            // room.log('importing using terminal', mineral);
+                            let currentTerminalQty = _.get(this.terminal, ['store', mineral], 0);
+                            let qty = Math.min(5000 - currentTerminalQty, theRoom.terminal.store[mineral], (theRoom.currentLedger[mineral] - theRoom.desiredLedger[mineral] || 0));
+                            // room.log(`importing ${qty} ${mineral} from ${theRoom.name}`);
+                            if (qty > TERMINAL_MIN_SEND) {
+                                let _maxAffordable = maxAffordable(theRoom, this, mineral === RESOURCE_ENERGY).amount;
+                                qty = Math.min(qty, _maxAffordable);
+                                if (qty > TERMINAL_MIN_SEND) {
+                                    let cost = Game.market.calcTransactionCost(qty, this.name, theRoom.name);
+                                    let imported = theRoom.terminal.send(mineral, qty, this.name, 'import from ' + this.name);
+                                    if (imported === OK) {
+                                        theRoom.recordTransfer(mineral, qty, this.name, cost);
+                                    }
+                                    this.log(`importing ${qty} ${mineral} from ${theRoom.name}: ${imported}`);
+                                    //if (OK !== imported) {
+                                    Game.notify((`${this.name} importing from ${theRoom.name} using terminal ${qty} ${mineral}  : ${imported}`));
+                                    //}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+};
+var rcl8Ledger = {
+    'XUH2O': 25000,
+    'XGHO2': 25000,
+    'XLHO2': 25000,
+    'XZHO2': 25000,
+    'G': 5000
+};
+
+Object.defineProperty(Room.prototype, 'desiredLedger', {
+    configurable: true,
+    get: function () {
+        'use strict';
+        if (this.controller && this.controller.my && this.controller.level >= 6) {
+            if (!this._desiredLedger) {
+                let desired = _.cloneDeep(rcl8Ledger);
+                // collect each reaction ingredients
+                let requiredMinsForLabs = _.uniq(this.lab_productions.reduce((all, reaction)=> all.concat(reactions[reaction]), []));
+                // let myMin = _.head(this.find(FIND_MINERALS)).mineralType;
+                // remove local mineral
+                // _.pull(requiredMinsForLabs, myMin);
+                // remove each creation outputs
+                // this.lab_productions.forEach(m=> _.pull(requiredMinsForLabs, m));
+                requiredMinsForLabs.forEach(m=> desired[m] = 5000);
+                _.values(Game.market.orders).forEach(o=> {
+                    if (o.type === 'sell' && o.roomName === this.name) {
+                        desired[o.resourceType] = (desired[o.resourceType] || 0) + o.remainingAmount;
+                    }
+                });
+                if (this.controller.level < 8) {
+                    desired['XGH2O'] = (desired['XGH2O'] || 0) + 5000;
+                }
+                this._desiredLedger = desired;
+            }
+            return this._desiredLedger;
+        } else {
+            return {};
+        }
+    }
+});
+Object.defineProperty(Room.prototype, 'currentLedger', {
+    configurable: true,
+    get: function () {
+        'use strict';
+        if (!this._ledger) {
+            let ledger = {};
+            if (this.storage) _.merge(ledger, this.storage.store);
+            if (this.terminal) _.merge(ledger, this.terminal.store, (a, b)=>(a || 0) + (b || 0));
+            this._ledger = ledger;
+        }
+        return this._ledger;
     }
 });
 

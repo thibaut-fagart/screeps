@@ -1,13 +1,14 @@
 var _ = require('lodash');
 var util = require('./util');
 var HarvestSourceToContainerStrategy = require('./strategy.harvest_source_to_container');
-var DropToContainerStrategy = require('./strategy.drop_to_container');
+
+/**
+ * harvests the mineral. will transfer to any nearby container if has a CARRY.
+ */
 class RoleMineralHarvester {
     constructor() {
         this.loadStrategies = [new HarvestSourceToContainerStrategy({resourceType: util.ANY_MINERAL, nooverflow:true})];
-        this.unloadStrategies = [new DropToContainerStrategy(STRUCTURE_STORAGE)];
         util.indexStrategies(this.loadStrategies);
-        util.indexStrategies(this.unloadStrategies);
     }
 
     run(creep) {
@@ -19,48 +20,48 @@ class RoleMineralHarvester {
             creep.move(creep.pos.getDirectionTo(path[0]));
             return;
         }
-        // creep.log(creep.carry.energy, creep.carryCapacity, creep.memory.currentStrategy);
-        if (creep.carry.energy == creep.carryCapacity && creep.carryCapacity > 0) {
-            strategy = util.getAndExecuteCurrentStrategy(creep, this.unloadStrategies);
+        let container = this.getContainer(creep);
+        let currentCarry = _.sum(creep.carry);
+        if (container && container.storeCapacity - _.sum(container.store) < currentCarry) {
+            return;
+        }
+        if (currentCarry > 0 && container) {
+            creep.transfer(container, _.keys(creep.carry).find(r=>creep.carry[r]));
+        }
+        let drops = creep.pos.lookFor(LOOK_RESOURCES);
+        // creep.log('drop', JSON.stringify(drops));
+        if (drops && drops.length && _.sum(drops, d=>d.amount) >= 2000) {
+            return;
+        }
+        strategy = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);
+        if (!strategy) {
+            strategy = _.find(this.loadStrategies, (strat)=> (strat.accepts(creep)));
             if (!strategy) {
-                strategy = _.find(this.unloadStrategies, (strat)=> (strat.accepts(creep)));
+                this.onNoLoadStrategy(creep);
             }
-            // creep.log(util.strategyToLog(strategy));
-
-            if (strategy) {
-                util.setCurrentStrategy(creep, strategy);
-                // creep.log('strategy ', strategy.constructor.name);
-            } else {
-                // creep.log('no harvestStrategy');
-                return;
-            }
+        }
+        // creep.log(util.strategyToLog(strategy));
+        if (strategy) {
+            util.setCurrentStrategy(creep, strategy);
+            // creep.log('strategy ', strategy.constructor.name);
         } else {
-            let container = creep.pos.lookFor(LOOK_STRUCTURES).find(s=>s.structureType === STRUCTURE_CONTAINER);
-            if (container && container.storeCapacity - _.sum(container.store) < 100) {
-                return;
-            }
+            // creep.log('no harvestStrategy');
+            return;
+        }
+    }
 
-            let drops = creep.pos.lookFor(LOOK_RESOURCES);
-            // creep.log('drop', JSON.stringify(drops));
-            if (drops && drops.length && _.sum(drops, d=>d.amount)>=2000) {
-                return;
-            }
-            strategy = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);
-            if (!strategy) {
-                strategy = _.find(this.loadStrategies, (strat)=> (strat.accepts(creep)));
-                if (!strategy) {
-                    this.onNoLoadStrategy(creep);
-                }
-            }
-            // creep.log(util.strategyToLog(strategy));
-
-            if (strategy) {
-                util.setCurrentStrategy(creep, strategy);
-                // creep.log('strategy ', strategy.constructor.name);
-            } else {
-                // creep.log('no harvestStrategy');
-                return;
-            }
+    getContainer(creep) {
+        let containerid = creep.memory.container;
+        let container = containerid?Game.getObjectById(containerid):undefined;
+        if (!container || container.pos.getRangeTo(creep)>1) {
+            container = creep.room.glanceForAround(LOOK_STRUCTURES, creep.pos, 1, true).map(l=>l.structure).find(s=>s.structureType === STRUCTURE_CONTAINER);
+        }
+        if (container) {
+            creep.memory.container = container.id;
+            return container;
+        } else {
+            delete creep.memory.container;
+            return undefined;
         }
     }
     onNoLoadStrategy(creep) {
@@ -70,5 +71,4 @@ class RoleMineralHarvester {
     }
 }
 require('./profiler').registerClass(RoleMineralHarvester, 'RoleMineralHarvester');
-
 module.exports = RoleMineralHarvester;

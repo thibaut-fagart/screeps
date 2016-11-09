@@ -16,21 +16,16 @@ class RoleLinkOperator {
 
         let isStorageLink = creep.room.storage && link.pos.getRangeTo(creep.room.storage) <= 2;
         let isControllerLink = link.pos.getRangeTo(creep.room.controller) < 5;
-        let drops = creep.room.glanceForAround(LOOK_RESOURCES, creep.pos, 1, true).map(d=>d.resource);
+        let drops = creep.room.glanceForAround(LOOK_RESOURCES, creep.pos, 1, true).map(d=>d.resource).filter(d=>d.resourceType === RESOURCE_ENERGY);
 
         // let drops = creep.pos.findInRange(FIND_DROPPED_ENERGY, 1);
         let creepCarry = _.sum(creep.carry);
-        if (drops.filter(d=>d.resourceType === RESOURCE_ENERGY).length && creepCarry < creep.carryCapacity) {
-            creep.pickup(drops.filter(d=>d.resourceType === RESOURCE_ENERGY)[0]);
+        if (drops.length && creepCarry < creep.carryCapacity) {
+            creep.pickup(_.head(drops));
             return;
         }
         let container = this.getContainer(creep);
-        let freeContainerCapacity = container?container.storeCapacity - _.sum(container.store):0;
-        let mineralDrop = drops.filter(d=>d.resourceType !== RESOURCE_ENERGY).find(()=>true);
-        if (mineralDrop && freeContainerCapacity) {
-            creep.pickup(mineralDrop);
-            return;
-        }
+        let freeContainerCapacity = container ? container.storeCapacity - _.sum(container.store) : 0;
         if (creepCarry - creep.carry.energy > 0) {
             if (freeContainerCapacity) {
                 creep.transfer(container, _.keys(creep.carry).find(min=>min !== RESOURCE_ENERGY));
@@ -164,7 +159,7 @@ class RoleLinkOperator {
             if (!containers.length && rangeToStorage <= 2) {
                 containers = [link.room.storage];
             }
-            creep.memory.near_storage = rangeToStorage <=2;
+            creep.memory.near_storage = rangeToStorage <= 2;
             // creep.log('found containers', containers.length, containers[0], link);
             if (containers.length) {
                 creep.memory.container = containers[0].id;

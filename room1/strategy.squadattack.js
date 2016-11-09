@@ -147,7 +147,7 @@ class SquadAttackStrategy extends Base {
                     }
                     // wait
                 } else {
-                    creep.log('move to leader')
+                    creep.log('move to leader');
                     creep.moveTo(leader);
                     return true;
                 }

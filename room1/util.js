@@ -709,6 +709,13 @@ class Util {
 
     }
 
+    /**
+     *
+     * @param {Room} room
+     * @param {Object} squares output of lookAtArea
+     * @param {} options ignoreCreeps?
+     * @returns {Array} list of walkable RoomPosition
+     */
     findWalkableTiles(room, squares, options) {
         let candidates = [];
         options = options || {};
@@ -717,26 +724,23 @@ class Util {
             _.keys(squares[y]).forEach((x)=> {
                 let xy = squares[y][x];
                 let impassable = false;
-                xy.forEach((e)=> {
+                let obstacle = xy.find((e)=> {
 
-                    impassable |= ('wall' === e.terrain || (e.type === 'creep' && !options.ignoreCreeps ) || e.type == 'source');
-
-                    impassable |= OBSTACLE_OBJECT_TYPES.indexOf(e.type) >= 0;
-                    if (!impassable && (e.type === 'structure' || (e.type === LOOK_CONSTRUCTION_SITES && e.constructionSite.progress > 0))) {
-                        switch ((e.structure || e.constructionSite).structureType) {
-                            case STRUCTURE_CONTAINER :
-                            case STRUCTURE_PORTAL :
-                            case STRUCTURE_ROAD:
-                                break;
-                            case STRUCTURE_RAMPART:
-                                impassable |= (!e.structure.my);
-                                break;
-                            default:
-                                impassable = true;
+                    if (e.type === 'creep') {
+                        return !(options.ignoreCreeps);
+                    } else if (e.type === 'terrain') {
+                        return OBSTACLE_OBJECT_TYPES.indexOf(e.terrain)>=0;
+                    } else if (e.type === 'structure' || e.type === LOOK_CONSTRUCTION_SITES && e.constructionSite.progress > 0) {
+                        let s = (e.structure || e.constructionSite);
+                        if (s.structureType === STRUCTURE_RAMPART) {
+                            return !s.my;
+                        } else {
+                            return OBSTACLE_OBJECT_TYPES.indexOf(s.structureType)>=0;
                         }
                     }
+
                 });
-                if (!impassable) {
+                if (!obstacle) {
                     candidates.push(new RoomPosition(x, y, room.name));
                 }
             });

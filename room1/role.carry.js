@@ -11,31 +11,14 @@ class RoleCarry {
     constructor() {
         this.travelingPickupStrategy = new ClosePickupStrategy(RESOURCE_ENERGY, 1);
         this.loadStrategies = [
-            // new ClosePickupStrategy(RESOURCE_ENERGY, 1),
             new PickupStrategy(undefined, (creep)=>((d)=>(d.amount > 50))),
-            /*
-                        new LoadFromContainerStrategy(RESOURCE_ENERGY, undefined, (creep)=>
-                            (s)=> (
-                                !s.my || s.room.isHarvestContainer(s)
-                                || (s.structureType === STRUCTURE_CONTAINER)
-                                || (s.structureType === STRUCTURE_STORAGE)
-                                || (s.structureType === STRUCTURE_LINK && ( s.energy && s.room.storage && (s.pos.getRangeTo(s.room.storage) < 5)))
-                            )
-                        ),
-            */
-            // new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (creep)=> ((s)=>s.room.isHarvestContainer(s) || s.pos.getRangeTo(creep) < 2)),
-            // new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (creep)=> ((s)=>s.pos.getRangeTo(creep) < 2)),
-            // new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_LINK, (creep)=>((s)=>( s.energy && s.room.storage && (s.pos.getRangeTo(s.room.storage) < 5)))),
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (creep)=>(s=>s.pos.getRangeTo(creep.room.controller) > 3)),
+            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (creep)=>(s=>s.room.isHarvestContainer(s))),
             new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_STORAGE),
-            new LoadFromContainerStrategy(LoadFromContainerStrategy.ANY_MINERAL, STRUCTURE_CONTAINER/*
-             ,                (s)=>(
-             (!(s.room.memory.harvestContainers) || (s.room.memory.harvestContainers && (s.room.memory.harvestContainers.indexOf(s.id) >= 0))))*/)];
+        ];
         this.unloadStrategies = [
             new DropToEnergyStorageStrategy(STRUCTURE_TOWER),
             new DropToEnergyStorageStrategy(STRUCTURE_SPAWN),
             new DropToEnergyStorageStrategy(STRUCTURE_EXTENSION),
-            // new DropToContainerStrategy(RESOURCE_ENERGY,STRUCTURE_LINK),
             new DropToContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (creep)=> {
                 if (creep.carry.energy)  return ((s)=>!s.room.isHarvestContainer(s) && !s.room.glanceForAround(LOOK_STRUCTURES, s.pos, 1, true).map(l=>l.structure).find(s=>s.structureType === STRUCTURE_LINK));
                 else return ()=>false;
@@ -43,7 +26,7 @@ class RoleCarry {
             new DropToContainerStrategy(undefined, STRUCTURE_STORAGE),
         ];
         this.ACTION_UNLOAD = 'unload';
-        this.ACTION_FILL = 'fill';
+        this.ACTION_FILL = 'load';
         this.regroupStrategy = new RegroupStrategy(COLOR_GREY);
         util.indexStrategies(this.loadStrategies);
         util.indexStrategies(this.unloadStrategies);

@@ -39,30 +39,27 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
             if (creep.pos.getRangeTo(container.pos) == 0) {
                 // creep.log('on container', !!creep.carryCapacity,(container.hits < 0.5 * container.hitsMax), source.energy === 0, _.sum(container.store) === container.storeCapacity);
 
-                if (creep.carryCapacity
+                if (creep.carryCapacity && source.energyCapacity
                     && ((container.hits < 0.5 * container.hitsMax) || (source.energy === 0) || _.sum(container.store) === container.storeCapacity)) {
                     if ((creep.carry.energy || 0) < creep.getActiveBodyparts(WORK)) {
                         creep.withdraw(container, RESOURCE_ENERGY);
                     }
-                    let repair = creep.repair(container);
-                    // creep.log('repairing container?', repair);
-                    if (repair === OK) {
-                        return true;
-                    } else {
-                        // creep.log('repair failed', container.pos, repair);
+                    if (creep.carry.energy) {
+                        let repair = creep.repair(container);
+                        // creep.log('repairing container?', repair);
+                        if (repair === OK) {
+                            return true;
+                        }
                     }
                 }
                 let freeCapacity = container.storeCapacity - _.sum(container.store);
                 // creep.log('freeCapacity', freeCapacity, this.nooverflow);
-                if (!this.nooverflow || this.nooverflow && freeCapacity > 0) {
-                    let harvestBeforeRegen = source.ticksToRegeneration * 2 * creep.getActiveBodyparts(WORK);
-                    // creep.log(`harvestBeforeRegen ${harvestBeforeRegen}`);
-                    if (freeCapacity > 0 || this.isSourceFull(source)   // no nooverflow
-                        || harvestBeforeRegen <= this.harvestableAmount(source)) {// will we deplete energy before regen ?
-                        let ret = this.harvest(creep, source);
+                if (!this.nooverflow || (this.nooverflow && freeCapacity > 0)) {
+                    if (freeCapacity > 0 || this.isSourceFull(source)) {
+                        let ret = creep.harvest(source);
                         // creep.log('harvest', ret);
                         if (OK !== ret && ERR_NOT_IN_RANGE !== ret && ERR_NOT_ENOUGH_RESOURCES !== ret && ERR_TIRED !== ret) {
-                            creep.log('harvest?', ret);
+                            // creep.log('harvest?', ret);
                         } else if (ERR_NOT_ENOUGH_RESOURCES === ret && source.mineralType) {
                             creep.memory.role = 'recycle';
                         } else if (ERR_NO_BODYPART === ret) {
@@ -77,16 +74,26 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
                         }
                     }
                 }
-                // creep.log("transfer ? ", ret, ", ", container.store[this.resource]);
             } else {
+                let moved = false;
                 if (creep.pos.getRangeTo(container.pos) == 1) {
                     let obstacleCreeps = container.pos.lookFor(LOOK_CREEPS);
-                    if (obstacleCreeps.length && !obstacleCreeps[0].memory.role === creep.memory.role) {
-                        obstacleCreeps[0].moveTo(creep.pos);
+                    if (obstacleCreeps.length) {
+                        if (!obstacleCreeps[0].memory.role === creep.memory.role) {
+                            obstacleCreeps[0].moveTo(creep.pos);
+                        } else if (creep.pos.getRangeTo(source.pos) >1){
+                            creep.moveTo(source);
+                            moved = true;
+                        } else {
+                            moved = true;
+                            creep.harvest(source);
+                        }
                     }
                 }
                 // creep.log('moving to container');
-                let moveTo = this.moveTo(creep, container);
+                if (! moved) {
+                    this.moveTo(creep, container);
+                }
 
                 // creep.log('moveTo?', moveTo);
             }
@@ -96,14 +103,14 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
         else if (source) {
             // creep.log('source but no container', JSON.stringify(source.pos));
             if (creep.pos.getRangeTo(source) == 1) {
-                let ret = this.harvest(creep, source);
+                let ret = creep.harvest(source);
                 /*
                  if (creep.memory.role === 'keeperHarvester') {
                  creep.log(Game.time, 'harvesting', ret);
                  }
                  */
                 if (OK !== ret && ERR_NOT_IN_RANGE !== ret && ERR_NOT_ENOUGH_RESOURCES !== ret && ERR_TIRED !== ret) {
-                    creep.log('harvest?', ret);
+                    // creep.log('harvest?', ret);
                 }
             } else {
                 // creep.log('moving to source');
@@ -124,17 +131,8 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
 
     }
 
-    harvest(creep, source) {
-        if (!source.mineralAmount || Game.time % 5 === 0) {
-            return creep.harvest(source);
-        }
-        else {
-            return ERR_TIRED;
-        }
-    }
-
     moveTo(creep, source) {
-        return util.moveTo(creep, source.pos, this.constructor.name + "Path", {range: source.structureType ? 0 : 1});
+        return util.moveTo(creep, source.pos, this.constructor.name + 'Path', {range: source.structureType ? 0 : 1});
     }
 
 

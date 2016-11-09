@@ -1,5 +1,6 @@
 var _ = require('lodash');
 require('./game.prototypes.room');
+require('./game.prototypes.Source');
 require('./game.prototypes.creep');
 require('./game.prototypes.lab');
 var util = require('./util');
@@ -8,6 +9,7 @@ var roleSpawn = require('./role.spawn');
 var debugPerfs = false;
 var profiler = require('./profiler');
 if (!Game.rooms['sim'] && !Memory.disableProfiler) profiler.enable();
+
 
 // var RoomManager = require('./manager.room'), roomManager = new RoomManager(); // todo manager
 // This line monkey patches the global prototypes.
@@ -55,7 +57,6 @@ Room.prototype.log = function () {
 Structure.prototype.log = function () {
     console.log([Game.time, this.structureType, this.room.name, this.id].concat(Array.prototype.slice.call(arguments)));
 };
-
 Object.defineProperty(Structure.prototype, 'memory',
     {
         get: function () {
@@ -109,17 +110,31 @@ function wrapPathFinder() {
         return result;
     };
 }
+let frequencies = {};
+function updateFrequencies(frequencies) {
+    frequencies['computeTasks'] = 10;
+    frequencies['runSpawn'] = 11 - Math.ceil(Game.cpu.bucket / 1000);
+    frequencies['buildStructures'] = 10 * (11 - Math.ceil(Game.cpu.bucket / 1000));
+    frequencies['operateLinks'] = 11 - Math.ceil(Game.cpu.bucket / 1000);
+    frequencies['labs'] = Math.floor(Math.max(10, Math.min(100, 110 - Game.cpu.bucket / 50)));
+    frequencies['import'] = 1500;
+    frequencies['updateProductions'] = frequencies['labs'];
+    frequencies['handleStreamingOrders'] = 100;
+    return frequencies;
+}
+
 let roomTasks = {
     computeTasks: (r)=> {
         if (!Game.rooms.sim) return;
-        if (r.hash % 10 === Game.time % 10) {
+        const frequency = frequencies['computeTasks'];
+        if (r.hash % frequency === Game.time % frequency) {
             r.computeTasks();
         }
     },
     runSpawn: (r)=> {
         'use strict';
-        let freq = 11 - Math.ceil(Game.cpu.bucket / 1000);
-        if (r.hash %freq === Game.time %freq) {
+        let freq = frequencies['runSpawn'];
+        if (r.hash % freq === Game.time % freq) {
             try {
                 if (r.controller && r.controller.my && r.controller.level > 0) {
                     roleSpawn.run(r);
@@ -132,13 +147,23 @@ let roomTasks = {
     },
     operateTowers: (r)=> r.operateTowers(),
     buildStructures: (r)=> {
-        let freq = 11 - Math.ceil(Game.cpu.bucket / 1000);
-        if (r.hash %freq === Game.time %freq) {
+        let freq = frequencies['buildStructures'];
+        if (r.hash % freq === Game.time % freq) {
             r.buildStructures();
         }
 
     },
-    operateLinks: (r)=>r.operateLinks(),
+    operateLinks: (r)=> {
+        let freq = frequencies['operateLinks'];
+        if (r.hash % freq === Game.time % freq) {
+            try {
+                r.operateLinks();
+            } catch (e) {
+                Game.notify(e.stack);
+                console.log(e.stack);
+            }
+        }
+    },
     harvestContainers: (r)=>(r.memory.harvestContainers = r.memory.harvestContainers || []),
     updateLocks: (r)=> r.updateLocks(),
     gc: (r)=> {
@@ -150,7 +175,51 @@ let roomTasks = {
         if (Game.cpu.bucket > 200) r.assessThreat();
     },
     labs: (r)=> {
-        if (!(Game.time % 10) && r.memory.labs) r.operateLabs();
+        let freq = frequencies['labs'];
+        if (r.memory.labs && (r.hash % freq === Game.time % freq)) {
+            r.operateLabs();
+        }
+    },
+    import: (r)=> {
+        'use strict';
+        const frequency = frequencies['import'];
+        if (r.controller && r.controller.my && r.controller.level >= 6 && r.hash % frequency === Game.time % frequency) {
+            r.updateImportExports();
+            r.importMinerals();
+        }
+    },
+    updateProductions: (r)=> {
+        'use strict';
+        let freq = frequencies['updateProductions'];
+        if (r.hash % freq === Game.time % freq) {
+            Memory.stats.ledger = Memory.stats.ledger || {time: 0};
+            if (Memory.stats.ledger.time < Game.time - 500) {
+                let globalLedger = require('./reports').globalLedger();
+                Memory.stats.ledger.v = globalLedger;
+                Memory.stats.ledger.time = Game.time;
+                _.keys(globalLedger).forEach(key=> {
+                    if (globalLedger[key].goal > 0) {
+                        globalLedger[key].ratio = globalLedger[key].amount / globalLedger[key].goal
+                    }
+                });
+            }
+            const ledger = Memory.stats.ledger.v;
+            let missing = _.keys(ledger).filter(min=>ledger[min].amount < ledger[min].goal);
+            _.sortBy(missing, min => ledger[min].amount / ledger[min].goal);
+            Memory.stats.ledger.needs = missing;
+            let reactions = require('./role.lab_operator').reactions;
+            let produceable = Memory.stats.ledger.needs.filter(min=> {
+                let ingredients = reactions[min];
+                return ingredients && ingredients.reduce((allAvailable, i)=> allAvailable && (_.get(ledger, [i, 'amount'], 0) > 2000), true);
+            });
+            Memory.stats.ledger.produceable = _.sortBy(produceable, min=>_.get(ledger.v, [min, 'amount'], 0) / _.get(ledger.v, [min, 'goal'], 0));
+        }
+
+    },
+    observe: (r)=> {
+        if (Game.cpu.bucket > 5000) {
+            r.runObserver();
+        }
     },
 
 };
@@ -183,7 +252,8 @@ function handleStreamingOrders() {
                 }
                 let available = _.get(from.terminal, ['store', order.what], 0);
 
-                let freeSpace = (Game.rooms[order.to] && Game.rooms[order.to].terminal) ? Game.rooms[order.to].terminal.storeCapacity - _.sum(Game.rooms[order.to].terminal.store) : 10000;
+                const toRoom = Game.rooms[order.to];
+                let freeSpace = (toRoom && toRoom.terminal) ? toRoom.terminal.storeCapacity - _.sum(toRoom.terminal.store) : 10000;
                 let howMuch = Math.min(maxAffordable(from, order.to, order.what === RESOURCE_ENERGY).amount, order.amount, available, freeSpace, (order.step || Infinity));
                 if (howMuch > 100) {
                     let result = from.terminal.send(order.what, howMuch, order.to);
@@ -245,6 +315,50 @@ function handleStreamingOrders() {
                 }
             }
         });
+        let sellDeals = ['581113e3cf85704a295d7c0a', '5814c098da6094320ab7a229', '5812445ebf5da5a116930be1', '582212f4d961f798201823f6'];
+        let buyDeals = ['58119c4a8cc4b9d24c43c373', '5821d2f2d961f79820f7b965'];
+        sellDeals.forEach(dealId => {
+            let sellDeal = Game.market.orders[dealId];
+            if (sellDeal && sellDeal.remainingAmount < 100) {
+                Game.market.extendOrder(sellDeal, 2000);
+            }
+        });
+        let homeroom = 'W55S43';
+        let energyPrice = _.max(Game.market.getAllOrders(o=>o.type === 'buy' && o.resourceType === RESOURCE_ENERGY), o=>o.price).price;
+        let closestEnergyDeal = _.min(Game.market.getAllOrders(o=>o.type === 'buy' && o.resourceType === RESOURCE_ENERGY && o.price === energyPrice), o=>Game.market.calcTransactionCost(100, homeroom, o.roomName));
+        let energyPriceWithTransport = 100 * closestEnergyDeal.price / (Game.market.calcTransactionCost(100, homeroom, closestEnergyDeal.roomName) + 100);
+        if (Game.market.credits > 50000) {
+            buyDeals.forEach(dealId=> {
+                let deal = Game.market.orders[dealId];
+                if (deal && deal.remainingAmount < 100 && (Game.rooms[deal.roomName].currentLedger[deal.resourceType] || 0) < 10000) {
+                    let maxPrice = _.max(Game.market.getAllOrders((o)=>o.type === 'buy' && o.resourceType === deal.resourceType && o.id !== deal.id), o=>o.price).price;
+                    if (maxPrice < deal.price) {
+                        let newPrice = (maxPrice + 0.01);
+                        Game.notify(`aligning price for ${deal.resourceType} ${deal.price}=>${newPrice}`);
+                        Game.market.changeOrderPrice(deal.id, newPrice);
+                    }
+                    let extendQty = 5000;
+                    Game.notify(`extending ${deal.type}:${deal.resourceType} by ${extendQty}`);
+                    Game.market.extendOrder(dealId, Math.min((0.2 * Game.market.credits) / deal.price, extendQty));
+                }
+            });
+            let buy = (roomName, resource, maxPrice) => {
+                maxPrice = maxPrice || 1;
+                if (Game.market.credits > 50000 && _.get(Game.rooms, [roomName, 'terminal', 'store', resource], 0) < 2000) {
+                    let sellOrders = Game.market.getAllOrders(o=>o.type === 'sell' && o.resourceType === resource && o.price < maxPrice);
+                    _.sortBy(sellOrders, o=>o.price + energyPriceWithTransport * Game.market.calcTransactionCost(100, roomName, o.roomName) / 100);
+                    let deal = _.head(sellOrders);
+                    if (deal) {
+                        let qty = Math.min(5000, deal.remainingAmount);
+                        let ret = Game.market.deal(deal.id, qty, roomName);
+                        Game.notify(`buying ${qty} ${resource} in ${roomName} at ${deal.price} from ${deal.roomName}: ${ret}`);
+                    }
+                }
+            };
+            buy('W52S45', 'O', 0.5);
+            buy('W53S43', 'H', 0.5);
+            // buy('W52S37', 'X', 1);
+        }
         // Memory.streamingOrders = Memory.streamingOrders.filter(order=>order.amount >= 100);
     }
 }
@@ -257,25 +371,25 @@ function innerLoop() {
     let oldSeenTick = Game.time || (Memory.counters && Memory.counters.seenTick);
     Memory.counters = {tick: Game.time, seenTick: oldSeenTick + 1};
     Memory.stats.room = Memory.stats.room || {};
-    if (/*0 == Game.time % 100*/true) {
+    if (0 == Game.time % 100) {
         _.keys(Memory.creeps).forEach((name)=> {
             if (!Game.creeps[name]) {
                 let creepMem = Memory.creeps[name];
                 if (creepMem.role !== 'recycle') {
                     let age;
                     if (creepMem.birthTime) {
-                        age = Game.time - creepMem.birthTime; // TODO if not run every tick
+                        age = (creepMem.lastAlive || Game.time) - creepMem.birthTime; // TODO if not run every tick
                     } else {
                         let match = /.*_(\d+)/.exec(name);
                         if (match) {
                             let birth = match[1];
-                            age = Game.time % 1500 - birth;
+                            age = creepMem.lastAlive % 1500 - birth;
                             age = (age < 0) ? age + 1500 : age;
                         }
                     }
                     let expectedDeath = /claimer.*/.exec(name) || /reserver.*/.exec(name) ? 490 : 1490;
                     if (age < expectedDeath) {
-                        Game.notify(`${Game.time} creep ${name} died unnaturally at age ${age}`);
+                        Game.notify(`${Game.time} creep ${name} died at ${creepMem.lastAlive + 1} unnaturally at age ${age}`);
                         Memory.stats.deaths = Memory.stats.deaths + 1;
                     }
                 }
@@ -300,7 +414,7 @@ function innerLoop() {
     let remoteRooms = rooms['false'] || [];
     let taskPairs = _.pairs(roomTasks);
     try {
-        if (0 === Game.time % 100) {
+        if (0 === Game.time % frequencies['handleStreamingOrders']) {
             handleStreamingOrders();
         }
     } catch (e) {
@@ -463,6 +577,7 @@ function innerLoop() {
         Memory.stats.performance = {PathFinder: {search: pathFinderCost}};
         // Memory.stats.performance = {'PathFinder.searchCost': pathFinderCost.cost};
         Memory.stats.roster = util.roster();
+        Memory.stats.market = {credits: Game.market.credits};
         // _.keys(handlers).forEach((k)=> Memory.stats['roster.' + k] = roster[k] || 0);
 
     }
@@ -479,6 +594,9 @@ module.exports.loop = function () {
     Memory.stats.cpu_.init = mainStart;
 
     try {
+        frequencies = updateFrequencies(frequencies);
+        Memory.stats.frequencies = frequencies;
+
         if (Game.cpu.bucket > 200 && !Game.rooms['sim'] && !Memory.disableProfiler) {
             profiler.wrap(innerLoop);
             // innerLoop();

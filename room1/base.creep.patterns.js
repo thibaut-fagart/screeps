@@ -58,18 +58,6 @@ let patterns = {
     },
     'scout': {body: [MOVE], count: 0, memory: {role: 'scout'}},
     'scout2': {body: [MOVE], count: 0, memory: {role: 'scout2'}},
-    'mineralHarvester': {
-        body: (room, budget)=> CreepShaper.shape(CreepShaper.requirements().minimum(EMPTY_ROAD_SPEED, 0.35).maximize(HARVEST), shaperOptions(room, 'mineralHarvester', budget)),
-        count: 0,
-        memory: {role: 'mineralHarvester'}
-    },
-    /* role taken by labOperator*/
-    'mineralGatherer': {
-        // assume average distance of 15 to the storage
-        body: (room, budget)=> CreepShaper.shape(CreepShaper.requirements().minimum(FULL_ROAD_SPEED, 1).maximize(CAPACITY), shaperOptions(room, 'mineralGatherer', budget)),
-        count: 0,
-        memory: {role: 'mineralGatherer'}
-    },
     'reserver': {
         body: (room, budget)=>
             (room.controller.level >= 3 ? CreepShaper.shape(CreepShaper.requirements().minimum(EMPTY_PLAIN_SPEED, 1).minimum(CLAIM, 2), shaperOptions(room, 'claimer', budget)) : [])
@@ -106,30 +94,45 @@ let patterns = {
         count: 0,
         memory: {role: 'remoteCarry'}
     },
+    'labOperator': {
+        body: (room, budget)=> CreepShaper.shape(CreepShaper.requirements().minimum(FULL_ROAD_SPEED, 1).minimum(CAPACITY, 1200), shaperOptions(room, 'labOperator', budget)),
+        count: 0,
+        memory: {role: 'labOperator'}
+    },
+    'mineralHarvester': {
+        body: (room, budget)=> CreepShaper.shape(CreepShaper.requirements().minimum(EMPTY_ROAD_SPEED, 0.25).minimum(CAPACITY,50).maximize(HARVEST), shaperOptions(room, 'mineralHarvester', budget)),
+        count: 0,
+        memory: {role: 'mineralHarvester'}
+    },
+    /* role taken by labOperator*/
+    'mineralGatherer': {
+        // assume average distance of 15 to the storage
+        body: (room, budget)=> CreepShaper.shape(CreepShaper.requirements().minimum(FULL_ROAD_SPEED, 1).maximize(CAPACITY), shaperOptions(room, 'mineralGatherer', budget)),
+        count: 0,
+        memory: {role: 'mineralGatherer'}
+    },
 
     'linkOperator': {
         body: (room, budget)=> CreepShaper.shape(CreepShaper.requirements().minimum(EMPTY_ROAD_SPEED, 1).minimum(CAPACITY, 400), shaperOptions(room, 'linkOperator', budget)),
         count: 0,
         memory: {role: 'linkOperator'}
     },
-    'labOperator': {
-        body: (room, budget)=> CreepShaper.shape(CreepShaper.requirements().minimum(FULL_ROAD_SPEED, 1).minimum(CAPACITY, 1200), shaperOptions(room, 'labOperator', budget)),
-        count: 0,
-        memory: {role: 'labOperator'}
-    },
     'upgrader': {
         body: (room, budget)=> {
-            if (room.glanceForAround(LOOK_STRUCTURES, room.controller.pos, 4, true).map(s=>s.structure).filter(s=>s.store).length) {
+            if (room.glanceForAround(LOOK_STRUCTURES, room.controller.pos, 4, true).map(s=>s.structure).find(s=>s.structureType ===STRUCTURE_LINK)) {
                 if (room.controller.level < 8) {
                     return CreepShaper.shape(CreepShaper.requirements().minimum(EMPTY_ROAD_SPEED, 0.5).maximize(UPGRADE_CONTROLLER).minimum(CAPACITY, 100), shaperOptions(room, 'upgrader', budget));
                 } else {
                     return CreepShaper.shape(CreepShaper.requirements().minimum(EMPTY_ROAD_SPEED, 0.5).minimum(UPGRADE_CONTROLLER, 15).minimum(CAPACITY, 50), shaperOptions(room, 'upgrader', budget));
                 }
             } else {
-                return [MOVE, WORK, CARRY, MOVE, WORK, CARRY, MOVE, WORK, CARRY,
-                    MOVE, WORK, CARRY, MOVE, WORK, CARRY, MOVE, WORK, CARRY,
-                    MOVE, WORK, CARRY, MOVE, WORK, CARRY, MOVE, WORK, CARRY,
-                    MOVE, WORK, CARRY, MOVE, WORK, CARRY, MOVE, WORK, CARRY];
+                let body = [];
+                let atom = [MOVE, WORK, CARRY];
+                let count = Math.floor(room.energyCapacityAvailable / 200);
+                for (let i = 0; i < count; i++) {
+                    body = body.concat(atom);
+                }
+                return body;
             }
         },
         count: 0,
@@ -137,7 +140,7 @@ let patterns = {
     },
 
     'remoteDismantler': {
-        body: (room, budget)=> //CreepShaper.shape(CreepShaper.requirements().minimum(FULL_ROAD_SPEED, 0.5).maximize(DISMANTLE), shaperOptions(room, 'remoteDismantler', budget))
+        body: //(room, budget)=> CreepShaper.shape(CreepShaper.requirements().minimum(FULL_ROAD_SPEED, 0.5).maximize(DISMANTLE), shaperOptions(room, 'remoteDismantler', budget))
             [
                 MOVE, TOUGH, MOVE, TOUGH,
                 MOVE, WORK, MOVE, WORK,
@@ -145,7 +148,7 @@ let patterns = {
                 MOVE, WORK, MOVE, WORK,
                 MOVE, WORK, MOVE, WORK,
                 MOVE, WORK, MOVE, WORK,
-                MOVE, WORK, MOVE, WORK,
+                MOVE, WORK, MOVE, WORK,//1920
                 MOVE, WORK, MOVE, WORK,
                 MOVE, WORK, MOVE, WORK,
                 MOVE, WORK, MOVE, WORK,
@@ -158,7 +161,11 @@ let patterns = {
     'archer': {
         body: [
             // MOVE],
-            MOVE, MOVE, MOVE, RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, MOVE, MOVE, MOVE, RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, MOVE, MOVE, HEAL],
+            MOVE, MOVE, TOUGH,MOVE,RANGED_ATTACK, MOVE, HEAL, MOVE, TOUGH, MOVE,
+            RANGED_ATTACK, MOVE, HEAL,MOVE, MOVE, RANGED_ATTACK, MOVE, RANGED_ATTACK, MOVE, RANGED_ATTACK,
+            MOVE, RANGED_ATTACK, MOVE, RANGED_ATTACK, MOVE, RANGED_ATTACK, MOVE, RANGED_ATTACK, MOVE, RANGED_ATTACK,
+            MOVE, RANGED_ATTACK, MOVE, RANGED_ATTACK, MOVE, RANGED_ATTACK, MOVE, RANGED_ATTACK, MOVE, RANGED_ATTACK,
+            ],
         count: 0,
         memory: {role: 'archer'}
     },
@@ -220,6 +227,12 @@ let patterns = {
         ,
         count: 0,
         memory: {role: 'mineralTransport'}
+    },
+    'energyTransporter': {
+        body: (room, budget)=> CreepShaper.shape(CreepShaper.requirements().minimum(FULL_PLAIN_SPEED, 1).maximize(CAPACITY), shaperOptions(room, 'energyTransporter', budget))
+        ,
+        count: 0,
+        memory: {role: 'energyTransporter'}
     },
     'attacker': {
         body: [MOVE, TOUGH, MOVE, TOUGH, MOVE, TOUGH, MOVE, TOUGH, MOVE, ATTACK, MOVE, ATTACK, MOVE, ATTACK, MOVE, ATTACK, MOVE, HEAL],

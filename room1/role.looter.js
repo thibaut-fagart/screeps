@@ -3,7 +3,6 @@ var util = require('./util');
 var StrategyLootContainer = require('./strategy.loot_container');
 var PickupStrategy = require('./strategy.pickup');
 var DropToContainerStrategy = require('./strategy.drop_to_container');
-var DropToEnergyStorageStrategy = require('./strategy.drop_to_energyStorage');
 var MoveToRoomTask = require('./task.move.toroom');
 var RegroupStrategy = require('./strategy.regroup');
 var RoleRemoteCarry = require('./role.remote.carry');
@@ -13,18 +12,13 @@ class RoleLooter extends RoleRemoteCarry {
 
     constructor() {
         super();
-        this.travelingPickup = new ClosePickupStrategy(RESOURCE_ENERGY, 1);
+        this.travelingPickup = new ClosePickupStrategy(undefined, 1);
         this.loadStrategies = [
-            new PickupStrategy(undefined, function (creep) {
-                return ((drop)=>drop.amount > 50);
-            }),
+            new PickupStrategy(undefined, (creep)=>((drop)=>drop.amount > 50)),
             new StrategyLootContainer()
         ];
         this.unloadStrategies = [
-            // new DropToEnergyStorageStrategy(STRUCTURE_TOWER),
-            new DropToContainerStrategy(undefined, undefined,
-                (creep)=>((s)=>([STRUCTURE_CONTAINER, STRUCTURE_STORAGE, STRUCTURE_LINK].indexOf(s.structureType) >= 0))),
-            new DropToEnergyStorageStrategy()
+            new DropToContainerStrategy(undefined, STRUCTURE_STORAGE)   ,
         ];
         this.regroupStrategy = new RegroupStrategy(COLOR_ORANGE);
         this.ACTION_UNLOAD = 'unload';

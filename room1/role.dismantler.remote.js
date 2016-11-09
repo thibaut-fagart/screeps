@@ -29,10 +29,8 @@ class RoleRemoteDismantler extends RoleDismantler {
         if (! creep.memory.homeroom) {
             creep.memory.homeroom = creep.room.name;
         }
-        if (creep.room.name === creep.memory.homeroom && creep.seekBoosts(WORK,['LH']RoleRemoteDismantler.WANTED_BOOSTS)) {
-            return;
-        }
-        if (creep.room.glanceForAround(LOOK_CREEPS, creep.pos, 6,true).map(p=>p.creep).filter(c=>!c.my && c.getActiveBodyparts(ATTACK)>0)) {
+
+        if (creep.room.glanceForAround(LOOK_CREEPS, creep.pos, 6,true).map(p=>p.creep).find(c=>!c.my && c.getActiveBodyparts(ATTACK)>0)) {
             creep.log('hostiles around, fleeing home');
             // creep.memory.action = 'go_home_room';
         } else if (_.sum(creep.carry) === 0 && creep.memory.action === 'go_home_room') {

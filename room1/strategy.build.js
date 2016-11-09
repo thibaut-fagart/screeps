@@ -16,7 +16,7 @@ class BuildStrategy extends BaseStrategy {
         // if (target) creep.log('buildTarget', target);
         if (!target) {
             // console.log('finding target for  ', creep.name);
-            var targets = creep.room.find(FIND_CONSTRUCTION_SITES).filter(this.predicate(creep));
+            var targets = creep.room.find(FIND_CONSTRUCTION_SITES).filter(c=>c.my && (this.predicate(creep))(c));
             if (targets.length) {
                 if (targets[0].progress > 0) {
                     target = targets[0];
