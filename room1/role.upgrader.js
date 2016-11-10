@@ -22,9 +22,9 @@ class RoleUpgrader {
             creep.memory.action = this.ACTION_FILL;
             delete creep.memory.source;
         } else if (creep.carry.energy == creep.carryCapacity) {
-            creep.memory.action ='upgrade';
+            creep.memory.action = 'upgrade';
         }
-        if (creep.room.controller.level < 8  && creep.seekBoosts(WORK, ['XGH2O', 'GH2O', 'GH'])) return;
+        if (creep.room.controller.level < 8 && creep.seekBoosts(WORK, ['XGH2O', 'GH2O', 'GH'])) return;
         if (creep.memory.action == this.ACTION_FILL) {
             delete creep.memory.upgradeFrom;
             let strategy = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);
@@ -99,36 +99,45 @@ class RoleUpgrader {
         }
         if (!creep.memory.upgradeFrom) {
             let container = this.getContainer(creep);
-            let near = [{pos: creep.room.controller.pos, range: 3}];
-            if (container) {
-                near.push({pos: container.pos, range: 1});
-            }
             let position;
-            let positions = creep.room.findValidParkingPositions(creep,near);
-            if (positions.length) {
-                // creep.log('finding closest of ', JSON.stringify(positions), JSON.stringify(positions.map(p=>p instanceof RoomPosition)));
-                position = creep.pos.findClosestByPath(positions);
+            if (creep.room.isValidParkingPos(creep) && creep.pos.getRangeTo(creep.room.controller) <= 3) {
+                position = creep.pos;
             } else {
-                creep.log('no upgrade position near container');
-                positions = creep.room.findValidParkingPositions(creep, [{pos: creep.room.controller.pos, range: 3}]);
+                let near = [{pos: creep.room.controller.pos, range: 3}];
+                if (container) {
+                    near.push({pos: container.pos, range: 1});
+                }
+                let positions = creep.room.findValidParkingPositions(creep, near);
                 if (positions.length) {
+                    // creep.log('finding closest of ', JSON.stringify(positions), JSON.stringify(positions.map(p=>p instanceof RoomPosition)));
                     position = creep.pos.findClosestByPath(positions);
                 } else {
-                    let area = creep.room.glanceAround(creep.room.controller.pos, 3);
-                    let walkable = util.findWalkableTiles(creep.room, area);
-                    if (walkable.length) {
-                        position = creep.pos.findClosestByPath(walkable);
+                    creep.log('no upgrade position near container');
+                    positions = creep.room.findValidParkingPositions(creep, [{
+                        pos: creep.room.controller.pos,
+                        range: 3
+                    }]);
+                    if (positions.length) {
+                        position = creep.pos.findClosestByPath(positions);
+                    } else {
+                        let area = creep.room.glanceAround(creep.room.controller.pos, 3);
+                        let walkable = util.findWalkableTiles(creep.room, area);
+                        if (walkable.length) {
+                            position = creep.pos.findClosestByPath(walkable);
+                        }
                     }
                 }
             }
+
             // creep.log('upgrading from '+creep.memory.upgradeFrom);
             if (position) {
                 creep.memory.upgradeFrom = util.posToString(position);
             }
         }
         // creep.log('upgrading from '+creep.memory.upgradeFrom);
-        return creep.memory.upgradeFrom?util.posFromString(creep.memory.upgradeFrom, creep.room.name):false;
+        return creep.memory.upgradeFrom ? util.posFromString(creep.memory.upgradeFrom, creep.room.name) : false;
     }
 }
 
-require('./profiler').registerClass(RoleUpgrader, 'RoleUpgrader'); module.exports = RoleUpgrader;
+require('./profiler').registerClass(RoleUpgrader, 'RoleUpgrader');
+module.exports = RoleUpgrader;
