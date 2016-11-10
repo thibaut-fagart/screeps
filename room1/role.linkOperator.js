@@ -48,27 +48,15 @@ class RoleLinkOperator {
             // creep.log('keeping link empty');
             // keep link empty
             if (container) {
-                // creep.log(`creepCarry ${creepCarry} , freeContainerCapacity ${freeContainerCapacity}`);
-                if (creep.ticksToLive <= 2) {
-                    let freeContainerStore = container.storeCapacity - _.sum(container.store);
-                    let freeLinkSpace = link.energyCapacity - link.energy;
-                    let target;
-                    if (freeContainerStore >= creepCarry) {
-                        target = container;
-                    } else if (freeLinkSpace >= creepCarry) {
-                        target = link;
-                    } else {
-                        target = freeContainerStore > freeLinkSpace ? container : link;
-                    }
-                    creep.transfer(target, RESOURCE_ENERGY);
-                } else if ((creepCarry === creep.carryCapacity && freeContainerCapacity > 0)) {
+                // creep.log(`creepCarry ${creepCarry} , link.energy ${link.energy}, freeContainerCapacity ${freeContainerCapacity}`);
+                if ((creepCarry >0 && freeContainerCapacity > 0)) {
                     creep.transfer(container, RESOURCE_ENERGY);
-                } else if ((creepCarry === creep.carryCapacity && creep.memory.near_storage)) {
+                } else if ((creepCarry >0 && creep.memory.near_storage)) {
                     creep.transfer(creep.room.storage, RESOURCE_ENERGY);
-                } else if (creep.ticksToLive > 1 && creepCarry < creep.carryCapacity && link.energy) {
-                    creep.withdraw(link, RESOURCE_ENERGY);
-                } else if (creep.ticksToLive > 1 && creepCarry < creep.carryCapacity && isControllerLink && isStorageLink && freeContainerCapacity > 0) {
-                    creep.withdraw(creep.room.storage, RESOURCE_ENERGY);
+                } else if (creep.ticksToLive > 1 && link.energy && 0 < freeContainerCapacity) {
+                    creep.withdraw(link, RESOURCE_ENERGY, Math.min(link.energy,freeContainerCapacity, creep.carryCapacity-creepCarry));
+                } else if (creep.ticksToLive > 1 && isControllerLink && isStorageLink && creep.room.storage.energy && 0 < freeContainerCapacity) {
+                    creep.withdraw(creep.room.storage, RESOURCE_ENERGY, Math.min(creep.room.storage.energy,freeContainerCapacity, creep.carryCapacity-creepCarry));
                 } else if (container.store && container.store.energy < 500 && creepCarry > 0) {
                     creep.transfer(container, RESOURCE_ENERGY);
                 }
@@ -77,12 +65,11 @@ class RoleLinkOperator {
         } else {
             // keep link full
             if (container) {
-
                 // creep.log('fillingLink operator', creepCarry, container.store.energy, link.energy);
                 if ((creepCarry > 0 && link.energy < link.energyCapacity)) {
                     creep.transfer(link, RESOURCE_ENERGY);
-                } else if (creepCarry < creep.carryCapacity && container.store && container.store.energy > 0) {
-                    creep.withdraw(container, RESOURCE_ENERGY);
+                } else if (creepCarry < creep.carryCapacity && container.store && container.store.energy > 0 && link.energy  < link.energyCapacity) {
+                    creep.withdraw(container, RESOURCE_ENERGY, Math.min(link.energyCapacity- link.energy, creep.carryCapacity-creepCarry,container.store.energy));
                 }
             }
 

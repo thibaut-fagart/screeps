@@ -27,6 +27,11 @@ let patterns = {
         count: 0,
         memory: {role: 'energyFiller'}
     },
+    'upgradeFiller': {
+        body: (room, budget)=> CreepShaper.shape(CreepShaper.requirements().minimum(FULL_ROAD_SPEED, 1).minimum(CAPACITY, room.energyCapacityAvailable / 2), shaperOptions(room, 'energyFiller', budget)),
+        count: 0,
+        memory: {role: 'upgradeFiller'}
+    },
     'energyGatherer': {
         body: (room, budget)=> CreepShaper.shape(CreepShaper.requirements().minimum(FULL_ROAD_SPEED, 1).minimum(CAPACITY, 1200), shaperOptions(room, 'energyGatherer', budget)),
         count: 0,
@@ -119,7 +124,7 @@ let patterns = {
     },
     'upgrader': {
         body: (room, budget)=> {
-            if (room.glanceForAround(LOOK_STRUCTURES, room.controller.pos, 4, true).map(s=>s.structure).find(s=>s.structureType ===STRUCTURE_LINK)) {
+            if (room.glanceForAround(LOOK_STRUCTURES, room.controller.pos, 4, true).map(s=>s.structure).find(s=>s.structureType ===STRUCTURE_CONTAINER)) {
                 if (room.controller.level < 8) {
                     return CreepShaper.shape(CreepShaper.requirements().minimum(EMPTY_ROAD_SPEED, 0.5).maximize(UPGRADE_CONTROLLER).minimum(CAPACITY, 100), shaperOptions(room, 'upgrader', budget));
                 } else {

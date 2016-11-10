@@ -28,6 +28,7 @@ let handlers = {
     'tower': new Handler('tower', './role.tower'),
     'keeperGuard': new Handler('keeperGuard', './role.soldier.keeperguard'),
     'energyFiller': new Handler('energyFiller', './role.energyfiller'),
+    'upgradeFiller': new Handler('upgradeFiller', './role.upgradefiller'),
     'energyGatherer': new Handler('energyGatherer', './role.energygatherer'),
     'carry': new Handler('carry', './role.carry'),
     'claimer': new Handler('claimer', './role.controller.claim'),

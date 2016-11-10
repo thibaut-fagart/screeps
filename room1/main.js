@@ -115,7 +115,7 @@ function updateFrequencies(frequencies) {
     frequencies['computeTasks'] = 10;
     frequencies['runSpawn'] = 11 - Math.ceil(Game.cpu.bucket / 1000);
     frequencies['buildStructures'] = 10 * (11 - Math.ceil(Game.cpu.bucket / 1000));
-    frequencies['operateLinks'] = 11 - Math.ceil(Game.cpu.bucket / 1000);
+    frequencies['operateLinks'] = 11 - Math.ceil(Math.min(Game.cpu.bucket ,1000)/ 100);
     frequencies['labs'] = Math.floor(Math.max(10, Math.min(100, 110 - Game.cpu.bucket / 50)));
     frequencies['import'] = 1500;
     frequencies['updateProductions'] = frequencies['labs'];
@@ -178,6 +178,9 @@ let roomTasks = {
         let freq = frequencies['labs'];
         if (r.memory.labs && (r.hash % freq === Game.time % freq)) {
             r.operateLabs();
+        } else {
+            r.memory.lab_activity = r.memory.lab_activity || {};
+            util.recordActivity(r.memory.lab_activity, {idle: 1, producing: 0, cooldown:0}, 1500);
         }
     },
     import: (r)=> {
@@ -208,11 +211,16 @@ let roomTasks = {
             _.sortBy(missing, min => ledger[min].amount / ledger[min].goal);
             Memory.stats.ledger.needs = missing;
             let reactions = require('./role.lab_operator').reactions;
-            let produceable = Memory.stats.ledger.needs.filter(min=> {
+            let produceable = Memory.stats.ledger.needs.map(min=> {
                 let ingredients = reactions[min];
-                return ingredients && ingredients.reduce((allAvailable, i)=> allAvailable && (_.get(ledger, [i, 'amount'], 0) > 2000), true);
+                if (ingredients) {
+                    return [min, ingredients.reduce((available, i)=> Math.min(available ,_.get(ledger, [i, 'amount'], 0)),Infinity)];
+                } else {
+                    return [min, 0];
+                }
             });
-            Memory.stats.ledger.produceable = _.sortBy(produceable, min=>_.get(ledger.v, [min, 'amount'], 0) / _.get(ledger.v, [min, 'goal'], 0));
+            // sort by available quantity of ingredients
+            Memory.stats.ledger.produceable = _.sortBy(produceable, pair=>-pair[1]);
         }
 
     },
@@ -506,14 +514,12 @@ function innerLoop() {
         // room.log('creepsCpu', creepsCpu);
         let labsCpu = creepsCpu;
 
-        if (Game.cpu.getUsed() < availableCpu - 100 && updateStats) {
+        if (Game.cpu.getUsed() < availableCpu - 100 && updateStats && Game.cpu.bucket > 500) {
             room.updateCheapStats();
-        }
-        if (Game.cpu.getUsed() < availableCpu - 100 && updateStats) {
             Memory.stats.room = Memory.stats.room || {};
             Memory.stats.room[room.name] = Memory.stats.room[room.name] || {};
             let roomStat = Memory.stats.room[room.name];
-            roomStat.energyInStructures = room.find(FIND_MY_STRUCTURES).reduce((sum, s)=>sum + (s.store ? s.store.energy : (s.energy || 0)), 0);
+            // roomStat.energyInStructures = room.find(FIND_MY_STRUCTURES).reduce((sum, s)=>sum + (s.store ? s.store.energy : (s.energy || 0)), 0);
             // roomStat.energyDropped = _.sum(_.map(room.find(FIND_DROPPED_RESOURCES).filter(r => r.resourceType == RESOURCE_ENERGY), (s)=> s.amount));
             // room.log('stat efficiency',Game.time % 50);
             if (0 == (Game.time % 50)) {
@@ -527,7 +533,7 @@ function innerLoop() {
             }
 
             let strangers = room.find(FIND_HOSTILE_CREEPS);
-            let hostiles = _.filter(strangers, (c)=>c.hostile && _.sum(c.getActiveBodyparts(ATTACK) + c.getActiveBodyparts(RANGED_ATTACK) > 0));
+            let hostiles = strangers.filter(c=>c.hostile);
 
             /*
              if (hostiles.length > 0) {
