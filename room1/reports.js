@@ -3,7 +3,7 @@ let goals;
 function getResourceGoals() {
     if (!goals) {
         let resources = {};
-        let MILITARY_T3_TARGET = 25000 ;
+        let MILITARY_T3_TARGET = 25000;
         let GHODIUM_TARGET = 5000;
         let T3_UPGRADE_TARGET = 10000;
         let T1_TARGET = 5000;
@@ -56,6 +56,16 @@ function generateReport(resourceMap) {
     return report;
 }
 
+function generateProductionReport(map) {
+    let report = '<table><tr><th>ROOM </th><th>| PRODUCTION </th><th>| AVAILABLE </th></tr>';
+    for (let roomName in map) {
+        report +=
+            `<tr><td>${roomName} </td><td>| ${map[roomName].production}</td><td>| ${map[roomName].available}</td></tr>`;
+    }
+    report += '</table>';
+    return report;
+}
+
 module.exports.globalLedger = function () {
     let resourceMap = {};
     _.forEach(Game.rooms, room => {
@@ -73,8 +83,32 @@ module.exports.globalLedger = function () {
     });
     return resourceMap;
 };
+module.exports.rcl8 = ()=>_.values(Game.rooms).filter(r=>r.controller && r.controller.my && r.controller.level === 8);
+module.exports.productionData = ()=> {
+    'use strict';
+    let reactions = require('./role.lab_operator').reactions;
+    let data = module.exports.rcl8()
+        .filter(r=>r.lab_production)
+        .reduce((acc, r)=> {
+            acc[r.name] = {
+                production: r.lab_production,
+                available: reactions[r.lab_production].reduce(
+                    (total, min)=>Math.min(
+                        total,
+                        r.structures[STRUCTURE_LAB].reduce((total, lab)=>(lab.mineralType === min ? lab.mineralAmount : 0), 0) + (r.currentLedger[min] || 0)
+                    ), Infinity)
+            };
+            return acc;
+        }, {});
+    return data;
+};
 module.exports.printResources = function () {
     var resourceMap = this.globalLedger();
     console.log(generateReport(resourceMap));
+
+};
+module.exports.printProductions = function () {
+    var map = this.productionData();
+    console.log(generateProductionReport(map));
 
 };
