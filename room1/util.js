@@ -1,4 +1,131 @@
 var _ = require('lodash');
+
+let activityHelper = {
+    HIGH_MASK: 0x8000,
+    /**
+     *
+     * @param {int} x
+     * @returns {number} the number of bits set in x (number of 1 in the base2 representation).
+     */
+    countBits: (x) => {
+        x = x - ((x >> 1) & 0x55555555);
+        x = (x & 0x33333333) + ((x >> 2) & 0x33333333);
+        x = (x + (x >> 4)) & 0x0f0f0f0f;
+        x = x + (x >> 8);
+        x = x + (x >> 16);
+        return x & 0x0000003f;
+    },
+    /**
+     *
+     * @param {int} value, needs to be lower than {HIGH_MASK}, as it will be or-ed to avoid unavailable char values
+     * @returns {string} a char on which {decode} will return the original value
+     */
+    encode: (value) => {
+        if (activityHelper.HIGH_MASK === value & activityHelper.HIGH_MASK) {
+            throw new Error('attempt to encode too high value' + value);
+        }
+        value = value | activityHelper.HIGH_MASK;
+        return String.fromCharCode(value);
+    },
+    /**
+     *
+     * @param {string} char 1 char string
+     * @returns {number} the value previously encoded using {encode}
+     */
+    decode: (char)=> {
+        return char.charCodeAt(0) & (~activityHelper.HIGH_MASK);
+    },
+    /**
+     *
+     * @param {object} activity stores the info using 2 properties. A string-encoded bitfield that stores the value of the flags for each tick, and a count. example {idle:234, idbleBits:"......"}
+     * @param {object} tickActivity activity for this tick. example {idle:1, spawning:0, waiting:0}
+     * @param {int} history how long should the history window be
+     * @param {int} [time] current time
+     */
+    recordActivityString: (activity, tickActivity, history, time) => {
+        time = time | Game.time;
+        // overall index of the bit to store activityHelper ticks's activy
+        const DEFAULT_HISTORY = 1500, ENCODING_SPACE = 15;
+        history = history || DEFAULT_HISTORY;
+        let requiredChars = Math.ceil(history / ENCODING_SPACE);
+        let overallIndex = time % (requiredChars * ENCODING_SPACE);
+        // index of the int for this tick storage
+        let intIndex = Math.floor(overallIndex / ENCODING_SPACE);
+        // index of the bit inside the int
+        let bitIndex = overallIndex % ENCODING_SPACE;
+
+        let bitResetMask = ~(1 << bitIndex);
+
+        _.keys(tickActivity).forEach((k)=> {
+            let kBits = k + 'Bits';
+            let forceRecount = false;
+            if (!activity[kBits] || _.isArray(activity[kBits])) {
+                activity[kBits] = activityHelper.encode(0).repeat(requiredChars);
+                activity[k] = 0;
+            } else if (activity[kBits].length < requiredChars) {
+                activity[kBits] = activity[kBits].concat(activityHelper.encode(0).repeat(requiredChars - activity[kBits].length));
+            } else if (activity[kBits].length > requiredChars) {
+                activity[kBits] = activity[kBits].slice(0, requiredChars);
+                forceRecount = true;
+            }
+            let string = activity[kBits];
+            let oldValue = activityHelper.decode(string[intIndex]);
+            let newValue = oldValue & bitResetMask | (tickActivity[k] << bitIndex);
+            if (newValue !== oldValue) {
+                let newChar = activityHelper.encode(newValue);
+                activity[kBits] = string.substr(0, intIndex) + newChar + ((intIndex === string.length ) ? '' : string.substr(intIndex + 1));
+            }
+            if (newValue !== oldValue || forceRecount) {
+                if (Game.cpu.bucket > 5000 || forceRecount) {
+                    activity[k] = _.sum(activity[kBits], (x)=> activityHelper.countBits(activityHelper.decode(x)));
+                } else {
+                    let delta = activityHelper.countBits(oldValue) - activityHelper.countBits(newValue);
+                    activity[k] = activity[k] - delta;
+                }
+            }
+        });
+    },
+    /**
+     *
+     * @param {object} activity stores the info using 2 properties. A string-encoded bitfield that stores the value of the flags for each tick, and a count. example {idle:234, idbleBits:"......"}
+     * @param {object} base activity for this tick. example {idle:1, spawning:0, waiting:0}
+     * @param {int} history how long should the history window be
+     * @param {int} [time] current time
+     */
+
+    oldRecordActivity: (activity, base, history) => {
+        const DEFAULT_HISTORY = 1500, INT_SIZE = 32;
+        history = history || DEFAULT_HISTORY;
+        let requiredInts = Math.ceil(history / INT_SIZE);
+        // overall index of the bit to store this ticks's activy
+        let overallIndex = Game.time % (requiredInts * INT_SIZE);
+        // index of the int for this tick storage
+        let intIndex = Math.floor(overallIndex / INT_SIZE);
+        _.keys(base).forEach((k)=> {
+            let kBits = k + 'Bits';
+            if (!activity[kBits] || !_.isArray(activity[kBits])) {
+                activity[kBits] = new Array(requiredInts);
+                _.fill(activity[kBits], 0);
+                activity[k] = 0;
+            } else if (activity[kBits].length < requiredInts) {
+                _.fill(activity[kBits], activity[kBits].length, requiredInts);
+            } else if (activity[kBits].length > requiredInts) {
+                activity[kBits] = activity[kBits].slice(0, requiredInts);
+            }
+            let old = activity[kBits][intIndex];
+            activity[kBits][intIndex] = (old << 1) | base[k];
+            if (old !== activity[kBits][intIndex]) {
+                if (Game.cpu.bucket > 5000) {
+                    activity[k] = _.sum(activity[kBits], (x)=> activityHelper.countBits(x));
+                } else {
+                    let delta = activityHelper.countBits(old) - activityHelper.countBits(activity[kBits][intIndex]);
+                    activity[k] = activity[k] - delta;
+                }
+            }
+        });
+    }
+
+};
 class Util {
 
     constructor() {
@@ -729,13 +856,13 @@ class Util {
                     if (e.type === 'creep') {
                         return !(options.ignoreCreeps);
                     } else if (e.type === 'terrain') {
-                        return OBSTACLE_OBJECT_TYPES.indexOf(e.terrain)>=0;
+                        return OBSTACLE_OBJECT_TYPES.indexOf(e.terrain) >= 0;
                     } else if (e.type === 'structure' || e.type === LOOK_CONSTRUCTION_SITES && e.constructionSite.progress > 0) {
                         let s = (e.structure || e.constructionSite);
                         if (s.structureType === STRUCTURE_RAMPART) {
                             return !s.my;
                         } else {
-                            return OBSTACLE_OBJECT_TYPES.indexOf(s.structureType)>=0;
+                            return OBSTACLE_OBJECT_TYPES.indexOf(s.structureType) >= 0;
                         }
                     }
 
@@ -877,6 +1004,23 @@ class Util {
 
         return (chk & 0xffffffff);
     }
+
+    /**
+     *
+     * @param {object} activity the memory slot object
+     * @param {object} base current tick's activity, base's property keys are the possible actions, values are the number of actions taken that tick
+     * @param {int} history number of tick to keep history
+     */
+    recordActivity(activity, base, history, time) {
+        // return activityHelper.oldRecordActivity(activity, base, history);
+        return activityHelper.recordActivityString(activity, base, history, time);
+    }
+
+    recordActivityString(activity, base, history, time) {
+        return activityHelper.recordActivityString(activity, base, history, time);
+    }
+
+
 }
 var partsToChar = {};
 partsToChar[MOVE] = 'M';
