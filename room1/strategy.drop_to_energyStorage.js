@@ -35,33 +35,53 @@ class DropToEnergyStorageStrategy extends BaseStrategy {
         // creep.log(this.structureType, 'target', target);
         if (!target || target.room.name !== creep.room.name) {
             // if (this.structureType === STRUCTURE_EXTENSION) creep.log('finding target');
-            var targets = (this.structureType? creep.room.structures[this.structureType] : creep.room.find(FIND_STRUCTURES))
-                .filter((c)=> c.my && (c.energy < c.energyCapacity) && (this.predicate(creep))(c));
-            if (targets.length > 0) {
-                target = this.setTarget(creep, creep.pos.findClosestByPath(targets));
-            } else {
-                // creep.log('didn\'t finding target');
-            }
+            target = this.acquireTarget(creep);
         }
         if (target) {
             // try transfering/moving
             let ret = creep.transfer(target, this.resource);
+            // creep.log('transfer', target.pos, ret);
             if (ret == ERR_NOT_IN_RANGE && creep.fatigue == 0) {
                 // creep.log('moving', JSON.stringify(target.pos));
-                ret = util.moveTo(creep, target.pos, this.constructor.name+"Path", {ignoreHostiles:true});
-                if (ret == ERR_NO_PATH) {
-                    creep.log("no path to target");
-                    delete creep.memory[this.PATH];
-                    target = null;
+                this.moveToTarget(creep, target);
+            } else if (ret === OK && creep.fatigue === 0 && creep.carry.energy > target.energyCapacity - target.energy) {
+                target = this.acquireTarget(creep, target);
+                // creep.log('delivered ,next target ?', target ? target.pos : undefined);
+                if (target && target.pos.getRangeTo(creep) > 1) {
+                    // creep.log(`range ${target.pos.getRangeTo(creep)} moving`);
+                    this.moveToTarget(creep, target);
                 }
+            } else {
+                this.setTarget(creep, undefined);
             }
 
-        // } else {
-        //     creep.log('no target');
+            // } else {
+            //     creep.log('no target');
         }
         // creep.log('source', null == source);
         return (target ? this : null);
     }
+
+    moveToTarget(creep, target) {
+        // creep.log('moving to ', target.pos);
+        let ret = util.moveTo(creep, target.pos, this.constructor.name + 'Path', {ignoreHostiles: true, range: 1});
+        if (ret == ERR_NO_PATH) {
+            creep.log('no path to target');
+            delete creep.memory[this.PATH];
+            target = null;
+        }
+        return ret;
+    }
+
+    acquireTarget(creep,exclude) {
+        var targets = (this.structureType ? creep.room.structures[this.structureType] : creep.room.find(FIND_STRUCTURES))
+            .filter((s)=> s.my && (s.energy < s.energyCapacity) && (exclude ? s.id !== exclude.id:true)  && (this.predicate(creep))(s));
+        if (targets.length > 0) {
+            return this.setTarget(creep, creep.pos.findClosestByPath(targets));
+        }
+        return false;
+    }
 }
 
-require('./profiler').registerClass(DropToEnergyStorageStrategy, 'DropToEnergyStorageStrategy'); module.exports = DropToEnergyStorageStrategy;
+require('./profiler').registerClass(DropToEnergyStorageStrategy, 'DropToEnergyStorageStrategy');
+module.exports = DropToEnergyStorageStrategy;
