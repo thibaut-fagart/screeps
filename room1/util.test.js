@@ -456,18 +456,59 @@ describe('stringbitarrays', function () {
         console.log(`delta, 100K , int array => ${end - start}\n`);
     });
 
-    it ('test charCodeAt', function() {
+    it('test charCodeAt', function () {
         let char = String.fromCharCode(Math.floor(Math.random() * 0x8000) | 0x8000);
         let start = new Date().getTime();
-        for (let i = 0; i < 100000; i ++) {
+        for (let i = 0; i < 100000; i++) {
             for (let j = 0; j < 100; j++) {
                 char.charCodeAt(0);
             }
         }
         let end = new Date().getTime();
         console.log('1500*100K charCodeAt', (end - start));
-    })
+    });
 
+    it('test', function () {
+        Game.cpu={bucket: 100};
+        let store = {};
+        for (let i = 0; i < 1500; i++) {
+            util.recordActivity(store, _.merge({active:0,inactive:0}, {active:1}),1500, i);
+        }
+        console.log(JSON.stringify(store));
+        for (let i = 1501; i < 3000; i++) {
+            util.recordActivity(store, _.merge({active:0,inactive:0}, {inactive:1}),1500, i);
+        }
+        console.log(JSON.stringify(store));
+
+    });
+});
+
+describe('min/max performance test', ()=>{
+    it('min',()=> {
+        "use strict";
+        let time = (count, func)=> {
+            let start = new Date().getTime();
+            for (let i = count; i > 0; i--) {
+                func();
+            }
+            let end = new Date().getTime();
+            return end - start;
+        };
+        let repeat = 10*1000*1000;
+        console.log(`${repeat} random closure`, time(repeat, ()=> Math.random()*50));
+        console.log(`${repeat} random function`, time(repeat, ()=> {return Math.random()*50;}));
+        console.log(`${repeat} random function`, time(repeat, function() {return Math.random()*50;}));
+        console.log(`${repeat} Min(Max)`, time(repeat, ()=> Math.min(20,Math.max(5,Math.random()*50))));
+        console.log(`${repeat} custom`, time(repeat, ()=> {
+            let number = Math.random();
+            return number > 20 ? 20 : number < 5 ? 5 : number;
+        }));
+        console.log(`${repeat} custom function`, time(repeat, function () {
+            let number = Math.random();
+            return number > 20 ? 20 : number < 5 ? 5 : number;
+        }));
+
+    })
 });
 JSON.stringify(_.keys(Memory.rooms).filter(k=>Memory.rooms[k].scouted && Memory.rooms[k].scouted.sourceCount === 2).reduce((total, k)=> {
     total[k] = {s: Memory.rooms[k].scouted.sourceCount, m: _.head(Memory.rooms[k].scouted.minerals)};

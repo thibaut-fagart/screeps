@@ -1,4 +1,5 @@
 var _ = require('lodash');
+var Cache = require('./util.cache');
 
 let activityHelper = {
     HIGH_MASK: 0x8000,
@@ -390,11 +391,23 @@ class Util {
         }
         // console.log('room name', (room?room.name:'null'));
 
-        let creeps = (room || predicate) ?
-            (predicate ?
-                room.find(FIND_MY_CREEPS).filter(predicate)
-                : room.find(FIND_MY_CREEPS)) : Game.creeps;
-        return _.countBy(creeps, (c) => c.memory.role);
+        let creeps = (room ? room.find(FIND_MY_CREEPS) : Game.creeps);
+        if (predicate) {
+            creeps = creeps.filter(predicate);
+        }
+        let countBy = _.countBy(creeps, (c) => c.memory.role);
+        if (room) {
+            room.find(FIND_MY_SPAWNS).forEach(spawn=> {
+                if (spawn.spawning) {
+                    let spawningRole = _.get(spawn.memory, ['build','memory', 'role'], false);
+                    if (spawningRole) {
+                        countBy[spawningRole] = (countBy[spawningRole] || 0) + 1
+                    }
+                }
+            });
+        }
+
+        return countBy;
     }
 
     /**
@@ -678,32 +691,25 @@ class Util {
         return result;
     }
 
-    cachedMatrix(creep, roomName) {
-        this.cache = this.cache || {};
-        this.cache[roomName] = this.cache[roomName] || {};
-        if (!this.cache[roomName].expires || this.cache[roomName].expires < Game.time || !this.cache[roomName].matrix) {
-            // creep.log('refreshing cachedMatrix');
-
-            let room = Game.rooms[roomName];
-            this.cache[roomName].matrix = {
-                expires: Game.time,
-                matrix: this.avoidCostMatrix(room, room.find(FIND_HOSTILE_CREEPS).filter(c=>c.hostile), 4)
-            };
-        } else {
-            // creep.log('returning cachedMatrix');
-
+    /**
+     *
+     * @param {Room} room
+     * @param {string} [type='static']
+     * @returns {*|PathFinder.CostMatrix}
+     */
+    copy(matrix) {
+        let ret = new PathFinder.CostMatrix();
+        for (let x = 0; x < 49; x++) {
+            for (let y = 0; x < 49; x++) {
+                ret.set(x, y, matrix.get(x, y));
+            }
         }
-        return this.cache[roomName].matrix;
-        /*
-         Memory.rooms[roomName] = Memory.rooms[roomName] || {};
-         Memory.rooms[roomName].cache = Memory.rooms[roomName].cache || {};
-         Memory.rooms[roomName].cache.hostileMatrix = Memory.rooms[roomName].cache.hostileMatrix;
-         */
+        return matrix;
     }
 
     avoidHostilesCostMatrix(creepOrRoom, options) {
         let room = creepOrRoom.room ? creepOrRoom.room : creepOrRoom;
-        return this.avoidCostMatrix(room, (options && options.ignoreHostiles) ? [] : room.find(FIND_HOSTILE_CREEPS).filter(c=>c.hostile).filter(c=>0 < c.getActiveBodyparts(RANGED_ATTACK) + c.getActiveBodyparts(ATTACK)), 3, options);
+        return this.avoidCostMatrix(room, 3, options);
     }
 
     debugCostMatrix(room, matrix) {
@@ -717,58 +723,64 @@ class Util {
         }
     }
 
-    avoidCostMatrix(creepOrRoom, hostiles, range, options) {
+    avoidCostMatrix(creepOrRoom, range, options) {
         range = range || 1;
         options = options || {};
         let room = creepOrRoom.room ? creepOrRoom.room : creepOrRoom;
+        let hostiles = (options && options.ignoreHostiles) ? [] : room.find(FIND_HOSTILE_CREEPS).filter(c=>c.hostile).filter(c=>0 < c.getActiveBodyparts(RANGED_ATTACK) + c.getActiveBodyparts(ATTACK));
         // creepOrRoom.log('avoidCostMatrix', room.name, JSON.stringify(options));
+        this.cache = this.cache || {};
         return (roomName) => {
             if (roomName == room.name) {
-                let matrix = new PathFinder.CostMatrix();
-                let structures = Game.rooms[roomName].find(FIND_STRUCTURES);
-                structures.forEach((s)=> {
-                    if (s.structureType === STRUCTURE_ROAD) {
-                        matrix.set(s.pos.x, s.pos.y, 1);
-                    } else if (s.structureType === STRUCTURE_CONTAINER || (s.structureType === STRUCTURE_RAMPART && s.my)) {
-                    } else if (s.structureType === STRUCTURE_PORTAL) {
-                        matrix.set(s.pos.x, s.pos.y, 0xff);
-                    } else {
-                        matrix.set(s.pos.x, s.pos.y, 0xff);
-                    }
-                });
-                let constructionSites = Game.rooms[roomName].find(FIND_CONSTRUCTION_SITES);
-                constructionSites.forEach((s)=> {
-                    if (s.structureType === STRUCTURE_ROAD) {
-                        matrix.set(s.pos.x, s.pos.y, 1);
-                    } else if (s.structureType === STRUCTURE_CONTAINER || (s.structureType === STRUCTURE_RAMPART && s.my)) {
+                return Cache.get(this.cache, 'avoid' + roomName + '_' + range + '_' + JSON.stringify(options), ()=> {
+                    let base = Cache.get(this.cache, 'base_' + roomName, ()=> {
+                        let matrix = new PathFinder.CostMatrix();
+                        let structures = Game.rooms[roomName].find(FIND_STRUCTURES);
+                        structures.forEach((s)=> {
+                            if (s.structureType === STRUCTURE_ROAD) {
+                                matrix.set(s.pos.x, s.pos.y, 1);
+                            } else if (s.structureType === STRUCTURE_CONTAINER || (s.structureType === STRUCTURE_RAMPART && s.my || s.isPublic)) {
+                            } else if (s.structureType === STRUCTURE_PORTAL) {
+                                matrix.set(s.pos.x, s.pos.y, 0xff);
+                            } else {
+                                matrix.set(s.pos.x, s.pos.y, 0xff);
+                            }
+                        });
+                        let constructionSites = Game.rooms[roomName].find(FIND_CONSTRUCTION_SITES);
+                        constructionSites.forEach((s)=> {
+                            if (s.structureType === STRUCTURE_ROAD) {
+                                matrix.set(s.pos.x, s.pos.y, 1);
+                            } else if (s.structureType === STRUCTURE_CONTAINER || (s.structureType === STRUCTURE_RAMPART && s.my)) {
 
-                    } else {
-                        matrix.set(s.pos.x, s.pos.y, 0xff);
-                    }
-                });
-                let room = Game.rooms[roomName];
-                let set = (x, y, cost)=> {
-                    if (!room.lookForAt(LOOK_TERRAIN, x, y).find((t)=>t === 'wall'))  matrix.set(x, y, cost);
-                };
-                hostiles.forEach((c)=> {
-                    let cost = (c.hits > 100) ? 255 : 60;
-                    let top = Math.max(0, c.pos.y - range);
-                    let left = Math.max(0, c.pos.x - range);
-                    let bottom = Math.min(49, c.pos.y + range);
-                    let right = Math.min(49, c.pos.x + range);
-                    for (let x = left; x <= right; x++) {
-                        for (let y = top; y <= bottom; y++) {
-                            matrix.set(x, y, cost);
+                            } else {
+                                matrix.set(s.pos.x, s.pos.y, 0xff);
+                            }
+                        });
+                        return matrix;
+                    }, 10).clone();
+                    let set = (x, y, cost)=> {
+                        if (!room.lookForAt(LOOK_TERRAIN, x, y).find((t)=>t === 'wall'))  base.set(x, y, cost);
+                    };
+                    hostiles.forEach((c)=> {
+                        let cost = (c.hits > 100) ? 255 : 60;
+                        let top = Math.max(0, c.pos.y - range);
+                        let left = Math.max(0, c.pos.x - range);
+                        let bottom = Math.min(49, c.pos.y + range);
+                        let right = Math.min(49, c.pos.x + range);
+                        for (let x = left; x <= right; x++) {
+                            for (let y = top; y <= bottom; y++) {
+                                base.set(x, y, cost);
+                            }
                         }
-                    }
-                });
-                if (options.avoidCreeps) {
-                    // creepOrRoom.log('avoidingCreeps');
-                    room.find(FIND_CREEPS).forEach((c)=> {
-                        set(c.pos.x, c.pos.y, 255);
                     });
-                }
-                return matrix;
+                    if (options.avoidCreeps) {
+                        // creepOrRoom.log('avoidingCreeps');
+                        room.find(FIND_CREEPS).forEach((c)=> {
+                            set(c.pos.x, c.pos.y, 255);
+                        });
+                    }
+                    return base;
+                }, 1);
             } else {
                 return false;
             }
@@ -931,7 +943,7 @@ class Util {
     /**
      *
      * @param  {string} pos
-     * @param [roomName]
+     * @param roomName
      * @returns {RoomPosition|{x,y}}
      */
     posFromString(pos, roomName) {
@@ -1010,6 +1022,7 @@ class Util {
      * @param {object} activity the memory slot object
      * @param {object} base current tick's activity, base's property keys are the possible actions, values are the number of actions taken that tick
      * @param {int} history number of tick to keep history
+     * @param [time]
      */
     recordActivity(activity, base, history, time) {
         // return activityHelper.oldRecordActivity(activity, base, history);

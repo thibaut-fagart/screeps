@@ -32,7 +32,7 @@ class RoleTowerDrainer {
         let remainingMove = creep.getActiveBodyparts(MOVE);
         let remainingTough = creep.getActiveBodyparts(TOUGH);
         let remainingHeal = creep.getActiveBodyparts(HEAL);
-        if (remainingMove+remainingTough < 2*remainingHeal) {
+        if (remainingMove+remainingTough < 2*remainingHeal && !(creep.hits ===creep.hitsMax)) {
             creep.log('retreating');
             creep.memory.action = 'heal';
         } else if (creep.memory.action == 'heal' && !creep.body.find((p)=>p.hits < 100)) {
@@ -66,7 +66,8 @@ class RoleTowerDrainer {
 
             if (towers.length == 0) {
                 // creep.log('job done !');
-                Memory.rooms[creep.memory.homeroom].dismantleRoom = [creep.memory.remoteRoom];
+                // TODO re enable
+                // Memory.rooms[creep.memory.homeroom].dismantleRoom = [creep.memory.remoteRoom];
                 // stay, in case energy is refilled
             } else {// wait untill all TOUGH is gone, then go back
                 // creep.log('healing');
@@ -148,6 +149,6 @@ class RoleTowerDrainer {
 }
 RoleTowerDrainer.WANTED_BOOSTS = {};
 RoleTowerDrainer.WANTED_BOOSTS[HEAL] = [RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE, RESOURCE_LEMERGIUM_ALKALIDE, RESOURCE_LEMERGIUM_OXIDE];
-RoleTowerDrainer.WANTED_BOOSTS[TOUGH] = [RESOURCE_GHODIUM_OXIDE];
+RoleTowerDrainer.WANTED_BOOSTS[TOUGH] = [RESOURCE_GHODIUM_OXIDE,'GHO2','XGHO2'];
 
 require('./profiler').registerClass(RoleTowerDrainer, 'RoleTowerDrainer'); module.exports = RoleTowerDrainer;

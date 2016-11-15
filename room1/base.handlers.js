@@ -51,6 +51,7 @@ let handlers = {
     'labOperator': new Handler('labOperator', './role.lab_operator'),
     'towerDrainer': new Handler('towerDrainer', './role.soldier.towerdrainer'),
     'archer': new Handler('archer', './role.soldier.archer'),
+    'smallArcher': new Handler('smallArcher', './role.soldier.archer'),
     'recycle': new Handler('recycle', './role.recycle'),
     'remotePortalCarry': new Handler('remotePortalCarry', './role.remote_portalcarry'),
     'builder': new Handler('builder', './role.builder'),

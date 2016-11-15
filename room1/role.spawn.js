@@ -2,7 +2,20 @@ var _ = require('lodash');
 var util = require('./util');
 var patterns = require('./base.creep.patterns');
 var CreepShaper = require('./base.creep.shaper');
+let Cache = require('./util.cache');
 
+function hash(value) {
+    'use strict';
+    if (typeof value === 'object' && !_.isArray(value)) {
+        return _.keys(value).reduce((total, key)=>total+util.hash(key)+hash(value[key]),0);
+    } else {
+        return util.hash(value.toString());
+    }
+}
+Memory.cache = Memory.cache || {};
+// needs to be checked on per room basis
+// var patternsChanged = Memory.cache.patternsHash === currentHash;
+Memory.cache.patternsHash = hash(patterns);
 //  Game.spawns.Spawn1.createCreep([WORK, MOVE, WORK, WORK, WORK, WORK, ], undefined, {role:'harvester'})
 class RoleSpawn {
     constructor() {
@@ -68,7 +81,6 @@ class RoleSpawn {
 
         // let repairNeeded = room.find(FIND_STRUCTURES).reduce((acc, s)=>acc + (s.hits ? s.hitsMax - s.hits : 0), 0);
         // roomPatterns.repair2.count = (repairNeeded > 0) ? 1 : 0;
-        roomPatterns['harvester'].count = room.find(FIND_SOURCES_ACTIVE).length;
         if (room.storage && (!room.storage.store || !room.storage.store.energy || room.storage.store.energy < 10000)) {
             roomPatterns['builder'].count = 0;
         }
@@ -106,8 +118,9 @@ class RoleSpawn {
         _.merge(__new.memory, memory);
         let currentCount = 0 + (currentSplit[role] || 0);
         let remoteCount = (remoteRoster ? (remoteRoster[role] || 0) : 0);
-        let queuedCount = (queue.find((spec)=> JSON.stringify(spec.memory) === JSON.stringify(__new.memory)) || 0);
-        let totalCount = currentCount + remoteCount + queuedCount;
+        let queuedCount = queue.filter((spec)=> _.isEqual(spec.memory, __new.memory)).length;
+        let spawning = room.find(FIND_MY_SPAWNS).filter(s=>s.spawning && _.isEqual(s.memory.build.memory, __new.memory)).length;
+        let totalCount = currentCount + remoteCount + queuedCount + spawning;
         // room.log('queueing ',role, totalCount, 'to', upTo, currentCount, remoteCount, queuedCount);
         for (let i = totalCount; i < upTo; i++) {
             // room.log('queued 1');
@@ -281,19 +294,19 @@ class RoleSpawn {
             var requiredCarry = function (safeSourcesAndMinerals, harvestRate) {
                 if (!tripTimeToSources) return 1;
                 let speed = {road: 2, plain: 3, swamp: 11};
-                let carryTransportTime = 0;
+                let roundTripTicks = 0;
                 for (let i in tripTimeToSources) {
-                    carryTransportTime += speed[i] * tripTimeToSources[i];
+                    roundTripTicks += speed[i] * tripTimeToSources[i];
                 }
-                // room.log(`transportTime for ${remoteRoomName} ${carryTransportTime}`);
-                let carryCapacityPerLifeWithTransport = this.carryCapacity(room, patterns['remoteCarry']) * CREEP_LIFE_TIME / carryTransportTime;
+                room.log(`transportTime for ${remoteRoomName} ${roundTripTicks}`);
+                let carryCapacityPerLifeWithTransport = this.carryCapacity(room, patterns['remoteCarry']) * Math.floor(CREEP_LIFE_TIME / roundTripTicks);
                 let requiredCarryCapacity = Math.ceil(_.sum(safeSourcesAndMinerals,
                     (s)=>(
                         (s.energyCapacity && s.energyCapacity * (CREEP_LIFE_TIME / ENERGY_REGEN_TIME)) // each source regens 5 times per life
                         || (s.mineralAmount && harvestRate * CREEP_LIFE_TIME) //minerals ... todo should try to harvest faster, to take advantage of regen
                     )));
-                // room.log('required carryCapacity for', remoteRoomName, requiredCarryCapacity, requiredCarryCapacity / carryCapacityPerLifeWithTransport);
-                return requiredCarryCapacity / carryCapacityPerLifeWithTransport;
+                room.log('required carryCapacity for', remoteRoomName, requiredCarryCapacity, requiredCarryCapacity / carryCapacityPerLifeWithTransport);
+                return Math.ceil(requiredCarryCapacity / carryCapacityPerLifeWithTransport);
             };
             if (remoteRoom) {
                 room.log('queueing for remoteMining', remoteRoom.name);
@@ -315,6 +328,14 @@ class RoleSpawn {
                  }
                  */
                 /*remoteRoom.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_KEEPER_LAIR}});*/
+
+                let threat = _.get(remoteRoom.memory, ['threatAssessment', 'harvested'], 0);
+                if (threat > 70000 && threat < 130000) {
+                    if (!remoteRoom.find(FIND_HOSTILE_CREEPS, {filter: c=>c.hostile}).length) {
+                        this.queueCustomGuard(room, queue, [], patterns, remoteRoster, remoteRoomName);
+                    }
+                }
+
                 let safeSourcesAndMinerals = util.findSafeSources(remoteRoom, hasKeeperLairs || remoteRoom.isCenterRoom());
                 let roomDistance = util.roomDistance(room.name, remoteRoomName);
                 let harvesterHasAttack = patterns['keeperHarvester'].body(room).find(p=>p == ATTACK);
@@ -400,7 +421,7 @@ class RoleSpawn {
                             });
                         // room.log('remoteMining', remoteRoomName, 'energyReady', energyReady);
                         var requiredCarryCount = requiredCarry.call(this, safeSourcesAndMinerals);
-                        // room.log(`remoteMiningCarryNeeed ${remoteRoomName}, required ${requiredCarryCount} ,current ${remoteRoster['remoteCarry']}`);
+                        room.log(`remoteMiningCarryNeeed ${remoteRoomName}, required ${requiredCarryCount} ,current ${remoteRoster['remoteCarry']}`);
                         // if (energyReady > 1000) {
                         this.queue(room, queue, 'remoteCarry', patterns, {}, remoteRoster, requiredCarryCount, {
                             remoteRoom: remoteRoomName, homeroom: room.name,
@@ -488,21 +509,9 @@ class RoleSpawn {
     }
 
     queueCustomGuard(room, queue, hostiles, patterns, remoteRoster, remoteRoomName) {
-        return this.queue(room, queue, 'archer', patterns, {}, remoteRoster, 1, {remoteRoom: remoteRoomName});
+        let remoteRoom = Game.rooms[remoteRoomName];
+        return this.queue(room, queue, remoteRoom.hasKeeperLairs() || remoteRoom.isCenterRoom() ? 'archer' : 'smallArcher', patterns, {}, remoteRoster, 1, {remoteRoom: remoteRoomName});
 
-        let hostilePartsList = hostiles.map(c=>c.body.map(p=>p.type)).reduce((total, current)=>total.concat(current), []);
-        // if (hostilePartsList < 25) {
-        // TODO FIX THIS !!!
-        room.log('hostileParts ', JSON.stringify(hostilePartsList));
-        let soldierParts = hostilePartsList.concat(hostilePartsList);
-        room.log('soldierParts ', JSON.stringify(soldierParts));
-        let customPatterns = {'roleSoldier': _.cloneDeep(patterns['roleSoldier'])};
-        // customPatterns.roleSoldier.body = soldierParts;
-        customPatterns.roleSoldier.body = customPatterns.roleSoldier.body.concat(customPatterns.roleSoldier.body);
-        room.log(`queueing custom guard ${JSON.stringify(_.countBy(customPatterns.roleSoldier.body))}`);
-        Game.notify(`${room} queueing custom guard ${JSON.stringify(_.countBy(customPatterns.roleSoldier.body))}`);
-        this.queue(room, queue, 'roleSoldier', customPatterns, {}, remoteRoster, 1, {remoteRoom: remoteRoomName});
-        // }
     }
 
     whatToBuild(patterns, room) {
@@ -533,23 +542,24 @@ class RoleSpawn {
                 }
             });
         }
-        if (!room.memory.underattack && room.memory.loot && _.get(room, ['storage', 'store', 'energy'], 0) + _.get(room, ['terminal', 'store', 'energy'], 0) > 8000) {
+        if (!room.memory.underattack && room.memory.loot && (room.currentLedger[RESOURCE_ENERGY] || 0) > 8000) {
             let roomNames = _.isString(room.memory.loot) ? [room.memory.loot] : room.memory.loot;
             room.memory.loot = roomNames;
             roomNames.forEach(remoteRoomName => {
+                room.log('queueing looters for ', remoteRoomName);
                 room.log('queueing looters for ', remoteRoomName);
                 let remoteRoster = this.remoteRoster(remoteRoomName);
                 // this.queue(room, queue, 'archer', patterns, currentSplit, remoteRoster, 1, {remoteRoom: remoteRoomName});
                 if (Game.rooms[remoteRoomName]) {
                     let max = Game.rooms[remoteRoomName].find(FIND_STRUCTURES).reduce((total, s)=> {
-                        total = total + (s.energy || (s.store && _.sum(s.store)) || 0);
+                        total = total + (s.energy || (s.store && _.sum(s.store)) || 0) + (s.mineralAmount || 0);
                         return total;
                     }, 0);
                     max = Game.rooms[remoteRoomName].find(FIND_DROPPED_RESOURCES).reduce((total, s)=> (total + s.amount), max);
                     if (max === 0) {
                         _.pull(room.memory.loot, remoteRoomName);
                     } else {
-                        this.queue(room, queue, 'looter', patterns, currentSplit, remoteRoster, Math.floor(max / 15000), {remoteRoom: remoteRoomName});
+                        this.queue(room, queue, 'looter', patterns, currentSplit, remoteRoster, Math.ceil(max / 15000), {remoteRoom: remoteRoomName});
                     }
                 } else {
                     this.queue(room, queue, 'scout', patterns, currentSplit, remoteRoster, 1, {remoteRoom: remoteRoomName});
@@ -603,11 +613,14 @@ class RoleSpawn {
         if (!room.memory.underattack && room.memory.siege) {
             let siege = _.isString(room.memory.siege) ? [room.memory.siege] : room.memory.siege;
             siege.forEach(remoteRoomName=> {
+                let required = _.get(Memory, ['siege', remoteRoomName, 'squad'], {towerDrainer: 1, towerAttacker: 1});
+                let memory = _.get(Memory, ['siege', remoteRoomName, 'memory'], {remoteRoom: remoteRoomName});
                 let remoteRoster = this.remoteRoster(remoteRoomName, c=>c.spawning || c.ticksToLive > 250);
-                this.queue(room, queue, 'towerDrainer', patterns, currentSplit, remoteRoster, 2, {remoteRoom: remoteRoomName});
+                _.keys(required).forEach(role=>this.queue(room, queue, role, patterns, currentSplit, remoteRoster, required[role], memory));
+                // this.queue(room, queue, 'towerDrainer', patterns, currentSplit, remoteRoster, 1, {remoteRoom: remoteRoomName});
                 // if (Game.rooms[remoteRoomName]) {
                 // this.queue(room, queue, 'towerAttacker', patterns, currentSplit, remoteRoster, 2, {remoteRoom: remoteRoomName});
-                this.queue(room, queue, 'scout', patterns, currentSplit, remoteRoster, 1, {remoteRoom: remoteRoomName});
+                // this.queue(room, queue, 'scout', patterns, currentSplit, remoteRoster, 1, {remoteRoom: remoteRoomName});
                 // this.queue(room, queue, 'scout2', patterns, currentSplit, remoteRoster, 1, {remoteRoom: remoteRoomName});
                 // }
             });
@@ -618,6 +631,28 @@ class RoleSpawn {
             if (!Game.rooms[remoteRoomName] || remoteRoster['attacker'] || 0 < 1) {
                 this.queue(room, queue, 'attacker', patterns, currentSplit, remoteRoster, 1, {remoteRoom: remoteRoomName});
             }
+        }
+        if (!room.memory.underattack && (room.controller.level > 4 && room.memory.reserve)) {
+            let rooms = _.isString(room.memory.reserve) ? [room.memory.reserve] : room.memory.reserve;
+            rooms.forEach((remoteRoomName)=> {
+                let remoteRoster = this.remoteRoster(remoteRoomName, (c)=> (!c.ticksToLive) || c.ticksToLive > c.body.length * 3 + 50);
+
+                let remoteRoom = Game.rooms[remoteRoomName];
+                if (!remoteRoom) {
+                    this.queue(room, queue, 'scout', patterns, currentSplit, remoteRoster, 1, {
+                        remoteRoom: remoteRoomName,
+                        action: 'go_remote_room'
+                    });
+
+                } else if (remoteRoom.controller && !remoteRoom.controller.owner
+                    && _.get(remoteRoom.controller, ['reservation', 'username'], room.controller.owner.username) === room.controller.owner.username
+                    && _.get(remoteRoom.controller, ['reservation', 'ticksToEnd'], 0) < 1000) {
+                    this.queue(room, queue, 'reserver', patterns, currentSplit, remoteRoster, 1, {
+                        remoteRoom: remoteRoomName,
+                        action: 'go_remote_room'
+                    });
+                }
+            });
         }
         if (!room.memory.underattack && (room.controller.level > 4 && room.memory.claim)) {
             let rooms = _.isString(room.memory.claim) ? [room.memory.claim] : room.memory.claim;
@@ -721,7 +756,7 @@ class RoleSpawn {
             this.queue(room, queue, 'scout', patterns, {}, this.remoteRoster(room.memory.scout), 1, {});
         }
         if (room.controller.level >= 4 && room.storage) {
-            if (_.get(room.storage, ['store', 'energy'], 0) + _.get(room.terminal, ['store', 'energy'], 0) > 2000) {
+            if ((room.currentLedger[RESOURCE_ENERGY] || 0) > 2000) {
                 if (room.storage.store.energy < 10000) {
                     patterns['upgrader'].count = 0;
                 } else if (room.controller.level < 7) {
@@ -732,18 +767,19 @@ class RoleSpawn {
                 room.memory.cache.neededGatherers = room.memory.cache.neededGatherers || {date: 0};
                 let neededGatherers = room.memory.cache.neededGatherers;
                 if (neededGatherers.date + 1500 < Game.time) {
-                    let totalDistance = room.find(FIND_SOURCES).reduce((d, s)=>d + room.storage.pos.findPathTo(s).length, 0);
+                    // introduce links near sources
+                    let sourceWithoutLinks = room.find(FIND_SOURCES).filter(source =>!source.link());
+                    let totalDistance = sourceWithoutLinks.reduce((d, s)=>d + room.storage.pos.findPathTo(s).length, 0);
                     let carryNeeded = 3000 * (2 * totalDistance) / 300; // 3K energy per source every 300 ticks, round trip distance
-                    neededGatherers.date = Game.time;
                     let sampleGatherer = room.find(FIND_MY_CREEPS).find(c=>c.memory.role === 'energyGatherer');
-                    neededGatherers.value = Math.ceil(carryNeeded / (sampleGatherer ? sampleGatherer.carryCapacity : 800));
+                    neededGatherers.value = carryNeeded ? Math.ceil(carryNeeded / (sampleGatherer ? sampleGatherer.carryCapacity : 800)) : 0;
                 }
                 patterns['carry'].count = 0;
                 patterns['energyFiller'].count =
                     (room.controller.level === 8 && room.spawnWait > 500) // too many exensions to fill
                         ? 2 : 1;
                 if (room.controller.level >= 4 && currentSplit['upgrader'] > 0) {
-                    let linksDeliverySpeed = require('./util.cache').get(room.memory.cache, 'upgraderLinkSpeed', () => {
+                    let linksDeliverySpeed = Cache.get(room.memory.cache, 'upgraderLinkSpeed', () => {
                         // upgrade container can be filled by links AND upgradeFillers
                         let linksDeliverySpeed = 0;
                         let links = room.structures[STRUCTURE_LINK];
@@ -752,15 +788,17 @@ class RoleSpawn {
                             l.room.glanceForAround(LOOK_STRUCTURES, l.pos, 2, true).map(s=>s.structure)
                                 .filter(s=> s.structureType === STRUCTURE_CONTAINER || s === room.storage).length > 0);
                             // room.log('linksWithContainers', linksWithContainers.length);
-                            let controllerLink = linksWithContainers.find(l=>l.pos.getRangeTo(room.controller) < 5);
-                            if (controllerLink) {
-                                _.pull(linksWithContainers, controllerLink);
-                                linksDeliverySpeed = linksWithContainers.reduce((lSpeed, link)=>(lSpeed + 800 / (link.pos.getRangeTo(controllerLink))), 0);
+                            let controllerLink = linksWithContainers.find(l=>l.type().indexOf('controller') >= 0);
+                            let storageLink = linksWithContainers.find(l=>l.type().indexOf('storage') >= 0);
+                            if (controllerLink && storageLink) {
+                                linksDeliverySpeed = 800 / (storageLink.pos.getRangeTo(controllerLink));
+                            } else {
+                                linksDeliverySpeed = 0;
                             }
                         }
                         return linksDeliverySpeed;
                     }, 1500);
-                    let upgradeFillerSpeed = require('./util.cache').get(room.memory.cache, 'upgraderFillerSpeed', () => {
+                    let upgradeFillerSpeed = Cache.get(room.memory.cache, 'upgraderFillerSpeed', () => {
                         let path = util.safeMoveTo2({
                             pos: room.controller.pos,
                             room: room,
@@ -771,14 +809,13 @@ class RoleSpawn {
                         let capacity = this.carryCapacity(room, patterns['upgradeFiller']);
                         return capacity / (2 * pathLength);
                     }, 1500);
-                    let upgraderSpeed = require('./util.cache').get(room.memory.cache, 'upgraderSpeed', () => {
+                    let upgraderSpeed = Cache.get(room.memory.cache, 'upgraderSpeed', () => {
                         let upgraderBody = this.shapeBody(room, patterns['upgrader'].body).body;
                         return _.countBy(upgraderBody)[WORK];
                     }, 1500);
-                    // room.log(`upgradeSpeed ${upgraderSpeed}, linksDeliverySpeed ${linksDeliverySpeed}, upgradeFillerSpeed ${upgradeFillerSpeed}`);
-
-                    
-                    let neededFillers = Math.ceil(((currentSplit['upgrader']||0) * upgraderSpeed-linksDeliverySpeed)/upgradeFillerSpeed);
+                    // room.log(`upgraders ${currentSplit['upgrader']} upgradeSpeed ${upgraderSpeed}, linksDeliverySpeed ${linksDeliverySpeed}, upgradeFillerSpeed ${upgradeFillerSpeed}`);
+                    let neededFillers = Math.ceil(((currentSplit['upgrader'] || 0) * upgraderSpeed - linksDeliverySpeed) / upgradeFillerSpeed);
+                    // room.log(`neededFillers ${1.2 * ((currentSplit['upgrader'] || 0) * upgraderSpeed - linksDeliverySpeed) / upgradeFillerSpeed}`);
                     patterns['upgradeFiller'].count = neededFillers;
                 }
                 if (currentSplit['carry'] > 0) {
@@ -814,25 +851,25 @@ class RoleSpawn {
         } else {
             patterns['carry'].count = 2; // at least 2 carry to not be stuck with 0 then the 1 dies
         }
-        if (room.controller.level >= 5 && currentSplit['upgrader'] > 0) {
-            // todo find a way to avoid double linkOperators ...
-            if (!room.find(FIND_MY_SPAWNS).find(c=>c.memory.build && c.memory.build.memory.role === 'linkOperator')) {
-                let links = room.structures[STRUCTURE_LINK];
-                if (links.length) {
-                    let linksWithContainers = links.filter(l=>
-                    l.room.glanceForAround(LOOK_STRUCTURES, l.pos, 2, true).map(s=>s.structure)
-                        .filter(s=> s.structureType === STRUCTURE_CONTAINER || s === room.storage).length > 0);
-                    // room.log('linksWithContainers', linksWithContainers.length);
-                    let currentOperators = room.find(FIND_MY_CREEPS).filter(c=>c.memory.role === 'linkOperator');
-                    linksWithContainers.filter(l=>!l.operator).forEach(l=> {
-                        // room.log('link with no operator', l.id, l.pos);
-                        if (!queue.find(spec=>spec.memory.role === 'linkOperator') && !currentOperators.find(c=>c.memory.link === l.id)) {
-                            this.queue(room, queue, 'linkOperator', patterns, {}, {}, 1, {link: l.id});
-                        }
-                    });
+        if (room.controller.level >= 5) {
+            // room.log('checking linkOperators');
+            let links = room.structures[STRUCTURE_LINK];
+            if (links.length) {
+                let linksWithContainers = links.filter(l=> !l.source() && l.container);
+                let currentOperators = room.find(FIND_MY_CREEPS).filter(c=>c.memory.role === 'linkOperator');
+                // room.log('linksWithContainers', linksWithContainers.length);
 
-                }
+                let linksMissingOperators = linksWithContainers.filter(l=>!(currentOperators.find(c=>c.memory.link === l.id))
+                    && (l.pos.getRangeTo(l.room.controller) > 5 || currentSplit['upgrader'])// controller link only needs operators if upgraders
+                );
+                linksMissingOperators.forEach(l=> {
+                    // room.log('link with no operator', l.id, l.pos);
+                    this.queue(room, queue, 'linkOperator', patterns, {}, {}, 1, {link: l.id});
+                });
+
             }
+        } else {
+            // room.log('no need for linkOperators');
         }
 
         if (room.controller.level >= 6) {
@@ -845,6 +882,7 @@ class RoleSpawn {
                         // room.log('mineral', m.mineralType, storedMinerals[m.mineralType], storedMinerals[m.mineralType] < 100000, m.mineralAmount);
                         if (!(storedMinerals[m.mineralType]) || storedMinerals[m.mineralType] < 300000 && m.mineralAmount) {
                             patterns['mineralHarvester'].count = m.accessTiles;
+                            patterns['labOperator'].count = 1;
                         }
                     });
                 }
@@ -852,17 +890,16 @@ class RoleSpawn {
 
             }
             let labs = room.structures[STRUCTURE_LAB];
-            if (labs.length
-            /*labs.find(lab=>lab.requiresEmptying() || lab.requiresRefill())
-             || (room.memory.exports && room.storage && room.terminal && room.memory.exports.find(min => (!room.terminal.store[min] || room.terminal.store[min] < 10000) && room.storage.store[min] > 5000))*/) {
+            if (labs.length && (labs.length > 1 || _.head(labs).mineralAmount < 1000 && room.currentLedger['XGHO2'] > 1000)) {
                 patterns['labOperator'].count = 1;
             }
             // this.handleMineralImport(room, queue, patterns);
         }
         let constructionSites = room.find(FIND_CONSTRUCTION_SITES);
         if (constructionSites.length) {
-            patterns['builder'].count = (room.storage ? _.get(room.storage, ['store', 'energy'], 0) + _.get(room.terminal, ['store', 'energy'], 0) > 2000 : true) ? 1 : 0;
+            patterns['builder'].count = (room.storage ? (room.currentLedger['energy'] || 0) > 5000 : true) ? 1 : 0;
             patterns['upgrader'].count = 0;
+            patterns['repair2'].count = 0;
             /*
              if (constructionSites.find((c)=> STRUCTURE_EXTENSION === c.structureType)) {
              patterns['builder'].count =patterns['upgrader'].count;
@@ -883,7 +920,19 @@ class RoleSpawn {
          })).filter((e)=>e.count)));
          */
         let sources = room.find(FIND_SOURCES);
-        patterns['harvester'].count = sources.length;
+        let sourceAndLinks = sources.map(s=>[s, s.link()]);
+        if (sourceAndLinks.find(pair=>!pair[1])) {
+            patterns['harvester'].count = sources.length;
+        } else {
+            patterns['harvester'].count = 0;
+            let harvesters = room.find(FIND_MY_CREEPS).filter(c=>c.memory.role === 'harvester').concat(queue.filter(spec=>spec.memory.role === 'harvester'));
+            sourceAndLinks.forEach(pair=> {
+                this.queue(room, queue, 'harvester', patterns, {harvester: harvesters.filter(c=>c.memory.link === pair[1].id).length}, {}, 1, {
+                    source: pair[0].id,
+                    link: pair[1].id
+                });
+            });
+        }
         // room.log('carry:',patterns['carry'].count);
         // patterns['upgrader'].count = Math.ceil(patterns['upgrader'].count * sources.length / 2);
         this.updateNeeds(room, patterns);
@@ -896,13 +945,13 @@ class RoleSpawn {
                     this.queue(room, queue, role, patterns, currentSplit, {}, patterns[role].count, {});
                 }
             });
-        if (queue.length == 0 && room.controller.level < 7 && room.energyAvailable === room.energyCapacityAvailable && room.findContainers()
+        if (queue.length == 0 && room.controller.level <= 7 && room.energyAvailable === room.energyCapacityAvailable && room.findContainers()
                 .filter((s)=>
                     (s.energyCapacity && s.energy !== s.energyCapacity )
                     || (s.storeCapacity && s.storeCapacity !== _.sum(s.store))
                 ).length === 0) {
             room.log('overflowing, building upgrader');
-            this.queue(room, queue, 'upgrader', patterns, currentSplit, {}, 4, {});
+            this.queue(room, queue, 'upgrader', patterns, currentSplit, {}, currentSplit['upgrader'] + 1, {});
         }
 
         // currentSplit = _.mapValues(currentSplit, (v)=>{return v/creepCount;});
@@ -997,10 +1046,13 @@ class RoleSpawn {
 
     run(room) {
         'use strict';
+        if (!room.controller || !room.controller.my || !room.controller.level) {
+            return;
+        }
         this.reassignCreeps(room);
         let localRoster = util.roster(room);
 
-        let spawns = room.find(FIND_MY_SPAWNS, {
+        let nonSpawningSpawns = room.find(FIND_MY_SPAWNS, {
             filter: (spawn)=> {
                 if (spawn.spawning) {
                     this.updateCounters(spawn, {spawning: 1});
@@ -1016,7 +1068,7 @@ class RoleSpawn {
             }
         });
 
-        if (spawns.length === 0 || room.memory.assisted) {
+        if (nonSpawningSpawns.length === 0 || room.memory.assisted) {
             // creep.log('spawning');
             return;
         }
@@ -1060,42 +1112,52 @@ class RoleSpawn {
         }
         queue = memoryQueue.queue;
         // if all full
-        if (room.controller.level >= 2 && room.controller.level < 7 && queue.length === 0 && room.energyAvailable === room.energyCapacityAvailable) {
-            if ((room.storage && _.get(room.storage, ['store', 'energy'], 0) + _.get(room.terminal, ['store', 'energy'], 0) > 5000 * ((localRoster['upgrader'] || 0) + (localRoster['builder'] || 0) + (localRoster['repair2'] || 0) ))
+        if (room.controller.level >= 2 && room.controller.level < 8 && queue.length === 0 && room.energyAvailable === room.energyCapacityAvailable) {
+            // approximation of energy consumed per tick
+            let factors = {
+                upgrader: 6 * room.controller.level,
+                repair2: 2 * room.controller.level,
+                builder: 8 * room.controller.level
+            };
+            let baseline = _.keys(localRoster).reduce((sum, role)=>sum + (factors[role] || 0) * (localRoster[role] || 0), 0);
+            if ((room.storage && (room.currentLedger['energy'] || 0) > room.controller.level * 10000 + 1500 * baseline )
                 // all container full or almost
                 || !room.findContainers().find((s)=> !s.room.isHarvestContainer(s) && (s.storeCapacity && _.sum(s.store) < 0.9 * s.storeCapacity) || (s.energyCapacity && s.energy < 0.9 * s.energyCapacity))) {
-                let spec = roomPatterns[(room.find(FIND_CONSTRUCTION_SITES).length === 0) ? 'upgrader' : 'builder'];
-                let maxEnergyConsumed = room.find(FIND_MY_CREEPS)
-                    .reduce((acc, c)=> {
-                        let myEnergy = 0;
-                        switch (c.memory.role) {
-                            case 'builder':
-                            case 'remoteBuilder':
-                                myEnergy = 5 * c.getActiveBodyparts(WORK);
-                                break;
-                            case 'upgrader':
-                            case 'remoteUpgrader':
-                                myEnergy = c.getActiveBodyparts(WORK);
-                                break;
-                            case 'repair2':
-                                myEnergy = c.getActiveBodyparts(WORK);
-                                break;
-                            default:
-                                ;
-                        }
-                        return acc + myEnergy;
-                    }, 0);
-                let allRooms = [room.name].concat(_.isString(room.memory.remoteMining) ? [room.memory.remoteMining] : room.memory.remoteMining || []);
-                // room.log(`all mining rooms ${allRooms}`);
-                let energyIncome = allRooms
-                        .reduce((acc, roomName)=> {
-                            let room = Game.rooms[roomName];
-                            if (!room) return acc;
-                            return room.find(FIND_SOURCES).reduce((acc, s)=>s.energyCapacity + acc, acc);
-                        }, 0) / ENERGY_REGEN_TIME;
-                room.log(`overflowing income ${energyIncome}, usage ${maxEnergyConsumed * 0.5}`);
-                // assume work 50% time, should be conservative
-                if (maxEnergyConsumed * 0.5 < energyIncome) {
+                let spec = roomPatterns[(room.find(FIND_CONSTRUCTION_SITES).length === 0 && room.controller.level < 8) ? 'upgrader' : 'builder'];
+                /*
+                 let maxEnergyConsumed = room.find(FIND_MY_CREEPS)
+                 .reduce((acc, c)=> {
+                 let myEnergy = 0;
+                 switch (c.memory.role) {
+                 case 'builder':
+                 case 'remoteBuilder':
+                 myEnergy = 5 * c.getActiveBodyparts(WORK);
+                 break;
+                 case 'upgrader':
+                 case 'remoteUpgrader':
+                 myEnergy = c.getActiveBodyparts(WORK);
+                 break;
+                 case 'repair2':
+                 myEnergy = c.getActiveBodyparts(WORK);
+                 break;
+                 default:
+                 ;
+                 }
+                 return acc + myEnergy;
+                 }, 0);
+                 let allRooms = [room.name].concat(_.isString(room.memory.remoteMining) ? [room.memory.remoteMining] : room.memory.remoteMining || []);
+                 // room.log(`all mining rooms ${allRooms}`);
+                 let energyIncome = allRooms
+                 .reduce((acc, roomName)=> {
+                 let room = Game.rooms[roomName];
+                 if (!room) return acc;
+                 return room.find(FIND_SOURCES).reduce((acc, s)=>s.energyCapacity + acc, acc);
+                 }, 0) / ENERGY_REGEN_TIME;
+                 room.log(`overflowing income ${energyIncome}, usage ${maxEnergyConsumed * 0.5}`);
+                 let wantMore = maxEnergyConsumed < energyIncome;
+                 */
+                let wantMore = true;
+                if (wantMore) {
                     let shaped = this.shapeBody(room, spec.body);
                     spec.body = shaped.body;
                     spec.cost = shaped.cost;
@@ -1117,11 +1179,11 @@ class RoleSpawn {
         // if (keeperCount) room.log('queued keeperGuards ', keeperCount);
         // room.log(`queued ${queue.length}`, queue.length ? JSON.stringify(queue[0]) : 'none');
         if (queue.length === 0) {
-            let idleTicks = _.sum(spawns, s=>(s.memory.spawns || {}).idle);
+            let idleTicks = _.sum(nonSpawningSpawns, s=>(s.memory.spawns || {}).idle);
 
             // room.log(`empty room, looking for steal opportunities, idling ${idleTicks}`);
             try {
-                if (idleTicks > 100 * spawns.length) {
+                if (idleTicks > 100 * nonSpawningSpawns.length) {
 // find room to help
                     let remoteSpawns = _.values(Game.spawns).filter(s=>s.room.name !== room.name);
                     if (remoteSpawns.length) {
@@ -1142,9 +1204,40 @@ class RoleSpawn {
         if (queue.length === 0) {
             // scout the area
         }
-        let needHarvester = (localRoster['harvester'] || 0) < 1;
-        let needCarry = ((localRoster['carry'] || 0) + (localRoster['energyFiller'] || 0) < 1);
-        spawns.forEach(
+        let currentlySpawning = (role, memory)=> {
+            let allSpawns = room.find(FIND_MY_SPAWNS);
+            return !!allSpawns.find(s=>s.spawning && _.get(s.memory, ['build', 'memory', 'role']) === role && _.isEqual(memory, _.get(s.memory, ['build', 'memory'])));
+        };
+        let needHarvester = localRoster['harvester'] == 0/*
+         && !currentlySpawning('harvester')*/;
+        let needCarry = ((localRoster['carry'] || 0) + (localRoster['energyFiller'] || 0) == 0);
+        // && !currentlySpawning('energyFiller')
+        // && !currentlySpawning('carry');
+
+        if (room.storage) {
+            let storageLink = room.structures[STRUCTURE_LINK].find(l=>l.pos.getRangeTo(room.storage) <= 2);
+            if (storageLink && !storageLink.operator
+                && !currentlySpawning('linkOperator', {role: 'linkOperator', link: storageLink.id})/*
+             && !(queue.find(s=>s.memory.role === 'linkOperator' && s.memory.link === storageLink.id))*/
+            ) {
+                let queued = queue.find(s=>s.memory.role === 'linkOperator' && s.memory.link === storageLink.id);
+                if (queued) {
+                    Game.notify(`${room.name} prioritizing storage link operator`);
+                    queued.priority = 3.5;
+                    queue = _.sortBy(queue, (elem)=> elem.priority);
+                } else {
+                    Game.notify(`${room.name} emergency storage link operator`);
+                    let buildSpec = _.cloneDeep(patterns['linkOperator']);
+                    buildSpec.memory.emergency = true;
+                    buildSpec.memory.link = storageLink.id;
+                    let shapeBody2 = this.shapeBody(room, buildSpec.body, room.energyAvailable);
+                    buildSpec.body = shapeBody2.body;
+                    buildSpec.cost = shapeBody2.cost;
+                    queue.unshift(buildSpec);
+                }
+            }
+        }
+        nonSpawningSpawns.forEach(
             (spawn) => {
                 let buildSpec;
                 let waitFull = false, immediate = true;
@@ -1154,6 +1247,7 @@ class RoleSpawn {
                         buildSpec = _.cloneDeep(patterns['carry']);
                         buildSpec.memory.emergency = true;
                         buildSpec.body = this.shapeBody(room, buildSpec.body, room.energyAvailable).body;
+                        needCarry = false;
                         room.log('immediate carry(pickup)', JSON.stringify(buildSpec));
                     }
                 } else if (!room.memory.emergency && needHarvester) {
@@ -1162,14 +1256,17 @@ class RoleSpawn {
                         buildSpec = _.cloneDeep(patterns['harvester']);
                         buildSpec.memory.emergency = true;
                         buildSpec.body = this.shapeBody(room, buildSpec.body, room.energyAvailable).body;
+                        needHarvester = false;
+                        Game.notify(`${room.name} emergency harvester`);
                         room.log('immediate harvester', JSON.stringify(buildSpec));
                     }
                 } else if (!room.memory.emergency && needCarry) {
                     if (room.energyAvailable >= 100) {
                         queue = [];
-                        buildSpec = _.cloneDeep(patterns['carry']);
+                        buildSpec = _.cloneDeep(patterns[_.get(room, ['storage', 'store', 'energy'], 0) > 2000 ? 'energyFiller' : 'carry']);
                         buildSpec.memory.emergency = true;
                         buildSpec.body = this.shapeBody(room, buildSpec.body, room.energyAvailable).body;
+                        needCarry = false;
                         room.log('immediate carry', JSON.stringify(buildSpec));
                     }
                 } else if (queue.length > 0) {
@@ -1283,7 +1380,7 @@ class RoleSpawn {
 
     updateCounters(spawn, o) {
         'use strict';
-        let obj = {idle: 0, waitFull: 0, spawning: 0};
+        let obj = {idle: 0, waitFull: 0, spawning: 0, skipped: 0};
         _.merge(obj, o);
         spawn.memory.spawns = spawn.memory.spawns || {};
         util.recordActivity(spawn.memory.spawns, obj, 1500);

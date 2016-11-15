@@ -66,12 +66,12 @@ class DropToContainerStrategy extends BaseStrategy {
                 // creep.log('transfering any');
                 if (target.store) {
                     // creep.log('transfer all');
-                    _.keys(creep.carry).forEach((k)=> {
-                        ret = creep.transfer(target, k);
-                        if ([OK, ERR_NOT_IN_RANGE].indexOf(ret) < 0) {
-                            creep.log('transfer?', target, JSON.stringify(creep.carry), ret);
-                        }
-                    });
+                    let transferring = _.keys(creep.carry).find((k)=> creep.carry[k]);
+                    ret = creep.transfer(target, transferring);
+                    if ([OK, ERR_NOT_IN_RANGE].indexOf(ret) < 0) {
+                        creep.log('transfer?', target, transferring, JSON.stringify(creep.carry), ret);
+                    }
+
                 } else if (target.energy < target.energyCapacity && creep.carry.energy) {
                     // creep.log('transfer energy');
                     ret = creep.transfer(target, RESOURCE_ENERGY);
@@ -80,12 +80,8 @@ class DropToContainerStrategy extends BaseStrategy {
                     }
                 } else if (target.mineralAmount < target.mineralCapacity) {
                     // creep.log('transfering minerals');
-                    _.keys(creep.carry).forEach((r)=> {
-                        if (r !== RESOURCE_ENERGY) {
-                            // creep.log('transfering', target, r);
-                            ret = creep.transfer(target, r);
-                        }
-                    });
+                    let transferring = _.keys(creep.carry).find((k)=> creep.carry[k] && k !== RESOURCE_ENERGY);
+                    ret = creep.transfer(target, transferring);
                     if ([OK, ERR_NOT_IN_RANGE].indexOf(ret) < 0) {
                         creep.log('transfer?', target, JSON.stringify(creep.carry), ret);
                     }

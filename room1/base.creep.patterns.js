@@ -1,5 +1,8 @@
+var _ = require('lodash');
 var CreepShaper = require('./base.creep.shaper');
 require('./game.prototypes.room');
+var util = require('./util');
+var Cache = require('./util.cache');
 function shaperOptions(room, role, budget) {
     'use strict';
     room.memory.creepShaper = room.memory.creepShaper || {};
@@ -13,7 +16,13 @@ function shaperOptions(room, role, budget) {
 
 let patterns = {
     'harvester': {
-        body: (room, budget)=> CreepShaper.shape(CreepShaper.requirements().minimum(HARVEST, 10), shaperOptions(room, 'harvester', budget)),
+        body: (room, budget)=> {
+            if (room.controller.level < 7 || room.find(FIND_SOURCES).find(s=>!s.link())) {
+                return CreepShaper.shape(CreepShaper.requirements().minimum(HARVEST, 10), shaperOptions(room, 'harvester', budget));
+            } else {
+                return CreepShaper.shape(CreepShaper.requirements().minimum(HARVEST, 10).minimum(CAPACITY, 50), shaperOptions(room, 'harvester', budget));
+            }
+        },
         count: 0,
         memory: {role: 'harvester'}
     },
@@ -80,51 +89,19 @@ let patterns = {
         memory: {role: 'builder'}
     },
     'remoteHarvester': {
-        body: (room, budget)=> CreepShaper.shape(CreepShaper.requirements().minimum(EMPTY_PLAIN_SPEED, 1).minimum(CAPACITY, 50).minimum(HARVEST, 12), shaperOptions(room, 'remoteHarvester', budget)),
+        body: (room, budget)=> CreepShaper.shape(CreepShaper.requirements().minimum(EMPTY_ROAD_SPEED, 1).minimum(CAPACITY, 50).minimum(HARVEST, 12), shaperOptions(room, 'remoteHarvester', budget)),
 
         count: 0,
         memory: {role: 'remoteHarvester'}
     },
-    'remoteCarry': {
-        body: (room, budget)=> {
-            'use strict';
-            let requirements = CreepShaper.requirements().minimum(FULL_ROAD_SPEED, 1).minimum(REPAIR, 1);
-            if (room.controller.level > 5) {
-                requirements.maximize(CAPACITY);
-            } else {
-                requirements.minimum(CAPACITY, 750);
-            }
-            return CreepShaper.shape(requirements, shaperOptions(room, 'remoteCarry', budget));
-        },
-        count: 0,
-        memory: {role: 'remoteCarry'}
-    },
-    'labOperator': {
-        body: (room, budget)=> CreepShaper.shape(CreepShaper.requirements().minimum(FULL_ROAD_SPEED, 1).minimum(CAPACITY, 1200), shaperOptions(room, 'labOperator', budget)),
-        count: 0,
-        memory: {role: 'labOperator'}
-    },
-    'mineralHarvester': {
-        body: (room, budget)=> CreepShaper.shape(CreepShaper.requirements().minimum(EMPTY_ROAD_SPEED, 0.25).minimum(CAPACITY,50).maximize(HARVEST), shaperOptions(room, 'mineralHarvester', budget)),
-        count: 0,
-        memory: {role: 'mineralHarvester'}
-    },
-    /* role taken by labOperator*/
-    'mineralGatherer': {
-        // assume average distance of 15 to the storage
-        body: (room, budget)=> CreepShaper.shape(CreepShaper.requirements().minimum(FULL_ROAD_SPEED, 1).maximize(CAPACITY), shaperOptions(room, 'mineralGatherer', budget)),
-        count: 0,
-        memory: {role: 'mineralGatherer'}
-    },
-
     'linkOperator': {
-        body: (room, budget)=> CreepShaper.shape(CreepShaper.requirements().minimum(EMPTY_ROAD_SPEED, 1).minimum(CAPACITY, 400), shaperOptions(room, 'linkOperator', budget)),
+        body: (room, budget)=> CreepShaper.shape(CreepShaper.requirements().minimum(EMPTY_ROAD_SPEED, 1).minimum(CAPACITY, room.controller.level < 7?200:400), shaperOptions(room, 'linkOperator', budget)),
         count: 0,
         memory: {role: 'linkOperator'}
     },
     'upgrader': {
         body: (room, budget)=> {
-            if (room.glanceForAround(LOOK_STRUCTURES, room.controller.pos, 4, true).map(s=>s.structure).find(s=>s.structureType ===STRUCTURE_CONTAINER)) {
+            if (room.glanceForAround(LOOK_STRUCTURES, room.controller.pos, 4, true).map(s=>s.structure).find(s=>s.structureType === STRUCTURE_CONTAINER)) {
                 if (room.controller.level < 8) {
                     return CreepShaper.shape(CreepShaper.requirements().minimum(EMPTY_ROAD_SPEED, 0.5).maximize(UPGRADE_CONTROLLER).minimum(CAPACITY, 100), shaperOptions(room, 'upgrader', budget));
                 } else {
@@ -144,6 +121,59 @@ let patterns = {
         memory: {role: 'upgrader'}
     },
 
+    'remoteCarry': {
+        body: (room, budget)=> {
+            'use strict';
+            let requirements = CreepShaper.requirements().minimum(FULL_ROAD_SPEED, 1).minimum(REPAIR, 1);
+            if (room.controller.level > 5) {
+                requirements.maximize(CAPACITY);
+            } else {
+                requirements.minimum(CAPACITY, 750);
+            }
+            return CreepShaper.shape(requirements, shaperOptions(room, 'remoteCarry', budget));
+        },
+        count: 0,
+        memory: {role: 'remoteCarry'}
+    },
+    'labOperator': {
+        body: (room, budget)=> {
+            let desiredCapacity;
+            let mineral = _.head(room.find(FIND_MINERALS));
+            let harvesterParts = 42; // todo adapt ?
+            if (mineral.mineralAmount && room.structures[STRUCTURE_EXTRACTOR].length) {
+                room.log('sizing labOperator for mineral');
+                let pathLength = Cache.get(room.memory.cache, 'pathToMineral', () => {
+                    'use strict';
+                    let path = util.safeMoveTo2({
+                        pos: room.storage.pos,
+                        room: room,
+                        log: room.log
+                    }, mineral.pos, {range: 2});
+                    return _.sum(util.pathCost(path, this));
+                }, 15000);
+
+                desiredCapacity = Math.max(1200, Math.min(33 * 50, 500 + mineral.accessTiles * harvesterParts * 2 * pathLength / (5)));
+                room.log(`labOperator sizing : accessTiles ${mineral.accessTiles}, harvesterParts ${harvesterParts}, ${pathLength}=>${desiredCapacity}`);
+            } else {
+                desiredCapacity = 1200;
+            }
+            return CreepShaper.shape(CreepShaper.requirements().minimum(FULL_ROAD_SPEED, 1).minimum(CAPACITY, desiredCapacity), shaperOptions(room, 'labOperator', budget));
+        },
+        count: 0,
+        memory: {role: 'labOperator'}
+    },
+    'mineralHarvester': {
+        body: (room, budget)=> CreepShaper.shape(CreepShaper.requirements().minimum(EMPTY_ROAD_SPEED, 0.25).minimum(CAPACITY, 50).maximize(HARVEST), shaperOptions(room, 'mineralHarvester', budget)),
+        count: 0,
+        memory: {role: 'mineralHarvester'}
+    },
+    /* role taken by labOperator*/
+    'mineralGatherer': {
+        // assume average distance of 15 to the storage
+        body: (room, budget)=> CreepShaper.shape(CreepShaper.requirements().minimum(FULL_ROAD_SPEED, 1).maximize(CAPACITY), shaperOptions(room, 'mineralGatherer', budget)),
+        count: 0,
+        memory: {role: 'mineralGatherer'}
+    },
     'remoteDismantler': {
         body: //(room, budget)=> CreepShaper.shape(CreepShaper.requirements().minimum(FULL_ROAD_SPEED, 0.5).maximize(DISMANTLE), shaperOptions(room, 'remoteDismantler', budget))
             [
@@ -166,13 +196,22 @@ let patterns = {
     'archer': {
         body: [
             // MOVE],
-            MOVE, MOVE, TOUGH,MOVE,RANGED_ATTACK, MOVE, HEAL, MOVE, TOUGH, MOVE,
-            RANGED_ATTACK, MOVE, HEAL,MOVE, MOVE, RANGED_ATTACK, MOVE, RANGED_ATTACK, MOVE, RANGED_ATTACK,
+            MOVE, TOUGH, MOVE, RANGED_ATTACK, MOVE, HEAL, MOVE, TOUGH, MOVE, RANGED_ATTACK,
+            MOVE, HEAL, MOVE, RANGED_ATTACK, MOVE, RANGED_ATTACK, MOVE, RANGED_ATTACK, MOVE, RANGED_ATTACK,
             MOVE, RANGED_ATTACK, MOVE, RANGED_ATTACK, MOVE, RANGED_ATTACK, MOVE, RANGED_ATTACK, MOVE, RANGED_ATTACK,
             MOVE, RANGED_ATTACK, MOVE, RANGED_ATTACK, MOVE, RANGED_ATTACK, MOVE, RANGED_ATTACK, MOVE, RANGED_ATTACK,
-            ],
+        ],
         count: 0,
         memory: {role: 'archer'}
+    },
+    'smallArcher': {
+        body: [
+            // MOVE],
+            MOVE, TOUGH, MOVE, RANGED_ATTACK, MOVE, HEAL, MOVE, TOUGH, MOVE, RANGED_ATTACK,
+            MOVE, HEAL, MOVE, RANGED_ATTACK, MOVE, RANGED_ATTACK, MOVE, RANGED_ATTACK, MOVE, RANGED_ATTACK,
+        ],
+        count: 0,
+        memory: {role: 'smallArcher'}
     },
     'roleRemoteGuard': {
         body: [TOUGH, TOUGH, MOVE, MOVE, MOVE, RANGED_ATTACK, MOVE, HEAL,
@@ -240,7 +279,12 @@ let patterns = {
         memory: {role: 'energyTransporter'}
     },
     'attacker': {
-        body: [MOVE, TOUGH, MOVE, TOUGH, MOVE, TOUGH, MOVE, TOUGH, MOVE, ATTACK, MOVE, ATTACK, MOVE, ATTACK, MOVE, ATTACK, MOVE, HEAL],
+        body: [TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH,
+            MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE,
+            ATTACK, MOVE, ATTACK, MOVE, ATTACK, MOVE, ATTACK, MOVE, ATTACK, MOVE,
+            ATTACK, MOVE, ATTACK, MOVE, ATTACK, MOVE, ATTACK, MOVE, ATTACK, MOVE,
+            ATTACK, MOVE, ATTACK, MOVE, ATTACK, MOVE, ATTACK, MOVE, ATTACK, MOVE,
+        ],
         count: 0,
         memory: {role: 'attacker'}
     },
@@ -328,15 +372,25 @@ let patterns = {
                 MOVE, TOUGH, MOVE, HEAL, MOVE, TOUGH, MOVE, HEAL,
                 MOVE, TOUGH, MOVE, HEAL, MOVE, TOUGH, MOVE, HEAL,
                 MOVE, TOUGH, MOVE, HEAL, MOVE, TOUGH, MOVE, HEAL,
-                MOVE, TOUGH, MOVE, HEAL, MOVE, TOUGH, MOVE, HEAL,
+                MOVE, HEAL, MOVE, HEAL, MOVE, HEAL, MOVE, HEAL,
                 MOVE, HEAL
             ],
         count: 0,
         memory: {role: 'towerDrainer'}
     },
     'towerAttacker': {
-        body: (room, budget)=> CreepShaper.shape(CreepShaper.requirements().minimum(FULL_PLAIN_SPEED, 1).minimum(HEAL, 20).minimum(ATTACK, 400).minimum(DAMAGE, 4000),
-            shaperOptions(room, 'attacker', budget)),
+        body: /*(room, budget)=> CreepShaper.shape(CreepShaper.requirements().minimum(FULL_PLAIN_SPEED, 1).minimum(HEAL, 20).maximize(ATTACK, 400).minimum(DAMAGE, 5000),
+         shaperOptions(room, 'towerAttacker', budget)),*/
+            [
+                MOVE, TOUGH, MOVE, ATTACK, MOVE, TOUGH, MOVE, ATTACK,
+                MOVE, TOUGH, MOVE, ATTACK, MOVE, TOUGH, MOVE, ATTACK,
+                MOVE, TOUGH, MOVE, ATTACK, MOVE, TOUGH, MOVE, ATTACK,
+                MOVE, TOUGH, MOVE, ATTACK, MOVE, TOUGH, MOVE, ATTACK,
+                MOVE, TOUGH, MOVE, ATTACK, MOVE, TOUGH, MOVE, ATTACK,
+                MOVE, ATTACK, MOVE, ATTACK, MOVE, ATTACK, MOVE, HEAL,
+                MOVE, HEAL
+            ],
+
         count: 0,
         memory: {role: 'towerAttacker'}
     },

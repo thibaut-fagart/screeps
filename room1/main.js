@@ -9,7 +9,7 @@ var roleSpawn = require('./role.spawn');
 var debugPerfs = false;
 var profiler = require('./profiler');
 if (!Game.rooms['sim'] && !Memory.disableProfiler) profiler.enable();
-
+const reactions = require('./role.lab_operator').reactions;
 
 // var RoomManager = require('./manager.room'), roomManager = new RoomManager(); // todo manager
 // This line monkey patches the global prototypes.
@@ -93,6 +93,28 @@ Object.defineProperty(StructureLink.prototype, 'operator',
         },
         configurable: true
     });
+Object.defineProperty(StructureLink.prototype, 'container',
+    {
+        get: function () {
+            // this.log('getOperator', this.memory.operator);
+            let cid = require('./util.cache').get(this.memory, 'container', ()=> {
+                let containers = this.room.glanceForAround(LOOK_STRUCTURES, this.pos, 2, true).map(s=>s.structure)
+                    .filter(s=> undefined !== s.store);
+                if (containers.length) {
+                    if (containers.length > 1) {
+                        // container, storage, terminal, nice order ! inside a type, choose the closest
+                        containers = _.sortBy(containers, (c=>c.pos.getRangeTo(this)));
+                        containers = _.sortBy(containers, (c=>c.structureType));
+                    }
+                    return _.head(containers).id;
+                } else {
+                    return false;
+                }
+            }, 1500);
+            return cid ? Game.getObjectById(cid) : undefined;
+        },
+        configurable: true
+    });
 let pathFinderCost = {time: Game.time, cost: 0, count: 0};
 function wrapPathFinder() {
     'use strict';
@@ -114,262 +136,387 @@ let frequencies = {};
 function updateFrequencies(frequencies) {
     frequencies['computeTasks'] = 10;
     frequencies['runSpawn'] = 11 - Math.ceil(Game.cpu.bucket / 1000);
+    frequencies['operateTowers'] = 1;
     frequencies['buildStructures'] = 10 * (11 - Math.ceil(Game.cpu.bucket / 1000));
-    frequencies['operateLinks'] = 11 - Math.ceil(Math.min(Game.cpu.bucket ,1000)/ 100);
-    frequencies['labs'] = Math.floor(Math.max(10, Math.min(100, 110 - Game.cpu.bucket / 50)));
+    frequencies['operateLinks'] = 3 - Math.ceil(Math.min(Game.cpu.bucket, 999) / 333);
+    frequencies['gc'] = 1000;
+    frequencies['assessThreat'] = 50;
+    frequencies['labs'] = Math.floor(Math.max(10, Math.min(100, 110 - Game.cpu.bucket / 5)));
     frequencies['import'] = 1500;
     frequencies['updateProductions'] = frequencies['labs'];
+    frequencies['rotateProductions'] = 1500;
     frequencies['handleStreamingOrders'] = 100;
+    frequencies['globalGc'] = 1000;
     return frequencies;
 }
 
+let globalTasks = {
+    globalGc: ()=> {
+        'use strict';
+        _.keys(Memory.rooms).forEach(name=> {
+            let memory = Memory.rooms[name];
+            if (!Game.rooms[name]) {
+                delete memory.towersCache;
+                delete memory.harvestContainers;
+                if (_.get(memory, ['threatAssessment', 'lastInvadersAt'], Game.time) < Game.time - 1000 * 1000) {
+                    delete memory.threatAssessment;
+                    delete memory.oldEfficiencies;
+                }
+                if (_.get(memory, ['squad', 'refreshed'], Game.time) < 10000) {
+                    delete memory.squad;
+                }
+                delete memory.loot;
+                delete memory.claim;
+                delete memory.remoteMining;
+                delete memory.attack;
+                delete memory.observeOffset;
+                delete memory.creepShaper;
+                delete memory.boosts;
+                delete memory.building;
+                delete memory.queue;
+                delete memory.dismantle;
+                delete memory.temp;
+                delete memory.structures;
+                delete memory.reserve;
+                delete memory.spawnQueue;
+                delete memory.exports;
+                delete memory.import;
+                delete memory.export;
+                delete memory.underattack;
+                delete memory.lab_production;
+                delete memory.labs;
+                delete memory.transfers;
+                delete memory.lab_productions;
+                delete memory.lab_rotated;
+                delete memory.labs_input;
+            }
+        });
+    },
+    updateProductions: ()=> {
+        Memory.stats.ledger = Memory.stats.ledger || {time: 0};
+        if (Memory.stats.ledger.time < Game.time - 500) {
+            let globalLedger = require('./reports').globalLedger();
+            Memory.stats.ledger.v = globalLedger;
+            Memory.stats.ledger.time = Game.time;
+            _.keys(globalLedger).forEach(key=> {
+                if (globalLedger[key].goal > 0) {
+                    globalLedger[key].ratio = globalLedger[key].amount / globalLedger[key].goal;
+                }
+            });
+        }
+        const ledger = Memory.stats.ledger.v;
+        // missing as per desired ledger
+        let missingMins = _.keys(ledger).filter(min=>ledger[min].amount < ledger[min].goal);
+        console.log('missing mins : ', JSON.stringify(missingMins));
+        let addIngredients = (array, min)=> {
+            (reactions[min] || []).forEach(m=> {
+                array.push(m);
+                addIngredients(array, m);
+            });
+            return array;
+        };
+        //  collect the ingredients required for the missing components
+        let missingIngredients = _.uniq(missingMins.reduce((acc, min)=> {
+            return addIngredients(acc, min);
+        }, []));
+        console.log('missingIngredients mins : ', JSON.stringify(missingIngredients));
+        // increment ledger
+        missingIngredients.forEach(min=> {
+            ledger[min] = ledger[min] || {amount: 0};
+            ledger[min].goal = (ledger[min].goal || 0) + 5000;
+        });
+
+        let missingWithIngredients = _.uniq(missingMins.concat(missingIngredients));
+        missingWithIngredients = missingWithIngredients.filter(min=>ledger[min].amount < ledger[min].goal);
+
+        console.log('missingWithIngredients mins : ', JSON.stringify(missingWithIngredients));
+        // todo should not be required
+        /*
+         missingWithIngredients.forEach(min=> {
+         if (!ledger[min]) {
+         ledger[min] = {amount: 0, goal: 5000};
+         }
+         });
+         */
+        Memory.stats.ledger.needs = missingWithIngredients;
+
+
+        let produceable = Memory.stats.ledger.needs.filter(min=>reactions[min]).map(min=> {
+            let ingredients = reactions[min];
+            if (ingredients) {
+                return [min, ingredients.reduce((available, i)=> Math.min(available, _.get(ledger, [i, 'amount'], 0)), Infinity)];
+            } else {
+                return [min, 0];
+            }
+        });
+        // sort by available quantity of ingredients
+        // todo this clears the previous sort
+        // Memory.stats.ledger.produceable = _.sortBy(produceable, pair=>-pair[1]);
+        Memory.stats.ledger.produceable = produceable;
+        _.sortBy(Memory.stats.ledger.needs, min=>-1 * produceable.find(pair=>pair[0] === min));
+        Memory.stats.producing = _.values(Game.rooms).filter(r=>r.controller && r.controller.my && r.controller.level > 6).reduce((acc, r)=> {
+            acc[r.lab_production] = (acc[r.lab_production] || 0) + 1;
+            return acc;
+        }, _.keys(reactions).reduce((acc, m)=> {
+            acc[m] = 0;
+            return acc;
+        }, {}));
+    },
+    handleStreamingOrders: function () {
+        'use strict';
+        let maxAffordable = (room, toRoomName, isEnergy)=> {
+            let distance = Game.map.getRoomLinearDistance(room.name, toRoomName, true);
+            let number = Math.log((distance + 9) * 0.1) + 0.1;
+            let amount = (room.terminal.store.energy || 0);
+
+            if (isEnergy) {
+                return {amount: Math.floor((amount / (1 + number))), cost: Math.ceil(amount * (number))};
+            } else {
+                return {amount: Math.ceil(amount / number), cost: amount};
+            }
+
+        };
+        if (Memory.streamingOrders) {
+            Memory.streamingOrders.forEach(order=> {
+                let from = Game.rooms[order.from];
+                if (undefined === order.amount) {
+                    order.amount = order.initialAmount;
+                }
+
+                if (from && from.terminal && order.to && order.what && (order.amount || 0) > 0) {
+                    if (_.get(Game.rooms, [order.to, 'controller', 'my'], false) && !_.get(Game.rooms, [order.to, 'terminal'], false)) {
+                        // terminal not built
+                        return;
+                    }
+                    let available = _.get(from.terminal, ['store', order.what], 0);
+
+                    const toRoom = Game.rooms[order.to];
+                    let freeSpace = (toRoom && toRoom.terminal) ? toRoom.terminal.storeCapacity - _.sum(toRoom.terminal.store) : 10000;
+                    let howMuch = Math.min(maxAffordable(from, order.to, order.what === RESOURCE_ENERGY).amount, order.amount, available, freeSpace, (order.step || Infinity));
+                    if (howMuch > 100) {
+                        let result = from.terminal.send(order.what, howMuch, order.to);
+                        from.log(`streaming ${howMuch} ${order.what} to ${order.to}`);
+                        // Game.notify(`streaming ${howMuch} ${order.what} to ${order.to}, ${JSON.stringify(order)}`);
+                        order.transfers = order.transfers || [];
+                        order.transfers.push({time: Game.time, amount: howMuch, result: result});
+                        if (result === OK) {
+                            order.amount = order.amount - howMuch;
+                            if (order.amount < 100) {
+                                Game.notify(`completed streaming order ${JSON.stringify(order)}`);
+                            }
+                        }
+                    }
+                } else if (from && from.terminal && order.deal && (order.amount || 0) > 0) {
+                    let deal = Game.market.getOrderById(order.deal);
+                    if (!deal) return;
+                    if (deal.type === 'buy') {
+                        let available = _.get(from.terminal, ['store', deal.resourceType], 0);
+                        if (deal.remainingAmount > 0) {
+                            let howMuch = Math.min(maxAffordable(from, deal.roomName, deal.resourceType === RESOURCE_ENERGY).amount, order.amount, available, (order.step || Infinity));
+                            if (howMuch > 100) {
+                                let result = Game.market.deal(order.deal, howMuch, order.from);
+                                order.transfers = order.transfers || [];
+                                order.transfers.push({time: Game.time, amount: howMuch, result: result});
+                                // Game.notify(`streaming ${howMuch} ${order.what} to ${order.to}, ${JSON.stringify(order)}`);
+                                if (result === OK) {
+                                    from.log(`sold ${howMuch} ${deal.resourceType}`);
+                                    order.amount = order.amount - howMuch;
+                                    if (order.amount < 100) {
+                                        Game.notify(`completed dealing order ${JSON.stringify(order)}`);
+                                    }
+                                }
+                            }
+
+                        }
+                    } else if (deal.type === 'sell') {
+                        let available = Game.market.credits / deal.price;
+                        from.log('credits limit => ', available);
+                        if (deal.remainingAmount > 0) {
+                            let howMuch = Math.min(maxAffordable(from, deal.roomName, deal.resourceType === RESOURCE_ENERGY).amount, order.amount, available, (order.step || Infinity));
+                            from.log(`howMuch(${maxAffordable(from, deal.roomName, deal.resourceType === RESOURCE_ENERGY).amount},${order.amount},${available},${(order.step || Infinity)}) => `, howMuch);
+                            if (howMuch > 100) {
+                                let result = Game.market.deal(order.deal, howMuch, order.from);
+                                order.transfers = order.transfers || [];
+                                order.transfers.push({time: Game.time, amount: howMuch, result: result});
+                                // Game.notify(`streaming ${howMuch} ${order.what} to ${order.to}, ${JSON.stringify(order)}`);
+                                if (result === OK) {
+                                    from.log(`bought ${howMuch} ${deal.resourceType}`);
+                                    order.amount = order.amount - howMuch;
+                                    if (order.amount < 100) {
+                                        Game.notify(`completed dealing order ${JSON.stringify(order)}`);
+                                    }
+                                }
+                            }
+
+                        }
+
+                    }
+                }
+            });
+            let sellDeals = ['581113e3cf85704a295d7c0a', '5814c098da6094320ab7a229', '5812445ebf5da5a116930be1', '582212f4d961f798201823f6'];
+            let buyDeals = ['58119c4a8cc4b9d24c43c373', '5821d2f2d961f79820f7b965'];
+            sellDeals.forEach(dealId => {
+                let sellDeal = Game.market.orders[dealId];
+                if (sellDeal && sellDeal.remainingAmount < 100) {
+                    Game.market.extendOrder(sellDeal, 2000);
+                }
+            });
+            let homeroom = 'W55S43';
+            let energyPrice = _.max(Game.market.getAllOrders(o=>o.type === 'buy' && o.resourceType === RESOURCE_ENERGY), o=>o.price).price;
+            let closestEnergyDeal = _.min(Game.market.getAllOrders(o=>o.type === 'buy' && o.resourceType === RESOURCE_ENERGY && o.price === energyPrice), o=>Game.market.calcTransactionCost(100, homeroom, o.roomName));
+            let energyPriceWithTransport = 100 * closestEnergyDeal.price / (Game.market.calcTransactionCost(100, homeroom, closestEnergyDeal.roomName) + 100);
+            if (Game.market.credits > 50000) {
+                buyDeals.forEach(dealId=> {
+                    let deal = Game.market.orders[dealId];
+                    if (deal && deal.remainingAmount < 100 && (Game.rooms[deal.roomName].currentLedger[deal.resourceType] || 0) < 10000) {
+                        let maxPrice = _.max(Game.market.getAllOrders((o)=>o.type === 'buy' && o.resourceType === deal.resourceType && o.id !== deal.id), o=>o.price).price;
+                        if (maxPrice < deal.price) {
+                            let newPrice = (maxPrice + 0.01);
+                            Game.notify(`aligning price for ${deal.resourceType} ${deal.price}=>${newPrice}`);
+                            Game.market.changeOrderPrice(deal.id, newPrice);
+                        }
+                        let extendQty = 5000;
+                        Game.notify(`extending ${deal.type}:${deal.resourceType} by ${extendQty}`);
+                        Game.market.extendOrder(dealId, Math.min((0.2 * Game.market.credits) / deal.price, extendQty));
+                    }
+                });
+                let buy = (roomName, resource, maxPrice) => {
+                    maxPrice = maxPrice || 1;
+                    if (Game.market.credits > 50000 && _.get(Memory.stats, ['ledger', 'v', resource], 0) < 50000 && _.get(Game.rooms, [roomName, 'terminal', 'store', resource], 0) < 2000) {
+                        let sellOrders = Game.market.getAllOrders(o=>o.type === 'sell' && o.resourceType === resource && o.price < maxPrice);
+                        _.sortBy(sellOrders, o=>o.price + energyPriceWithTransport * Game.market.calcTransactionCost(100, roomName, o.roomName) / 100);
+                        let deal = _.head(sellOrders);
+                        if (deal) {
+                            let qty = Math.min(5000, deal.remainingAmount);
+                            let ret = Game.market.deal(deal.id, qty, roomName);
+                            Game.notify(`buying ${qty} ${resource} in ${roomName} at ${deal.price} from ${deal.roomName}: ${ret}`);
+                        }
+                    }
+                };
+                let sell = (roomName, resource, minPrice) => {
+                    minPrice = minPrice || 1;
+                    if (_.get(Memory.stats, ['ledger', 'v', resource.amount], 0) > 250000 && _.get(Game.rooms, [roomName, 'terminal', 'store', resource], 0) > 5000) {
+                        let buyOrders = Game.market.getAllOrders(o=>o.type === 'buy' && o.resourceType === resource && o.price >= minPrice);
+                        _.sortBy(buyOrders, o=>o.price - energyPriceWithTransport * Game.market.calcTransactionCost(100, roomName, o.roomName) / 100);
+                        let deal = _.head(buyOrders);
+                        if (deal) {
+                            let qty = Math.min(5000, deal.remainingAmount);
+                            let ret = Game.market.deal(deal.id, qty, roomName);
+                            Game.notify(`sold ${qty} ${resource} from ${roomName} at ${deal.price} to ${deal.roomName}: ${ret}`);
+                        }
+                    }
+                };
+                buy('W52S45', 'O', 0.5);
+                buy('W53S43', 'H', 0.5);
+                buy('W53S43', 'X', 0.75);
+                sell('W57S45', 'L', 0.5);
+                sell('W54S42', 'L', 0.5);
+                sell('W52S47', 'U', 0.45);
+                sell('W54S43', 'U', 0.45);
+                // buy('W52S37', 'X', 1);
+            }
+            // Memory.streamingOrders = Memory.streamingOrders.filter(order=>order.amount >= 100);
+        }
+    }
+};
 let roomTasks = {
+    operateTowers: (r)=> r.operateTowers(),
     computeTasks: (r)=> {
         if (!Game.rooms.sim) return;
-        const frequency = frequencies['computeTasks'];
-        if (r.hash % frequency === Game.time % frequency) {
-            r.computeTasks();
-        }
+        r.computeTasks();
     },
     runSpawn: (r)=> {
         'use strict';
-        let freq = frequencies['runSpawn'];
-        if (r.hash % freq === Game.time % freq) {
-            try {
-                if (r.controller && r.controller.my && r.controller.level > 0) {
-                    roleSpawn.run(r);
-                }
-            } catch (e) {
-                Game.notify(e.stack);
-                console.log(e.stack);
-            }
-        }
+        roleSpawn.run(r);
     },
-    operateTowers: (r)=> r.operateTowers(),
-    buildStructures: (r)=> {
-        let freq = frequencies['buildStructures'];
-        if (r.hash % freq === Game.time % freq) {
-            r.buildStructures();
-        }
-
-    },
-    operateLinks: (r)=> {
-        let freq = frequencies['operateLinks'];
-        if (r.hash % freq === Game.time % freq) {
-            try {
-                r.operateLinks();
-            } catch (e) {
-                Game.notify(e.stack);
-                console.log(e.stack);
-            }
-        }
-    },
+    operateLinks: (r)=> r.operateLinks(),
     harvestContainers: (r)=>(r.memory.harvestContainers = r.memory.harvestContainers || []),
     updateLocks: (r)=> r.updateLocks(),
-    gc: (r)=> {
-        if (0 == Game.time % 100) {
-            r.gc();
-        }
-    },
     assessThreat: (r)=> {
         if (Game.cpu.bucket > 200) r.assessThreat();
     },
-    labs: (r)=> {
-        let freq = frequencies['labs'];
-        if (r.memory.labs && (r.hash % freq === Game.time % freq)) {
-            r.operateLabs();
-        } else {
-            r.memory.lab_activity = r.memory.lab_activity || {};
-            util.recordActivity(r.memory.lab_activity, {idle: 1, producing: 0, cooldown:0}, 1500);
+    labs: (r)=> r.operateLabs(),
+    rotateProductions: (r)=> {
+        if (r.controller && r.controller.my && r.controller.level > 6) {
+            r.lab_production = undefined;
         }
     },
     import: (r)=> {
         'use strict';
-        const frequency = frequencies['import'];
-        if (r.controller && r.controller.my && r.controller.level >= 6 && r.hash % frequency === Game.time % frequency) {
+        if (r.controller && r.controller.my && r.controller.level >= 6) {
             r.updateImportExports();
-            r.importMinerals();
         }
     },
-    updateProductions: (r)=> {
-        'use strict';
-        let freq = frequencies['updateProductions'];
-        if (r.hash % freq === Game.time % freq) {
-            Memory.stats.ledger = Memory.stats.ledger || {time: 0};
-            if (Memory.stats.ledger.time < Game.time - 500) {
-                let globalLedger = require('./reports').globalLedger();
-                Memory.stats.ledger.v = globalLedger;
-                Memory.stats.ledger.time = Game.time;
-                _.keys(globalLedger).forEach(key=> {
-                    if (globalLedger[key].goal > 0) {
-                        globalLedger[key].ratio = globalLedger[key].amount / globalLedger[key].goal
-                    }
-                });
-            }
-            const ledger = Memory.stats.ledger.v;
-            let missing = _.keys(ledger).filter(min=>ledger[min].amount < ledger[min].goal);
-            _.sortBy(missing, min => ledger[min].amount / ledger[min].goal);
-            Memory.stats.ledger.needs = missing;
-            let reactions = require('./role.lab_operator').reactions;
-            let produceable = Memory.stats.ledger.needs.map(min=> {
-                let ingredients = reactions[min];
-                if (ingredients) {
-                    return [min, ingredients.reduce((available, i)=> Math.min(available ,_.get(ledger, [i, 'amount'], 0)),Infinity)];
-                } else {
-                    return [min, 0];
-                }
-            });
-            // sort by available quantity of ingredients
-            Memory.stats.ledger.produceable = _.sortBy(produceable, pair=>-pair[1]);
-        }
-
-    },
+    buildStructures: (r)=> r.buildStructures(),
     observe: (r)=> {
         if (Game.cpu.bucket > 5000) {
             r.runObserver();
         }
     },
+    gc: (r)=> r.gc(),
 
 };
-
-function handleStreamingOrders() {
+function runRoomTask(taskName, room) {
     'use strict';
-    let maxAffordable = (room, toRoomName, isEnergy)=> {
-        let distance = Game.map.getRoomLinearDistance(room.name, toRoomName, true);
-        let number = Math.log((distance + 9) * 0.1) + 0.1;
-        let amount = (room.terminal.store.energy || 0);
-
-        if (isEnergy) {
-            return {amount: Math.floor((amount / (1 + number))), cost: Math.ceil(amount * (number))};
-        } else {
-            return {amount: Math.ceil(amount / number), cost: amount};
+    let freq = frequencies[taskName] || 1;
+    room.memory.tasksRan = room.memory.tasksRan || [];
+    let lastRun = room.memory.tasksRan[roomTasksIndex[taskName]] || 0;
+    if (lastRun + freq < Game.time) {
+        room.memory.tasksRan[roomTasksIndex[taskName]] = Game.time;
+        try {
+            return (roomTasks[taskName])(room);
+        } catch (e) {
+            Game.notify(e.stack);
+            console.log(e.stack);
         }
-
-    };
-    if (Memory.streamingOrders) {
-        Memory.streamingOrders.forEach(order=> {
-            let from = Game.rooms[order.from];
-            if (undefined === order.amount) {
-                order.amount = order.initialAmount;
-            }
-
-            if (from && from.terminal && order.to && order.what && (order.amount || 0) > 0) {
-                if (_.get(Game.rooms, [order.to, 'controller', 'my'], false) && !_.get(Game.rooms, [order.to, 'terminal'], false)) {
-                    // terminal not built
-                    return;
-                }
-                let available = _.get(from.terminal, ['store', order.what], 0);
-
-                const toRoom = Game.rooms[order.to];
-                let freeSpace = (toRoom && toRoom.terminal) ? toRoom.terminal.storeCapacity - _.sum(toRoom.terminal.store) : 10000;
-                let howMuch = Math.min(maxAffordable(from, order.to, order.what === RESOURCE_ENERGY).amount, order.amount, available, freeSpace, (order.step || Infinity));
-                if (howMuch > 100) {
-                    let result = from.terminal.send(order.what, howMuch, order.to);
-                    from.log(`streaming ${howMuch} ${order.what} to ${order.to}`);
-                    // Game.notify(`streaming ${howMuch} ${order.what} to ${order.to}, ${JSON.stringify(order)}`);
-                    order.transfers = order.transfers || [];
-                    order.transfers.push({time: Game.time, amount: howMuch, result: result});
-                    if (result === OK) {
-                        order.amount = order.amount - howMuch;
-                        if (order.amount < 100) {
-                            Game.notify(`completed streaming order ${JSON.stringify(order)}`);
-                        }
-                    }
-                }
-            } else if (from && from.terminal && order.deal && (order.amount || 0) > 0) {
-                let deal = Game.market.getOrderById(order.deal);
-                if (!deal) return;
-                if (deal.type === 'buy') {
-                    let available = _.get(from.terminal, ['store', deal.resourceType], 0);
-                    if (deal.remainingAmount > 0) {
-                        let howMuch = Math.min(maxAffordable(from, deal.roomName, deal.resourceType === RESOURCE_ENERGY).amount, order.amount, available, (order.step || Infinity));
-                        if (howMuch > 100) {
-                            let result = Game.market.deal(order.deal, howMuch, order.from);
-                            order.transfers = order.transfers || [];
-                            order.transfers.push({time: Game.time, amount: howMuch, result: result});
-                            // Game.notify(`streaming ${howMuch} ${order.what} to ${order.to}, ${JSON.stringify(order)}`);
-                            if (result === OK) {
-                                from.log(`sold ${howMuch} ${deal.resourceType}`);
-                                order.amount = order.amount - howMuch;
-                                if (order.amount < 100) {
-                                    Game.notify(`completed dealing order ${JSON.stringify(order)}`);
-                                }
-                            }
-                        }
-
-                    }
-                } else if (deal.type === 'sell') {
-                    let available = Game.market.credits / deal.price;
-                    from.log('credits limit => ', available);
-                    if (deal.remainingAmount > 0) {
-                        let howMuch = Math.min(maxAffordable(from, deal.roomName, deal.resourceType === RESOURCE_ENERGY).amount, order.amount, available, (order.step || Infinity));
-                        from.log(`howMuch(${maxAffordable(from, deal.roomName, deal.resourceType === RESOURCE_ENERGY).amount},${order.amount},${available},${(order.step || Infinity)}) => `, howMuch);
-                        if (howMuch > 100) {
-                            let result = Game.market.deal(order.deal, howMuch, order.from);
-                            order.transfers = order.transfers || [];
-                            order.transfers.push({time: Game.time, amount: howMuch, result: result});
-                            // Game.notify(`streaming ${howMuch} ${order.what} to ${order.to}, ${JSON.stringify(order)}`);
-                            if (result === OK) {
-                                from.log(`bought ${howMuch} ${deal.resourceType}`);
-                                order.amount = order.amount - howMuch;
-                                if (order.amount < 100) {
-                                    Game.notify(`completed dealing order ${JSON.stringify(order)}`);
-                                }
-                            }
-                        }
-
-                    }
-
-                }
-            }
-        });
-        let sellDeals = ['581113e3cf85704a295d7c0a', '5814c098da6094320ab7a229', '5812445ebf5da5a116930be1', '582212f4d961f798201823f6'];
-        let buyDeals = ['58119c4a8cc4b9d24c43c373', '5821d2f2d961f79820f7b965'];
-        sellDeals.forEach(dealId => {
-            let sellDeal = Game.market.orders[dealId];
-            if (sellDeal && sellDeal.remainingAmount < 100) {
-                Game.market.extendOrder(sellDeal, 2000);
-            }
-        });
-        let homeroom = 'W55S43';
-        let energyPrice = _.max(Game.market.getAllOrders(o=>o.type === 'buy' && o.resourceType === RESOURCE_ENERGY), o=>o.price).price;
-        let closestEnergyDeal = _.min(Game.market.getAllOrders(o=>o.type === 'buy' && o.resourceType === RESOURCE_ENERGY && o.price === energyPrice), o=>Game.market.calcTransactionCost(100, homeroom, o.roomName));
-        let energyPriceWithTransport = 100 * closestEnergyDeal.price / (Game.market.calcTransactionCost(100, homeroom, closestEnergyDeal.roomName) + 100);
-        if (Game.market.credits > 50000) {
-            buyDeals.forEach(dealId=> {
-                let deal = Game.market.orders[dealId];
-                if (deal && deal.remainingAmount < 100 && (Game.rooms[deal.roomName].currentLedger[deal.resourceType] || 0) < 10000) {
-                    let maxPrice = _.max(Game.market.getAllOrders((o)=>o.type === 'buy' && o.resourceType === deal.resourceType && o.id !== deal.id), o=>o.price).price;
-                    if (maxPrice < deal.price) {
-                        let newPrice = (maxPrice + 0.01);
-                        Game.notify(`aligning price for ${deal.resourceType} ${deal.price}=>${newPrice}`);
-                        Game.market.changeOrderPrice(deal.id, newPrice);
-                    }
-                    let extendQty = 5000;
-                    Game.notify(`extending ${deal.type}:${deal.resourceType} by ${extendQty}`);
-                    Game.market.extendOrder(dealId, Math.min((0.2 * Game.market.credits) / deal.price, extendQty));
-                }
-            });
-            let buy = (roomName, resource, maxPrice) => {
-                maxPrice = maxPrice || 1;
-                if (Game.market.credits > 50000 && _.get(Game.rooms, [roomName, 'terminal', 'store', resource], 0) < 2000) {
-                    let sellOrders = Game.market.getAllOrders(o=>o.type === 'sell' && o.resourceType === resource && o.price < maxPrice);
-                    _.sortBy(sellOrders, o=>o.price + energyPriceWithTransport * Game.market.calcTransactionCost(100, roomName, o.roomName) / 100);
-                    let deal = _.head(sellOrders);
-                    if (deal) {
-                        let qty = Math.min(5000, deal.remainingAmount);
-                        let ret = Game.market.deal(deal.id, qty, roomName);
-                        Game.notify(`buying ${qty} ${resource} in ${roomName} at ${deal.price} from ${deal.roomName}: ${ret}`);
-                    }
-                }
-            };
-            buy('W52S45', 'O', 0.5);
-            buy('W53S43', 'H', 0.5);
-            // buy('W52S37', 'X', 1);
-        }
-        // Memory.streamingOrders = Memory.streamingOrders.filter(order=>order.amount >= 100);
+    } else {
+        skippedRoomTask(taskName, room);
+        return false;
     }
 }
+function runGlobalTask(taskName) {
+    'use strict';
+    let freq = frequencies[taskName] || 1;
+    Memory.tasksRan = Memory.tasksRan || [];
+    let lastRun = Memory.tasksRan[globalTasksIndex[taskName]] || 0;
+    if (lastRun + freq < Game.time) {
+        Memory.tasksRan[globalTasksIndex[taskName]] = Game.time;
+        try {
+            return (globalTasks[taskName])();
+        } catch (e) {
+            Game.notify(e.stack);
+            console.log(e.stack);
+        }
+    } else {
+        return false;
+    }
+}
+function skippedRoomTask(taskName, room) {
+    'use strict';
+    if (taskName === 'labs') {
+        room.memory.lab_activity = room.memory.lab_activity || {};
+        util.recordActivity(room.memory.lab_activity, {skipped: 1, idle: 0, producing: 0, cooldown: 0}, 1500);
+    } else if (taskName === 'runSpawn') {
+        room.find(FIND_MY_SPAWNS).forEach(spawn=> {
+            spawn.memory.spawns = spawn.memory.spawns || {};
+            if (spawn.spawning) {
+                util.recordActivity(spawn.memory.spawns, {idle: 0, waitFull: 0, spawning: 1, skipped: 0}, 1500);
+            } else if (room.energyAvailable === room.energyCapacityAvailable) {
+                util.recordActivity(spawn.memory.spawns, {idle: 0, waitFull: 0, spawning: 0, skipped: 1}, 1500);
+            } else {
+                util.recordActivity(spawn.memory.spawns, {idle: 0, waitFull: 1, spawning: 0, skipped: 0}, 1500);
+            }
+        });
+    }
+}
+let roomTasksIndex = _.keys(roomTasks).reduce((acc, k, index)=> {
+    acc[k] = index;
+    return acc;
+}, {});
+let globalTasksIndex = _.keys(globalTasks).reduce((acc, k, index)=> {
+    acc[k] = index;
+    return acc;
+}, {});
 function innerLoop() {
     let updateStats = true;
     let messages = [], skipped = [];
@@ -420,31 +567,26 @@ function innerLoop() {
     let rooms = _.groupBy(_.values(Game.rooms), r=>!!(r.controller && r.controller.my && r.controller.level > 0));
     let ownedRooms = rooms['true'] || [];
     let remoteRooms = rooms['false'] || [];
-    let taskPairs = _.pairs(roomTasks);
-    try {
-        if (0 === Game.time % frequencies['handleStreamingOrders']) {
-            handleStreamingOrders();
+    let theTasks = _.keys(roomTasks);
+    _.keys(globalTasks).forEach(taskName=> {
+        let start = Game.cpu.getUsed();
+        if (start < availableCpu - 100) {
+            runGlobalTask(taskName);
+        } else {
+            if (updateStats) skipped.push(`${taskName}`);
         }
-    } catch (e) {
-        console.log(e);
-        console.log(e.stack);
-        Game.notify(e);
-        Game.notify(e.stack);
-    }
+        if (updateStats) {
+            cpu.roomTasks[taskName] = (cpu.roomTasks[taskName] || 0) + Game.cpu.getUsed() - start;
+        }
+    });
     ownedRooms.concat(remoteRooms).forEach(room=> {
         'use strict';
         let roomName = room.name;
-        taskPairs.forEach((pair)=> {
+        theTasks.forEach((taskName)=> {
             'use strict';
-            let taskName = pair[0], task = pair[1];
             let start = Game.cpu.getUsed();
             if (start < availableCpu - 100) {
-                try {
-                    task(room);
-                } catch (e) {
-                    console.log(e);
-                    console.log(e.stack);
-                }
+                runRoomTask(taskName, room);
             } else {
                 if (updateStats) skipped.push(`${roomName}.task`);
             }
@@ -503,7 +645,8 @@ function innerLoop() {
                         }
                     }
                 } catch (e) {
-                    creep.log(e.stack);
+                    creep.log(e);
+                    console.log(e.stack);
                     Game.notify(e.stack);
                 }
             });

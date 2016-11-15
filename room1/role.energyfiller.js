@@ -5,17 +5,16 @@ var RoleCarry = require('./role.carry');
 var DropToContainerStrategy = require('./strategy.drop_to_container');
 var DropToEnergyStorageStrategy = require('./strategy.drop_to_energyStorage');
 var RegroupStrategy = require('./strategy.regroup');
+var PickupStrategy = require('./strategy.pickup');
 
 class RoleEnergyFiller extends RoleCarry {
     constructor() {
         super();
         this.loadStrategies = [
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (creep)=> ((s)=> s.store && s.store.energy >100  && s.pos.getRangeTo(creep) < 1 && creep.room.isHarvestContainer(s))),
-            // new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_LINK, (creep)=> ((s)=>s.room.storage && (s.pos.getRangeTo(s.room.storage) < 5))),
-            // new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_LINK, (creep)=> creep.room.energyCapacityAvailable===creep.room.energyAvailable?()=>true:()=>false),
+            new PickupStrategy(undefined,(creep=>(creep.room.controller && creep.room.controller.level >=7 ? ()=>true :()=>false))), // re introduced for when no gatherers are present and all mines go through links
             new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_STORAGE),
-            // new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_LINK),
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_TERMINAL , (creep)=> (creep.room.energyAvailable < creep.room.energyCapacityAvailable?((s)=>true):((s)=>false))),
+            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_TERMINAL),
+            new LoadFromContainerStrategy(undefined, STRUCTURE_CONTAINER, (creep)=>((s)=>s.room.isHarvestContainer(s)))
         ];
         this.unloadStrategies = [
             new DropToEnergyStorageStrategy(STRUCTURE_SPAWN),
@@ -32,9 +31,6 @@ class RoleEnergyFiller extends RoleCarry {
                     return ()=>false;
                 }
             }),
-            new DropToContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (creep)=> {
-                return ((s)=>!s.room.isHarvestContainer(s) && (Math.abs(25-s.pos.x)<20 )&& (Math.abs(25-s.pos.y)<20 ));
-            }),
             new DropToEnergyStorageStrategy(STRUCTURE_NUKER),
             new DropToContainerStrategy(util.ANY_MINERAL, STRUCTURE_STORAGE),
             // new DropToContainerStrategy(undefined, STRUCTURE_STORAGE),
@@ -43,6 +39,17 @@ class RoleEnergyFiller extends RoleCarry {
         util.indexStrategies(this.unloadStrategies);
     }
 
+
+    run(creep) {
+        let ret = super.run(creep);
+        if (creep.carry.energy && creep.memory.energyStoreTarget && Game.getObjectById(creep.memory.energyStoreTarget).canCreateCreep) {
+            let nearbyEmptyExtension = _.head(creep.room.glanceForAround(LOOK_STRUCTURES, creep.pos, 1, true).map(s=>s.structure).filter(s=>s.structureType === STRUCTURE_EXTENSION && s.energy < s.energyCapacity));
+            if (nearbyEmptyExtension) {
+                creep.transfer(nearbyEmptyExtension, RESOURCE_ENERGY);
+            }
+        }
+        return ret;
+    }
 }
 require('./profiler').registerClass(RoleEnergyFiller, 'RoleEnergyFiller');
 

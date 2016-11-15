@@ -210,7 +210,7 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
 
             } else {
                 // build a container if none near the source
-                if (source && !container && creep.getActiveBodyparts(CARRY) > 0) {
+                if (source && !container && creep.getActiveBodyparts(CARRY) > 0 && !creep.memory.link ) {
                     let area = source.room.glanceAround(source.pos, 1, true);
                     let containers = area.filter((e)=>e.type === 'structure').map((e)=>(e.structure)).filter((s)=>s.structureType === STRUCTURE_CONTAINER);
                     if (!containers.length) {

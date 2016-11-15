@@ -13,11 +13,12 @@ class RoleEnergyGatherer extends RoleCarry {
         this.loadStrategies = [
             new ClosePickupStrategy(RESOURCE_ENERGY, 2),
             new PickupStrategy(RESOURCE_ENERGY, creep=>((drop=> drop.amount -2 * drop.pos.getRangeTo(creep) > 100))),
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (creep)=>((s)=>s.room.isHarvestContainer(s)))];
+            new LoadFromContainerStrategy(undefined, STRUCTURE_CONTAINER, (creep)=>((s)=>s.room.isHarvestContainer(s))),
+            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_STORAGE, (creep=>creep.room.energyAvailable  < creep.room.energyCapacityAvailable?()=>true:false))];
         this.unloadStrategies = [
-            new DropToContainerStrategy(undefined, STRUCTURE_STORAGE),
-            // new DropToEnergyStorageStrategy(STRUCTURE_EXTENSION),
-            // new DropToEnergyStorageStrategy(STRUCTURE_SPAWN)
+            new DropToEnergyStorageStrategy(STRUCTURE_EXTENSION),
+            new DropToEnergyStorageStrategy(STRUCTURE_SPAWN),
+            new DropToContainerStrategy(undefined, STRUCTURE_STORAGE)
         ];
         util.indexStrategies(this.loadStrategies);
         util.indexStrategies(this.unloadStrategies);

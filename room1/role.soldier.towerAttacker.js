@@ -11,12 +11,12 @@ var RegroupStrategy = require('./strategy.regroup');
 class RoleTowerAttacker {
     constructor() {
         this.attackStrategies = [
-            new CloseAttackStrategy(4),
             // new CloseAttackStrategy(undefined,(creep)=>((target)=>target.getActiveBodyparts(ATTACK)+target.getActiveBodyparts(HEAL)>0)),
             // new RemoteAttackStrategy(),
+            new RegroupStrategy(COLOR_GREEN),
             new AttackStructureStrategy(),
-            new HealStrategy()/*, new AttackWallStrategy()*/,
-            new RegroupStrategy(COLOR_GREEN)
+            new CloseAttackStrategy(2),
+            new HealStrategy()/*, new AttackWallStrategy()*/
             /*new AttackStructureStrategy()*/];
         this.moveTask = new MoveToRoomTask('attack');
         this.moveBackTask = new MoveToRoomTask('attack', 'remoteRoom', 'homeroom');
@@ -155,7 +155,8 @@ class RoleTowerAttacker {
 
 };
 RoleTowerAttacker.WANTED_BOOSTS = {};
+RoleTowerAttacker.WANTED_BOOSTS[ATTACK] = ['XUH2O','UH2O','UH'];
 RoleTowerAttacker.WANTED_BOOSTS[HEAL] = [RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE, RESOURCE_LEMERGIUM_ALKALIDE, RESOURCE_LEMERGIUM_OXIDE];
-RoleTowerAttacker.WANTED_BOOSTS[TOUGH] = [RESOURCE_GHODIUM_OXIDE];
+RoleTowerAttacker.WANTED_BOOSTS[TOUGH] = ['XGHO2','GHO2',RESOURCE_GHODIUM_OXIDE, ];
 
 require('./profiler').registerClass(RoleTowerAttacker, 'RoleTowerAttacker'); module.exports = RoleTowerAttacker;

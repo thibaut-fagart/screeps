@@ -18,19 +18,18 @@ class RegroupStrategy extends Base {
                 delete creep.memory[this.PATH];
             }
         }
-        let regroupFlags = creep.room.find(FIND_FLAGS, {
-            filter: {
-                color: this.flagColor,
-                secondaryColor: this.flagColor
-            }
-        });
+        let regroupFlags = creep.room.find(FIND_FLAGS).filter(f=>f.color== this.flagColor && f.secondaryColor== this.flagColor);
         if (regroupFlags.length) {
-            let flag = regroupFlags[0];
-            let pos = creep.room.findValidParkingPosition(creep, flag.pos, 3);
+            let flag = creep.pos.findClosestByRange(regroupFlags);
+            // creep.log('flag ', flag);
+            let pos = creep.room.findValidParkingPosition(creep, flag.pos, 1);
+            // creep.log('parkAt ', pos);
             if (pos) {
                 creep.memory[this.PATH] = util.posToString(pos);
             }
             return pos;
+        } else {
+            // creep.log('no regroup flag');
         }
     }
 
@@ -40,9 +39,11 @@ class RegroupStrategy extends Base {
         if (pos) {
             // creep.log('regrouping on ', pos);
             util.moveTo(creep, pos, 'regroup_' + this.flagColor);
+            // return pos.getRangeTo(creep)> 1;
         }  else {
             // creep.log('no flag', this.flagColor);
         }
+        // return !pos;
         return false;
     }
 

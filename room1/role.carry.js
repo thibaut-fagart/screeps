@@ -12,7 +12,7 @@ class RoleCarry {
         this.travelingPickupStrategy = new ClosePickupStrategy(RESOURCE_ENERGY, 1);
         this.loadStrategies = [
             new PickupStrategy(undefined, (creep)=>((d)=>(d.amount > 50))),
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (creep)=>(s=>s.room.isHarvestContainer(s))),
+            new LoadFromContainerStrategy(undefined, STRUCTURE_CONTAINER, (creep)=>(s=>s.room.isHarvestContainer(s))),
             new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_STORAGE),
         ];
         this.unloadStrategies = [

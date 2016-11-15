@@ -1,60 +1,98 @@
 var _ = require('lodash');
 var util = require('./util');
-var HarvestSourceToContainerStrategy = require('./strategy.harvest_source_to_container');
 
 /**
  * harvests the mineral. will transfer to any nearby container if has a CARRY.
  */
 class RoleMineralHarvester {
     constructor() {
-        this.loadStrategies = [new HarvestSourceToContainerStrategy({resourceType: util.ANY_MINERAL, nooverflow:true})];
-        util.indexStrategies(this.loadStrategies);
     }
 
     run(creep) {
-        let strategy;
         let hostiles = creep.room.glanceForAround(LOOK_CREEPS, creep.pos, 5, true).map(l=>l.creep).filter(c=>!c.my);
         if (hostiles.length) {
-            let pathAndCost = PathFinder.search(creep.pos, hostiles.map(c=>({pos:c.pos, range:10})),{flee:true, maxRooms: 1});
+            let pathAndCost = PathFinder.search(creep.pos, hostiles.map(c=>({pos: c.pos, range: 10})), {
+                flee: true,
+                maxRooms: 1
+            });
             let path = pathAndCost.path;
             creep.move(creep.pos.getDirectionTo(path[0]));
             return;
         }
-        let container = this.getContainer(creep);
-        let currentCarry = _.sum(creep.carry);
-        if (container && container.storeCapacity - _.sum(container.store) < currentCarry) {
-            return;
-        }
-        if (currentCarry > 0 && container) {
-            creep.transfer(container, _.keys(creep.carry).find(r=>creep.carry[r]));
-        }
-        let drops = creep.pos.lookFor(LOOK_RESOURCES);
-        // creep.log('drop', JSON.stringify(drops));
-        if (drops && drops.length && _.sum(drops, d=>d.amount) >= 2000) {
-            return;
-        }
-        strategy = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);
-        if (!strategy) {
-            strategy = _.find(this.loadStrategies, (strat)=> (strat.accepts(creep)));
-            if (!strategy) {
-                this.onNoLoadStrategy(creep);
+        let mineral = _.head(creep.room.find(FIND_MINERALS));
+        let container = this.getContainer(creep, mineral);
+        if (!creep.memory.inplace) {
+            let pos = this.getHarvestPos(creep, container, mineral);
+            if (pos && pos.isEqualTo(creep.pos)) {
+                creep.memory.inplace = true;
+            } else if (pos) {
+                if (creep.pos.getRangeTo(pos) < 2) {
+                    if (!creep.room.isValidParkingPos(creep, pos)) {
+                        delete creep.memory.harvestFrom;
+                        pos = this.getHarvestPos(creep, container, mineral);
+                    }
+                }
+                util.moveTo(creep, pos, 'harvestPath', {range: 0});
+            } else {
+                creep.log('no parking pos near mineral ? ');
+                if (creep.pos.getRangeTo(mineral)>2) {
+                    util.moveTo(creep, mineral.pos, 'harvestPath', {range: 1});
+                } else {
+                    util.moveTo(creep, mineral.pos, 'harvestPath', {range: 1, ignoreCreeps: false});
+                }
             }
         }
-        // creep.log(util.strategyToLog(strategy));
-        if (strategy) {
-            util.setCurrentStrategy(creep, strategy);
-            // creep.log('strategy ', strategy.constructor.name);
-        } else {
-            // creep.log('no harvestStrategy');
-            return;
+        if (creep.memory.inplace) {
+            let currentCarry = _.sum(creep.carry);
+            let freeContainerCapacity = container && container.storeCapacity - _.sum(container.store);
+            if (container && freeContainerCapacity < currentCarry) {
+                return;
+            }
+            // creep.log(`currentCarry ${currentCarry}, container ${container}, freeContainerCapacity ${freeContainerCapacity}`);
+            if (currentCarry > 0 && container) {
+                creep.transfer(container, _.keys(creep.carry).find(r=>creep.carry[r]));
+            }
+            let drops = creep.pos.lookFor(LOOK_RESOURCES);
+            if (creep.carryCapacity > currentCarry && drops.length) {
+                let drop = _.head(drops);
+                creep.withdraw(drop, drop.resourceType);
+            }
+            // creep.log('drop', JSON.stringify(drops));
+            if (drops && drops.length && _.sum(drops, d=>d.amount) >= 2000) {
+                return;
+            }
+            if (ERR_NOT_ENOUGH_RESOURCES === creep.harvest(mineral)) {
+                Game.notify(`${Game.time} ${creep.room.name} ${creep.name} resigning, mineral depleted`);
+                creep.log('resigning, mineral depleted');
+                creep.memory.role = 'recycle';
+            }
         }
     }
 
-    getContainer(creep) {
+    getHarvestPos(creep, container, mineral) {
+        if (!creep.memory.harvestFrom) {
+            let positions= creep.room.findValidParkingPositions(creep, [{
+                pos: container.pos,
+                range: 1
+            }, {pos: mineral.pos, range: 1}]);
+            creep.log('harvest positions ', JSON.stringify(positions));
+            let position = creep.pos.findClosestByRange(positions);
+            if (position) {
+                creep.memory.harvestFrom = util.posToString(position);
+                return position;
+            }
+        }
+        if (creep.memory.harvestFrom) {
+            return util.posFromString(creep.memory.harvestFrom, creep.room.name);
+        }
+
+    }
+
+    getContainer(creep, mineral) {
         let containerid = creep.memory.container;
-        let container = containerid?Game.getObjectById(containerid):undefined;
-        if (!container || container.pos.getRangeTo(creep)>1) {
-            container = creep.room.glanceForAround(LOOK_STRUCTURES, creep.pos, 1, true).map(l=>l.structure).find(s=>s.structureType === STRUCTURE_CONTAINER);
+        let container = containerid ? Game.getObjectById(containerid) : undefined;
+        if (!container ) {
+            container = creep.room.glanceForAround(LOOK_STRUCTURES, mineral.pos, 2, true).map(l=>l.structure).find(s=>s.structureType === STRUCTURE_CONTAINER);
         }
         if (container) {
             creep.memory.container = container.id;
@@ -64,11 +102,7 @@ class RoleMineralHarvester {
             return undefined;
         }
     }
-    onNoLoadStrategy(creep) {
-        Game.notify(`${Game.time} ${creep.room.name} ${creep.name} resigning, mineral depleted`);
-        creep.log('resigning, mineral depleted');
-        creep.memory.role = 'recycle';
-    }
+
 }
 require('./profiler').registerClass(RoleMineralHarvester, 'RoleMineralHarvester');
 module.exports = RoleMineralHarvester;

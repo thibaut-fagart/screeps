@@ -26,13 +26,10 @@ class RoleRemoteCarry {
                 };
             });
         this.loadStrategies = [
-            new PickupStrategy(util.ANY_MINERAL, function (creep) {
+            new PickupStrategy(undefined, function (creep) {
                 return ((drop)=>drop.amount > 50);
             }),
-            new PickupStrategy(undefined, function (creep) {
-                return ((drop)=>drop.resourceType !== RESOURCE_ENERGY || drop.amount > 50);
-            }),
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER)
+            new LoadFromContainerStrategy(undefined, STRUCTURE_CONTAINER)
         ];
         this.unloadStrategies = [
             // new DropToEnergyStorageStrategy(STRUCTURE_TOWER),
@@ -90,7 +87,12 @@ class RoleRemoteCarry {
             this.init(creep);
         }
         // creep.log('action?', creep.memory.action);
-
+        if (creep.fatigue > 0
+            && creep.pos.lookFor(LOOK_FLAGS).find(f=>f.color === util.primaryBuildColor(STRUCTURE_ROAD) && f.secondaryColor == util.secondaryBuildColor(STRUCTURE_ROAD))
+            && creep.pos.lookFor(LOOK_CONSTRUCTION_SITES).length === 0) {
+            Game.notify(`rebuilding road ${creep.pos}`);
+            creep.pos.createConstructionSite(STRUCTURE_ROAD);
+        }
         if (creep.carry && creep.carry.energy && this.repairAround(creep)) {
             creep.log('badly hit, repairing');
             return;
@@ -205,9 +207,8 @@ class RoleRemoteCarry {
     repairAround(creep) {
         let range = 3;
         let repairCapacity = creep.repairCapacity;
-        let structures = creep.room.lookForAtArea(LOOK_STRUCTURES, Math.max(0, creep.pos.y - range), Math.max(0, creep.pos.x - range),
-            Math.min(creep.pos.y + range, 49), Math.min(49, creep.pos.x + range), true);
-        let needRepair = structures.filter((s)=>s.ticksToVanish && s.hits + repairCapacity < s.hitsMax)
+        let structures = creep.room.glanceForAround(LOOK_STRUCTURES, creep.pos, 3, true);
+        let needRepair = structures.filter((s)=>s.ticksToVanish && s.hits + repairCapacity < s.hitsMax);
 
         if (needRepair.length) {
             creep.log('repairing');

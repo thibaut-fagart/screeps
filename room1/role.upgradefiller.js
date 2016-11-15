@@ -8,7 +8,7 @@ class RoleUpgradeFiller extends RoleCarry {
     constructor() {
         super();
         this.loadStrategies = [
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_STORAGE),
+            new LoadFromContainerStrategy(RESOURCE_ENERGY, undefined, (creep)=>s=>s.pos.getRangeTo(creep.room.controller.pos)>3),
         ];
         this.unloadStrategies = [
             new DropToContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (creep)=> {

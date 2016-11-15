@@ -66,7 +66,16 @@ class RoleArcher {
                 } else if (range ===4) {
                     // do not advance, or we can end up in range
                 } else {
-                    creep.rangedAttack(closest);
+                    let MAdamage = [0, 10, 4, 1];
+                    let massAttackDamage = hostiles.reduce((total, h)=> {
+                        let range = h.pos.getRangeTo(creep);
+                        return total + (range <= 3 ? MAdamage[range] : 0);
+                    }, 0);
+                    if (massAttackDamage <10) {
+                        creep.rangedAttack(closest);
+                    } else {
+                        creep.rangedMassAttack();
+                    }
                     if (range <3 && dangerous.length) {
                         let pathAndCost = PathFinder.search(creep.pos, dangerous.map(c=>({pos:c.pos, range:10})),{flee:true, maxRooms: 1});
                         let path = pathAndCost.path;

@@ -18,7 +18,7 @@ class RoleLabOperator {
                     if (!creep.room.isValidParkingPos(creep)) {
                         const pos = creep.room.findValidParkingPosition(creep, creep.pos, 5);
                         if (pos) {
-                            util.moveTo(creep, pos,undefined,{range:0});
+                            util.moveTo(creep, pos, undefined, {range: 0});
                         } else {
                             creep.log('no valid parking pos in range 5');
                         }
@@ -55,7 +55,7 @@ class RoleLabOperator {
                     return ()=>false;
                 }
             ),
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_TERMINAL, (creep)=>creep.room.controller.level < 8 ? (term)=>term.store.energy > (10000) : (term)=>term.store.energy > (100000)),
+            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_TERMINAL, (creep)=>creep.room.controller && creep.room.controller.level < 8 ? (term)=>term.store.energy > (10000) : (term)=>term.store.energy > (100000)),
             new LoadFromContainerStrategy((creep)=>creep.memory.lab_goal.mineralType, STRUCTURE_CONTAINER),
             new LoadFromContainerStrategy((creep)=>creep.memory.lab_goal.mineralType || 'none', STRUCTURE_TERMINAL, (creep)=>((s)=>creep.memory.lab_goal && s.store && s.store[creep.memory.lab_goal.mineralType])),
             new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_STORAGE, (creep)=> {
@@ -159,7 +159,8 @@ class RoleLabOperator {
             } else if (_.sum(creep.carry) > 0) {
                 // unable to load more, unload
                 creep.memory.action = this.ACTION_UNLOAD;
-            } else {
+            } else if (creep.memory.lab_goal) {
+                creep.log(`no strategy and empty, clearning goal ${JSON.stringify(creep.memory.lab_goal)}`);
                 delete creep.memory.lab_goal;
             }
             // creep.log('no load strategy, clearing current goal');
@@ -287,14 +288,19 @@ class RoleLabOperator {
                 },
                 // export mineral , fill terminal
                 (labs)=> {
-                    if (creep.room.memory.exports && creep.room.storage && creep.room.storage.store && terminal && terminal.storeCapacity > _.sum(terminal.store)) {
+                    if ((creep.room.memory.exports || creep.room.sellOrders) && creep.room.storage && creep.room.storage.store && terminal && terminal.storeCapacity > _.sum(terminal.store)) {
                         // creep.log('seeking exports', JSON.stringify(creep.room.memory.exports), JSON.stringify(creep.room.storage.store));
                         let min = creep.room.export.find((min)=> {
                             // creep.log('testing', min, creep.room.storage.store[min], (!terminal.store || ! terminal.store[min] ||terminal.store[min]<10000));
-                            return RESOURCE_ENERGY !== min && (creep.room.storage.store[min] || 0) > (desiredLedger[min] || 0) // enough stored to spare
+                            return RESOURCE_ENERGY !== min && (creep.room.storage.store[min] || 0) - carryCapacity > (desiredLedger[min] || 0)
+                                - _.sum(_.values(Game.market.orders).filter(o=>o.type === 'sell' && o.roomName === creep.room.name && o.resourceType === min), o=>o.remainingAmount)// enough stored to spare
                                 && (_.get(terminal, ['store', min], 0) < 10000);
                         });
-                        // creep.log('trying export', min);
+                        // creep.log('testing sellOrders?', !min);
+                        if (!min && creep.room.sellOrders) {
+                            min = _.keys(creep.room.sellOrders).find(m=> creep.room.storage.store[m] && (terminal.store[m] || 0) < creep.room.sellOrders[m]);
+                            // creep.log('sellOrder min ', min);
+                        }
                         if (min) {
                             creep.memory.lab_goal = {
                                 name: 'fillTerminal',
@@ -311,9 +317,10 @@ class RoleLabOperator {
                         // creep.log('seeking exports', JSON.stringify(creep.room.memory.exports), JSON.stringify(creep.room.storage.store));
                         let min = _.keys(creep.room.terminal.store).find((min)=> {
                             // creep.log('testing', min, creep.room.storage.store[min], (!terminal.store || ! terminal.store[min] ||terminal.store[min]<10000));
-                            return min !== RESOURCE_ENERGY && ((creep.room.storage.store[min] || 0) + carryCapacity < (desiredLedger[min] || 0));
+                            let neededForTrade = _.sum(_.values(Game.market.orders).filter(o=>o.type === 'sell' && o.roomName === creep.room.name && o.resourceType === min), o=>o.remainingAmount);
+                            let wantedInTerminal = Math.max(neededForTrade,(creep.room.currentLedger[min]||0) - (creep.room.desiredLedger[min]||0));
+                            return min !== RESOURCE_ENERGY && (creep.room.terminal.store[min] || 0)-carryCapacity > wantedInTerminal;
                         });
-                        // creep.log('trying export', min);
                         if (min) {
                             creep.memory.lab_goal = {
                                 name: 'fillStorage',

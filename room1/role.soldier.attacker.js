@@ -4,17 +4,19 @@ var RemoteAttackStrategy = require('./strategy.remote_target');
 var AttackWallStrategy = require('./strategy.attack_wall');
 var MoveToRoomTask = require('./task.move.toroom');
 var AttackStructureStrategy = require('./strategy.attack.structure');
+var RegroupStrategy = require('./strategy.regroup');
 var CloseAttackStrategy = require('./strategy.closeattack_target');
 var HealStrategy = require('./strategy.remote_heal');
 
 class RoleAttacker {
     constructor() {
         this.attackStrategies = [
-            new CloseAttackStrategy(undefined),
-            new CloseAttackStrategy(undefined,(creep)=>((target)=>target.getActiveBodyparts(ATTACK)+target.getActiveBodyparts(HEAL)>0)),
+            // new CloseAttackStrategy(undefined),
+            // new CloseAttackStrategy(undefined,(creep)=>((target)=>target.getActiveBodyparts(ATTACK)+target.getActiveBodyparts(HEAL)>0)),
             new RemoteAttackStrategy(),
-            new AttackStructureStrategy(),
+            new AttackStructureStrategy(5),
             new HealStrategy()/*, new AttackWallStrategy()*/,
+            new RegroupStrategy(COLOR_GREEN)
             /*new AttackStructureStrategy()*/];
         this.moveTask = new MoveToRoomTask('attack');
         util.indexStrategies(this.attackStrategies);

@@ -25,6 +25,7 @@ class LoadFromContainerStrategy extends BaseStrategy {
         let neededCarry = creep.carryCapacity - _.sum(creep.carry);
         let source = util.objectFromMemory(creep.memory, LoadFromContainerStrategy.PATH, (c)=>this.containerQty(creep, c) > neededCarry);
         if (!source || this.containerQty(creep, source) < neededCarry || source.room.name !== creep.room.name) {
+            delete creep.memory[LoadFromContainerStrategy.PATH];
             source = this.findSource(creep, neededCarry, source);
         }
          //creep.log('source',source);
@@ -60,11 +61,7 @@ class LoadFromContainerStrategy extends BaseStrategy {
         switch (resource) {
             case RESOURCE_ENERGY: {
                 // ret = source.transferEnergy ? source.transferEnergy(creep) : source.transfer(creep, this.resource);
-                let available = source.store ? source.store[RESOURCE_ENERGY] : source.energy;
-                let sourceFull = source.store ? source.storeCapacity - (_.sum(source.store)) === 0 : source.energy === source.energyCapacity;
-                if (sourceFull || available >= neededCarry || (!source.room.controller || !source.room.controller.my) || !source.my){
-                    ret = creep.withdraw(source, RESOURCE_ENERGY);
-                }
+                ret = creep.withdraw(source, RESOURCE_ENERGY);
                 break;
             }
             case LoadFromContainerStrategy.ANY_MINERAL : {
@@ -75,7 +72,7 @@ class LoadFromContainerStrategy extends BaseStrategy {
             }
             default: {
                 if (!resource) {
-                    resource = source.store ? _.max(_.keys(source.store).filter(r=>source.store[r]>0), k=>k.length):source.mineralType?source.mineralType:'energy';
+                    resource = source.store ? _.min(_.keys(source.store).filter(r=>source.store[r]>0), k=>k.length):source.mineralType?source.mineralType:'energy';
                 }
                 ret = creep.withdraw(source, resource);
             }
@@ -192,7 +189,7 @@ class LoadFromContainerStrategy extends BaseStrategy {
                     } else {
                         ret = structure.mineralCapacity ?
                                                     (structure.mineralType === resource ? structure.mineralAmount : 0) // lab
-                                                    : structure.store ? _.sum(structure.store[resource]) : 0;
+                                                    : structure.store ? _.sum(structure.store) : 0;
                     }
                     break;
 
