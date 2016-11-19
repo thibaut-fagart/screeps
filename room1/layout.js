@@ -70,7 +70,7 @@ module.exports = {
         let room = object.room;
         let sources = room.find(FIND_SOURCES).concat(room.find(FIND_MINERALS).filter((m)=>m.pos.lookFor(LOOK_STRUCTURES).find(s=>s.my && s === STRUCTURE_EXTRACTOR)));
         if (room.memory.sources) sources = sources.filter((s)=>room.memory.sources.indexOf(s.id) >= 0);
-        sources.forEach((s)=> this.createFlags(this.findPath(room, object.pos, s.pos, 2), room), room);
+        sources.forEach((s)=> this.createFlags(this.findPath(room, object.pos, s.pos, 1).slice(1), room), room);
     },
     /**
      *
@@ -81,7 +81,7 @@ module.exports = {
         let room = object.room;
         let sources = room.find(FIND_MINERALS);
         if (room.memory.sources) sources = sources.filter((s)=>room.memory.sources.indexOf(s.id) >= 0);
-        sources.forEach((s)=> this.createFlags(this.findPath(room, object.pos, s.pos, 2), room), room);
+        sources.forEach((s)=> this.createFlags(this.findPath(room, object.pos, s.pos, 1).slice(1), room), room);
     },
 
     /**
@@ -201,61 +201,6 @@ module.exports = {
         this.createFlags(path, room);
     },
 
-    /**
-     *
-     * @param {string} roomname
-     */
-    fromSourcesToSources: function (roomname) {
-        'use strict';
-        'use strict';
-        let room = Game.rooms[roomname];
-        room.memory.temp = room.memory.temp || {};
-        let startCpu = Game.cpu.getUsed();
-        let limit = Game.cpu.tickLimit;
-        console.log('start', startCpu, limit);
-        let sources = room.find(FIND_SOURCES).concat(room.find(FIND_MINERALS).filter((s)=>s.pos.lookFor(LOOK_STRUCTURES).length > 0));
-        if (room.memory.sources) sources = sources.filter((s)=>room.memory.sources.indexOf(s.id) >= 0);
-        console.log('sources found', Game.cpu.getUsed(), limit);
-        let stop = false;
-        let flagCount = 0;
-        for (let i = 0, max = sources.length; i < max; i++) {
-            let source1 = sources[i];
-            for (let j = i; j < max; j++) {
-                let source2 = sources[j];
-
-                if (!stop) {
-                    let pathHolder = room.memory.temp[source1.id + '_' + source2.id] = room.memory.temp[source1.id + '_' + source2.id] || {};
-                    let used = Game.cpu.getUsed();
-
-                    if (!pathHolder.path && used - startCpu < limit - used) {
-                        pathHolder.path = this.findPath(room, source1.pos, source2.pos, 2);
-                        console.log('path found', Game.cpu.getUsed() - used);
-                    }
-                    used = Game.cpu.getUsed();
-                    console.log('test', !!pathHolder.path, !pathHolder.flags, pathHolder.path.length);
-                    if (pathHolder.path && !pathHolder.flags) {
-                        pathHolder.path.forEach((pos)=> {
-                            if (!stop) {
-                                console.log('test cpu', limit - Game.cpu.getUsed());
-                                if (limit - Game.cpu.getUsed() > 100) {
-                                    this.createFlag(room, pos);
-                                    flagCount++;
-                                } else {
-                                    console.log('cpu consumed', Game.cpu.getUsed());
-                                    stop = true;
-                                }
-                            }
-                        });
-                        if (!stop) pathHolder.flags = true;
-                        console.log('flags layed', flagCount, Game.cpu.getUsed() - used);
-                    }
-                }
-
-            }
-
-        }
-
-    },
     /**
      *
      * @param {string}roomname
