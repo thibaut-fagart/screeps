@@ -6,11 +6,28 @@ var ClosePickupStrategy = require('./strategy.pickup.close');
 
 /*
  creep.memory.tasks = [{
- task:'MoveToRoom',
+ name:'MoveToRoom',
  args:{room:'aRoom'}
  }];
  */
 class MoveToRoom {
+    static addLast(creep, room) {
+        creep.memory.tasks = creep.memory.tasks || [];
+        creep.memory.tasks.push(this.create(room));
+    }
+
+    static addFirst(creep, room) {
+        creep.memory.tasks = creep.memory.tasks || [];
+        creep.memory.tasks.unshift(this.create(room));
+    }
+
+    static create(room) {
+        return {
+            name: 'MoveToRoom',
+            args: {room: room}
+        };
+    }
+
     /**
      *
      * @param {{room}} [state]
@@ -33,6 +50,9 @@ class MoveToRoom {
             return false;
         }
 
+        if (creep.hits <creep.hitsMax) {
+            creep.heal(creep);
+        }
         let taskExec = new MoveToRoomTask(undefined, 'task_moveToFrom', 'task_moveToDest').accepts(creep);
         if (!taskExec) {
             let isAtBorder = (creep.pos.x % 49) < 1 || (creep.pos.y % 49) < 1;

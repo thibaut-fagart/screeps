@@ -4,11 +4,28 @@ var MoveToRoomTask = require('./task.move.toroom');
 
 /*
  creep.memory.tasks = [{
- task:'GoThroughPortal',
+ name:'GoThroughPortal',
  args:{room:'aRoom'}
  }];
  */
 class GoThroughPortal {
+    static addLast(creep, room) {
+        creep.memory.tasks = creep.memory.tasks || [];
+        creep.memory.tasks.push(this.create(room));
+    }
+
+    static addFirst(creep, room) {
+        creep.memory.tasks = creep.memory.tasks || [];
+        creep.memory.tasks.unshift(this.create(room));
+    }
+
+    static create(room) {
+        return {
+            name: 'GoThroughPortal',
+            args: {room: room}
+        };
+    }
+
     /**
      *
      * @param {{room}} [state]
@@ -31,9 +48,9 @@ class GoThroughPortal {
             }
             let chosen = Game.getObjectById(this.state.portal_id);
             let moved;
-            if (chosen.pos.getRangeTo(creep)===1) {
+            if (chosen.pos.getRangeTo(creep) === 1) {
                 moved = creep.moveTo(chosen);
-            }else {
+            } else {
                 moved = util.moveTo(creep, chosen.pos, 'portal_path', {range: 1});
             }
             // creep.log('moving to portal ', chosen.pos, moved);
@@ -44,9 +61,13 @@ class GoThroughPortal {
             if (creep.pos.lookFor(LOOK_STRUCTURES).find(s=>STRUCTURE_PORTAL === s.structureType)) {
 
                 let portals = creep.room.find(FIND_STRUCTURES).filter(s=>STRUCTURE_PORTAL === s.structureType);
-                let pathAndCost = PathFinder.search(creep.pos, portals.map(p=>({pos: p.pos, range: 1})), {flee: true});
+
+                let pathAndCost = PathFinder.search(creep.pos, portals.map(p=>({pos: p.pos, range: 1})), {
+                    flee: true,
+                    roomCallback: util.avoidHostilesCostMatrix(creep)
+                });
                 let moved = creep.move(creep.pos.getDirectionTo(pathAndCost.path[0]));
-                // creep.log('moved to ', pathAndCost.path[0], moved);
+                creep.log('GoThroughPortal,moved to ', pathAndCost.path[0], moved);
             } else {
                 return true;
             }
