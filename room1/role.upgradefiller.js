@@ -23,7 +23,7 @@ class RoleUpgradeFiller extends RoleCarry {
             }),
             new DropToContainerStrategy(RESOURCE_ENERGY, STRUCTURE_CONTAINER, (creep)=> {
                 let cpos = creep.room.controller.pos;
-                return ((s)=>!s.room.isHarvestContainer(s) &&  cpos.getRangeTo(s) < 3);
+                return ((s)=>!s.room.isHarvestContainer(s) &&  cpos.getRangeTo(s) <= 3);
             }),
         ];
         util.indexStrategies(this.loadStrategies);
