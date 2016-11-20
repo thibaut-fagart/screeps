@@ -155,7 +155,7 @@ let patterns = {
                 desiredCapacity = Math.max(1200, Math.min(33 * 50, 500 + mineral.accessTiles * harvesterParts * 2 * pathLength / (5)));
                 room.log(`labOperator sizing : accessTiles ${mineral.accessTiles}, harvesterParts ${harvesterParts}, ${pathLength}=>${desiredCapacity}`);
             } else {
-                desiredCapacity = 1200;
+                desiredCapacity = room.structures[STRUCTURE_LAB].length*150;
             }
             return CreepShaper.shape(CreepShaper.requirements().minimum(FULL_ROAD_SPEED, 1).minimum(CAPACITY, desiredCapacity), shaperOptions(room, 'labOperator', budget));
         },
