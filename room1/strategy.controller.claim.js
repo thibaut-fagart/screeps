@@ -21,25 +21,12 @@ class ClaimControllerStrategy extends BaseStrategy {
         let target;
         if (creep.getActiveBodyparts(CLAIM) > 0) {
 
-            // creep.log('body ok');
-            target = util.objectFromMemory(creep.memory, this.PATH, (/**@param {StructureController}s*/s)=> (!s.owner && (!s.reservation || s.reservation.username == creep.owner.username)));
-            if (!target) {
-                target = creep.room.controller;
-                creep.memory[this.PATH] = target.id;
-            }
             // creep.log('target', target);
             if (target) {
-                let path;
-                if (!(path = util.objectFromMemory(creep.memory, 'path_to'))) {
-                    path = creep.room.findPath(creep.pos, target.pos, {maxOps: 5000});
-                    creep.memory['path_to'] = path;
-                }
-
                 let claim = creep.claimController(target);
-
                 if (claim == ERR_NOT_IN_RANGE) {
                     if (creep.fatigue == 0) {
-                        let moveTo = creep.moveByPath(path);
+                        let moveTo = util.moveTo(creep, target.pos,'claim');
                         if (moveTo !== OK) {
                             creep.log('move?', moveTo);
                         }

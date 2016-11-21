@@ -140,7 +140,7 @@ class RoleLabOperator {
         } else if (_.sum(creep.carry) == creep.carryCapacity && creep.memory.action !== this.ACTION_UNLOAD) {
             // creep.log('unloading');
             creep.memory.action = this.ACTION_UNLOAD;
-            delete creep.memory.currentStrategy;
+            delete creep.memory[util.CURRENT_STRATEGY];
             let s = util.currentStrategy(creep, this.unloadStrategies);
             if (s) {
                 s.clearMemory(creep);
@@ -193,7 +193,12 @@ class RoleLabOperator {
             creep.log('invalidGoal', JSON.stringify(creep.memory.lab_goal));
             delete creep.memory.lab_goal;
         }
+
         if (!creep.memory.lab_goal) {
+            if (creep.memory.goalCheck && creep.memory.goalCheck > Game.time -10) {
+                return ;
+            }
+            creep.memory.goalCheck = Game.time;
             // export minerals go to terminal
 
             // labs with bad min
@@ -288,7 +293,7 @@ class RoleLabOperator {
                 },
                 // export mineral , fill terminal
                 (labs)=> {
-                    if ((creep.room.memory.exports || creep.room.sellOrders) && creep.room.storage && creep.room.storage.store && terminal && terminal.storeCapacity > _.sum(terminal.store)) {
+                    if ((creep.room.export || creep.room.sellOrders) && creep.room.storage && creep.room.storage.store && terminal && terminal.storeCapacity > _.sum(terminal.store)) {
                         // creep.log('seeking exports', JSON.stringify(creep.room.memory.exports), JSON.stringify(creep.room.storage.store));
                         let min = creep.room.export.find((min)=> {
                             // creep.log('testing', min, creep.room.storage.store[min], (!terminal.store || ! terminal.store[min] ||terminal.store[min]<10000));

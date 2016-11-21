@@ -46,7 +46,7 @@ class RoleRepair2 {
                 let boosted = lab.boostCreep(creep);
                 if (boosted == ERR_NOT_IN_RANGE) {
                     creep.log('moving to lab', JSON.stringify(lab.pos));
-                    creep.moveTo(lab);
+                    util.moveTo(creep, lab.pos,'boost',{range:1});
                     return true;
                 } else if (boosted == OK) {
                     creep.memory.boosted = true;
@@ -129,8 +129,17 @@ class RoleRepair2 {
 /// LEGACY BELOW
 
     findDamagedStructures(creep) {
-        return _.sortBy((creep.room.structures[STRUCTURE_CONTAINER] || [])
-            .filter(structure=> structure.hits < structure.hitsMax), (s) => s.hits);
+        let structures;
+        if (creep.room.controller && creep.room.controller.my) {
+            structures = (creep.room.structures[STRUCTURE_CONTAINER] || [])
+                .filter(structure=> structure.hits < structure.hitsMax);
+        } else {
+            structures = creep.room.find(FIND_STRUCTURES, {
+                filter: structure =>[STRUCTURE_ROAD, STRUCTURE_CONTAINER].indexOf(structure.structureType) >= 0 && structure.hits < structure.hitsMax
+            });
+
+        }
+        return _.sortBy(structures, (s) => s.hits);
     }
 
     findDamagedWalls(creep) {

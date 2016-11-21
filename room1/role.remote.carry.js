@@ -10,7 +10,7 @@ var DropToEnergyStorageStrategy = require('./strategy.drop_to_energyStorage');
 var AvoidRespawnStrategy = require('./strategy.avoidrespawn');
 var MoveToRoomTask = require('./task.move.toroom');
 var RegroupStrategy = require('./strategy.regroup');
-
+var repair = true;
 class RoleRemoteCarry {
 
     constructor() {
@@ -87,16 +87,16 @@ class RoleRemoteCarry {
             this.init(creep);
         }
         // creep.log('action?', creep.memory.action);
-        if (creep.fatigue > 0
+        if (repair &&creep.fatigue > 0
             && creep.pos.lookFor(LOOK_FLAGS).find(f=>f.color === util.primaryBuildColor(STRUCTURE_ROAD) && f.secondaryColor == util.secondaryBuildColor(STRUCTURE_ROAD))
             && creep.pos.lookFor(LOOK_CONSTRUCTION_SITES).length === 0) {
             Game.notify(`rebuilding road ${creep.pos}`);
             creep.pos.createConstructionSite(STRUCTURE_ROAD);
         }
-        if (creep.carry && creep.carry.energy && this.repairAround(creep)) {
+        if (repair && creep.carry && creep.carry.energy && this.repairAround(creep)) {
             creep.log('badly hit, repairing');
             return;
-        } else if (creep.carry && creep.carry.energy && creep.fatigue > 0 && this.buildAround(creep)) {
+        } else if (repair && creep.carry && creep.carry.energy && creep.fatigue > 0 && this.buildAround(creep)) {
             // creep.log('building');
             return;
         }

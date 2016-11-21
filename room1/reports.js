@@ -112,3 +112,57 @@ module.exports.printProductions = function () {
     console.log(generateProductionReport(map));
 
 };
+
+/**
+ * 1 table per mineral
+ * 1 table for sources (number of sources in columns)
+ * 1 table for portals
+ * TODO
+ * @returns {string}
+ */
+module.exports.scout = function () {
+    let scoutData = _.keys(Memory.rooms).reduce((acc, rname)=> {
+        if (Memory.rooms[rname].scouted) {
+            let raw = Memory.rooms[rname].scouted;
+            let data = {};
+            data.name = rname;
+            data.age = Game.time - raw.time;
+            data.mineral = raw.minerals && raw.minerals.length ? _.head(raw.minerals) : '';
+            data.portal = raw.portal ? {
+                to: raw.portal.destination.roomName,
+                decayIn: raw.portal.decayAt ? raw.portal.decayAt - Game.time : 'stable'
+            } : undefined;
+            data.sources = raw.sourceCount || 0;
+            acc[rname] = data;
+        }
+        return acc;
+    }, {});
+
+    let report = '<table><tr><th colspan="3">PORTALS</th></tr><tr><th>ROOM </th><th>| STABLE</th><th>| TO</th></tr>';
+    scoutData.forEach(data=> {
+        if (data.portal) {
+            report += `<tr><td>${data.name}</td><td>${data.portal.destination}</td><td>${data.portal.decay}</td></tr>`;
+        }
+    });
+    report += '</table>';
+    report += '<table><tr><th>ROOM </th><th>|AGE </th><th>| MINERAL </th><th>| SOURCES</th></tr>';
+    let ageSorted = _.sortBy(_.keys(scoutData), k=>scoutData[k].age);
+    ageSorted.forEach(roomName => {
+        try {
+            let mineralColorCode = scoutData[roomName].mineral ? getPercentColorCode(Number.parseInt(/.(\d)/.exec(scoutData[roomName].mineral)[1]) / 4) : getPercentColorCode(0);
+            let sourceColorCode = scoutData[roomName].sources ? getPercentColorCode(Number.parseInt(/.\d/.exec(scoutData[roomName].sources)) / 2) : getPercentColorCode(0);
+            let ageColorCode = getPercentColorCode(Math.max(15000 - scoutData[roomName].age, 0) / 15000);
+
+            report +=
+                `<tr><td>${roomName} </td><td>|<font color="#${ageColorCode}">${scoutData[roomName].age}</font> </td><td>|<font color="#${mineralColorCode}"> ${scoutData[roomName].mineral}</font></td><td>| <font color="#' + ${sourceColorCode} + '">${scoutData[roomName].sources}</font></td></tr>`;
+        } catch (e) {
+            console.log(e);
+            console.log(JSON.stringify(scoutData[roomName]));
+
+        }
+    });
+    report += '</table>';
+    return report;
+
+
+};

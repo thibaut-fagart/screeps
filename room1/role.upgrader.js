@@ -20,7 +20,7 @@ class RoleUpgrader {
     run(creep) {
         if (creep.carry.energy == 0 && undefined === creep.memory.wait && !creep.memory.inplace) {
             let container = this.getControllerContainer(creep);
-            if (!container || container.store.energy === 0 || container.pos.getRangeTo(creep) <= 1) {
+            if (!container || _.get(container, ['store','energy'],0) === 0 || container.pos.getRangeTo(creep) <= 1) {
                 creep.memory.action = this.ACTION_FILL;
                 delete creep.memory.source;
             }
@@ -114,10 +114,8 @@ class RoleUpgrader {
             if (creep.room.isValidParkingPos(creep) && creep.pos.getRangeTo(creep.room.controller) <= 3) {
                 position = creep.pos;
             } else {
-                let near = [{pos: creep.room.controller.pos, range: 3}];
-                if (container) {
-                    near.push({pos: container.pos, range: 1});
-                }
+                let near = container?[{pos: container.pos, range: 1}]:[];
+                near.push({pos: creep.room.controller.pos, range: 3});
                 let positions = creep.room.findValidParkingPositions(creep, near);
                 if (positions.length) {
                     // creep.log('finding closest of ', JSON.stringify(positions), JSON.stringify(positions.map(p=>p instanceof RoomPosition)));

@@ -1,5 +1,7 @@
+const useTasks = false;
 var _ = require('lodash');
 require('./game.prototypes.room');
+if (useTasks) require('./tasks.Manager');
 require('./game.prototypes.Source');
 require('./game.prototypes.creep');
 require('./game.prototypes.lab');
@@ -10,7 +12,9 @@ var debugPerfs = false;
 var profiler = require('./profiler');
 if (!Game.rooms['sim'] && !Memory.disableProfiler) profiler.enable();
 const reactions = require('./role.lab_operator').reactions;
+const empire = require('./empire');
 
+const loadGameTime = Game.time;
 // var RoomManager = require('./manager.room'), roomManager = new RoomManager(); // todo manager
 // This line monkey patches the global prototypes.
 // if (Game.cpu.bucket> 500)
@@ -137,6 +141,7 @@ function updateFrequencies(frequencies) {
     frequencies['computeTasks'] = 10;
     frequencies['runSpawn'] = 11 - Math.ceil(Game.cpu.bucket / 1000);
     frequencies['operateTowers'] = 1;
+    frequencies['addRefillTasks'] = 1;
     frequencies['buildStructures'] = 10 * (11 - Math.ceil(Game.cpu.bucket / 1000));
     frequencies['operateLinks'] = 3 - Math.ceil(Math.min(Game.cpu.bucket, 999) / 333);
     frequencies['gc'] = 1000;
@@ -191,239 +196,55 @@ let globalTasks = {
                 delete memory.labs_input;
             }
         });
-    },
-    updateProductions: ()=> {
-        Memory.stats.ledger = Memory.stats.ledger || {time: 0};
-        if (Memory.stats.ledger.time < Game.time - 500) {
-            let globalLedger = require('./reports').globalLedger();
-            Memory.stats.ledger.v = globalLedger;
-            Memory.stats.ledger.time = Game.time;
-            _.keys(globalLedger).forEach(key=> {
-                if (globalLedger[key].goal > 0) {
-                    globalLedger[key].ratio = globalLedger[key].amount / globalLedger[key].goal;
+        _.keys(Memory.creeps).forEach((name)=> {
+            if (!Game.creeps[name]) {
+                let creepMem = Memory.creeps[name];
+                if (creepMem.role !== 'recycle') {
+                    let age;
+                    if (creepMem.birthTime) {
+                        age = (creepMem.lastAlive || Game.time) - creepMem.birthTime; // TODO if not run every tick
+                    } else {
+                        let match = /.*_(\d+)/.exec(name);
+                        if (match) {
+                            let birth = match[1];
+                            age = creepMem.lastAlive % 1500 - birth;
+                            age = (age < 0) ? age + 1500 : age;
+                        }
+                    }
+                    let expectedDeath = /claimer.*/.exec(name) || /reserver.*/.exec(name) ? 490 : 1490;
+                    if (age < expectedDeath) {
+                        Game.notify(`${Game.time} creep ${name} died at ${creepMem.lastAlive + 1} unnaturally at age ${age}`);
+                        Memory.stats.deaths = Memory.stats.deaths + 1;
+                    }
                 }
-            });
-        }
-        const ledger = Memory.stats.ledger.v;
-        // missing as per desired ledger
-        let missingMins = _.keys(ledger).filter(min=>ledger[min].amount < ledger[min].goal);
-        console.log('missing mins : ', JSON.stringify(missingMins));
-        let addIngredients = (array, min)=> {
-            (reactions[min] || []).forEach(m=> {
-                array.push(m);
-                addIngredients(array, m);
-            });
-            return array;
-        };
-        //  collect the ingredients required for the missing components
-        let missingIngredients = _.uniq(missingMins.reduce((acc, min)=> {
-            return addIngredients(acc, min);
-        }, []));
-        console.log('missingIngredients mins : ', JSON.stringify(missingIngredients));
-        // increment ledger
-        missingIngredients.forEach(min=> {
-            ledger[min] = ledger[min] || {amount: 0};
-            ledger[min].goal = (ledger[min].goal || 0) + 5000;
-        });
-
-        let missingWithIngredients = _.uniq(missingMins.concat(missingIngredients));
-        missingWithIngredients = missingWithIngredients.filter(min=>ledger[min].amount < ledger[min].goal);
-
-        console.log('missingWithIngredients mins : ', JSON.stringify(missingWithIngredients));
-        // todo should not be required
-        /*
-         missingWithIngredients.forEach(min=> {
-         if (!ledger[min]) {
-         ledger[min] = {amount: 0, goal: 5000};
-         }
-         });
-         */
-        Memory.stats.ledger.needs = missingWithIngredients;
-
-
-        let produceable = Memory.stats.ledger.needs.filter(min=>reactions[min]).map(min=> {
-            let ingredients = reactions[min];
-            if (ingredients) {
-                return [min, ingredients.reduce((available, i)=> Math.min(available, _.get(ledger, [i, 'amount'], 0)), Infinity)];
-            } else {
-                return [min, 0];
+                if (creepMem.task && useTasks) {
+                    require('./tasks.Manager').returnTask({name: name, memory: creepMem});
+                }
+                delete Memory.creeps[name];
             }
         });
-        // sort by available quantity of ingredients
-        // todo this clears the previous sort
-        // Memory.stats.ledger.produceable = _.sortBy(produceable, pair=>-pair[1]);
-        Memory.stats.ledger.produceable = produceable;
-        _.sortBy(Memory.stats.ledger.needs, min=>-1 * produceable.find(pair=>pair[0] === min));
-        Memory.stats.producing = _.values(Game.rooms).filter(r=>r.controller && r.controller.my && r.controller.level > 6).reduce((acc, r)=> {
-            acc[r.lab_production] = (acc[r.lab_production] || 0) + 1;
-            return acc;
-        }, _.keys(reactions).reduce((acc, m)=> {
-            acc[m] = 0;
-            return acc;
-        }, {}));
+        _.keys(Memory.spawns).forEach((name)=> {
+            if (!Game.spawns[name]) {
+                delete Memory.spawns[name];
+            }
+        });
+
+
     },
-    handleStreamingOrders: function () {
-        'use strict';
-        let maxAffordable = (room, toRoomName, isEnergy)=> {
-            let distance = Game.map.getRoomLinearDistance(room.name, toRoomName, true);
-            let number = Math.log((distance + 9) * 0.1) + 0.1;
-            let amount = (room.terminal.store.energy || 0);
-
-            if (isEnergy) {
-                return {amount: Math.floor((amount / (1 + number))), cost: Math.ceil(amount * (number))};
-            } else {
-                return {amount: Math.ceil(amount / number), cost: amount};
-            }
-
-        };
-        if (Memory.streamingOrders) {
-            Memory.streamingOrders.forEach(order=> {
-                let from = Game.rooms[order.from];
-                if (undefined === order.amount) {
-                    order.amount = order.initialAmount;
-                }
-
-                if (from && from.terminal && order.to && order.what && (order.amount || 0) > 0) {
-                    if (_.get(Game.rooms, [order.to, 'controller', 'my'], false) && !_.get(Game.rooms, [order.to, 'terminal'], false)) {
-                        // terminal not built
-                        return;
-                    }
-                    let available = _.get(from.terminal, ['store', order.what], 0);
-
-                    const toRoom = Game.rooms[order.to];
-                    let freeSpace = (toRoom && toRoom.terminal) ? toRoom.terminal.storeCapacity - _.sum(toRoom.terminal.store) : 10000;
-                    let howMuch = Math.min(maxAffordable(from, order.to, order.what === RESOURCE_ENERGY).amount, order.amount, available, freeSpace, (order.step || Infinity));
-                    if (howMuch > 100) {
-                        let result = from.terminal.send(order.what, howMuch, order.to);
-                        from.log(`streaming ${howMuch} ${order.what} to ${order.to}`);
-                        // Game.notify(`streaming ${howMuch} ${order.what} to ${order.to}, ${JSON.stringify(order)}`);
-                        order.transfers = order.transfers || [];
-                        order.transfers.push({time: Game.time, amount: howMuch, result: result});
-                        if (result === OK) {
-                            order.amount = order.amount - howMuch;
-                            if (order.amount < 100) {
-                                Game.notify(`completed streaming order ${JSON.stringify(order)}`);
-                            }
-                        }
-                    }
-                } else if (from && from.terminal && order.deal && (order.amount || 0) > 0) {
-                    let deal = Game.market.getOrderById(order.deal);
-                    if (!deal) return;
-                    if (deal.type === 'buy') {
-                        let available = _.get(from.terminal, ['store', deal.resourceType], 0);
-                        if (deal.remainingAmount > 0) {
-                            let howMuch = Math.min(maxAffordable(from, deal.roomName, deal.resourceType === RESOURCE_ENERGY).amount, order.amount, available, (order.step || Infinity));
-                            if (howMuch > 100) {
-                                let result = Game.market.deal(order.deal, howMuch, order.from);
-                                order.transfers = order.transfers || [];
-                                order.transfers.push({time: Game.time, amount: howMuch, result: result});
-                                // Game.notify(`streaming ${howMuch} ${order.what} to ${order.to}, ${JSON.stringify(order)}`);
-                                if (result === OK) {
-                                    from.log(`sold ${howMuch} ${deal.resourceType}`);
-                                    order.amount = order.amount - howMuch;
-                                    if (order.amount < 100) {
-                                        Game.notify(`completed dealing order ${JSON.stringify(order)}`);
-                                    }
-                                }
-                            }
-
-                        }
-                    } else if (deal.type === 'sell') {
-                        let available = Game.market.credits / deal.price;
-                        from.log('credits limit => ', available);
-                        if (deal.remainingAmount > 0) {
-                            let howMuch = Math.min(maxAffordable(from, deal.roomName, deal.resourceType === RESOURCE_ENERGY).amount, order.amount, available, (order.step || Infinity));
-                            from.log(`howMuch(${maxAffordable(from, deal.roomName, deal.resourceType === RESOURCE_ENERGY).amount},${order.amount},${available},${(order.step || Infinity)}) => `, howMuch);
-                            if (howMuch > 100) {
-                                let result = Game.market.deal(order.deal, howMuch, order.from);
-                                order.transfers = order.transfers || [];
-                                order.transfers.push({time: Game.time, amount: howMuch, result: result});
-                                // Game.notify(`streaming ${howMuch} ${order.what} to ${order.to}, ${JSON.stringify(order)}`);
-                                if (result === OK) {
-                                    from.log(`bought ${howMuch} ${deal.resourceType}`);
-                                    order.amount = order.amount - howMuch;
-                                    if (order.amount < 100) {
-                                        Game.notify(`completed dealing order ${JSON.stringify(order)}`);
-                                    }
-                                }
-                            }
-
-                        }
-
-                    }
-                }
-            });
-            let sellDeals = ['581113e3cf85704a295d7c0a', '5814c098da6094320ab7a229', '5812445ebf5da5a116930be1', '582212f4d961f798201823f6'];
-            let buyDeals = ['58119c4a8cc4b9d24c43c373', '5821d2f2d961f79820f7b965'];
-            sellDeals.forEach(dealId => {
-                let sellDeal = Game.market.orders[dealId];
-                if (sellDeal && sellDeal.remainingAmount < 100) {
-                    Game.market.extendOrder(sellDeal, 2000);
-                }
-            });
-            let homeroom = 'W55S43';
-            let energyPrice = _.max(Game.market.getAllOrders(o=>o.type === 'buy' && o.resourceType === RESOURCE_ENERGY), o=>o.price).price;
-            let closestEnergyDeal = _.min(Game.market.getAllOrders(o=>o.type === 'buy' && o.resourceType === RESOURCE_ENERGY && o.price === energyPrice), o=>Game.market.calcTransactionCost(100, homeroom, o.roomName));
-            let energyPriceWithTransport = 100 * closestEnergyDeal.price / (Game.market.calcTransactionCost(100, homeroom, closestEnergyDeal.roomName) + 100);
-            if (Game.market.credits > 50000) {
-                buyDeals.forEach(dealId=> {
-                    let deal = Game.market.orders[dealId];
-                    if (deal && deal.remainingAmount < 100 && (Game.rooms[deal.roomName].currentLedger[deal.resourceType] || 0) < 10000) {
-                        let maxPrice = _.max(Game.market.getAllOrders((o)=>o.type === 'buy' && o.resourceType === deal.resourceType && o.id !== deal.id), o=>o.price).price;
-                        if (maxPrice < deal.price) {
-                            let newPrice = (maxPrice + 0.01);
-                            Game.notify(`aligning price for ${deal.resourceType} ${deal.price}=>${newPrice}`);
-                            Game.market.changeOrderPrice(deal.id, newPrice);
-                        }
-                        let extendQty = 5000;
-                        Game.notify(`extending ${deal.type}:${deal.resourceType} by ${extendQty}`);
-                        Game.market.extendOrder(dealId, Math.min((0.2 * Game.market.credits) / deal.price, extendQty));
-                    }
-                });
-                let buy = (roomName, resource, maxPrice) => {
-                    maxPrice = maxPrice || 1;
-                    if (Game.market.credits > 50000 && _.get(Memory.stats, ['ledger', 'v', resource], 0) < 50000 && _.get(Game.rooms, [roomName, 'terminal', 'store', resource], 0) < 2000) {
-                        let sellOrders = Game.market.getAllOrders(o=>o.type === 'sell' && o.resourceType === resource && o.price < maxPrice);
-                        _.sortBy(sellOrders, o=>o.price + energyPriceWithTransport * Game.market.calcTransactionCost(100, roomName, o.roomName) / 100);
-                        let deal = _.head(sellOrders);
-                        if (deal) {
-                            let qty = Math.min(5000, deal.remainingAmount);
-                            let ret = Game.market.deal(deal.id, qty, roomName);
-                            Game.notify(`buying ${qty} ${resource} in ${roomName} at ${deal.price} from ${deal.roomName}: ${ret}`);
-                        }
-                    }
-                };
-                let sell = (roomName, resource, minPrice) => {
-                    minPrice = minPrice || 1;
-                    if (_.get(Memory.stats, ['ledger', 'v', resource.amount], 0) > 250000 && _.get(Game.rooms, [roomName, 'terminal', 'store', resource], 0) > 5000) {
-                        let buyOrders = Game.market.getAllOrders(o=>o.type === 'buy' && o.resourceType === resource && o.price >= minPrice);
-                        _.sortBy(buyOrders, o=>o.price - energyPriceWithTransport * Game.market.calcTransactionCost(100, roomName, o.roomName) / 100);
-                        let deal = _.head(buyOrders);
-                        if (deal) {
-                            let qty = Math.min(5000, deal.remainingAmount);
-                            let ret = Game.market.deal(deal.id, qty, roomName);
-                            Game.notify(`sold ${qty} ${resource} from ${roomName} at ${deal.price} to ${deal.roomName}: ${ret}`);
-                        }
-                    }
-                };
-                buy('W52S45', 'O', 0.5);
-                buy('W53S43', 'H', 0.5);
-                buy('W53S43', 'X', 0.75);
-                sell('W57S45', 'L', 0.5);
-                sell('W54S42', 'L', 0.5);
-                sell('W52S47', 'U', 0.45);
-                sell('W54S43', 'U', 0.45);
-                // buy('W52S37', 'X', 1);
-            }
-            // Memory.streamingOrders = Memory.streamingOrders.filter(order=>order.amount >= 100);
-        }
-    }
+    updateProductions: ()=> empire.updateProductions(),
+    handleStreamingOrders: ()=>empire.handleStreamingOrders()
 };
 let roomTasks = {
     operateTowers: (r)=> r.operateTowers(),
+    addRefillTasks: (r)=> {
+        if (useTasks && r.memory.addRefillTasks) {
+            r.log('spawned, triggering refill');
+            delete r.memory.addRefillTasks;
+            r.addRefillTasks(require('./tasks.Manager'));
+        }
+    },
     computeTasks: (r)=> {
-        if (!Game.rooms.sim) return;
-        r.computeTasks();
+        if (useTasks)  r.compileTasks();
     },
     runSpawn: (r)=> {
         'use strict';
@@ -519,44 +340,13 @@ let globalTasksIndex = _.keys(globalTasks).reduce((acc, k, index)=> {
 }, {});
 function innerLoop() {
     let updateStats = true;
-    let messages = [], skipped = [];
+    let messages = [], skipped = {};
     wrapPathFinder();
     Memory.stats.deaths = 0;
     let globalStart = Game.cpu.getUsed();
     let oldSeenTick = Game.time || (Memory.counters && Memory.counters.seenTick);
     Memory.counters = {tick: Game.time, seenTick: oldSeenTick + 1};
     Memory.stats.room = Memory.stats.room || {};
-    if (0 == Game.time % 100) {
-        _.keys(Memory.creeps).forEach((name)=> {
-            if (!Game.creeps[name]) {
-                let creepMem = Memory.creeps[name];
-                if (creepMem.role !== 'recycle') {
-                    let age;
-                    if (creepMem.birthTime) {
-                        age = (creepMem.lastAlive || Game.time) - creepMem.birthTime; // TODO if not run every tick
-                    } else {
-                        let match = /.*_(\d+)/.exec(name);
-                        if (match) {
-                            let birth = match[1];
-                            age = creepMem.lastAlive % 1500 - birth;
-                            age = (age < 0) ? age + 1500 : age;
-                        }
-                    }
-                    let expectedDeath = /claimer.*/.exec(name) || /reserver.*/.exec(name) ? 490 : 1490;
-                    if (age < expectedDeath) {
-                        Game.notify(`${Game.time} creep ${name} died at ${creepMem.lastAlive + 1} unnaturally at age ${age}`);
-                        Memory.stats.deaths = Memory.stats.deaths + 1;
-                    }
-                }
-                delete Memory.creeps[name];
-            }
-        });
-        _.keys(Memory.spawns).forEach((name)=> {
-            if (!Game.spawns[name]) {
-                delete Memory.spawns[name];
-            }
-        });
-    }
     let cpu = {creeps: {}, roomTasks: {}}, roomCpu = {}, remoteCpu = {};
     let availableCpu = Game.cpu.tickLimit;
 
@@ -573,7 +363,7 @@ function innerLoop() {
         if (start < availableCpu - 100) {
             runGlobalTask(taskName);
         } else {
-            if (updateStats) skipped.push(`${taskName}`);
+            skipped[taskName] = (skipped[taskName] || 0) + 1;
         }
         if (updateStats) {
             cpu.roomTasks[taskName] = (cpu.roomTasks[taskName] || 0) + Game.cpu.getUsed() - start;
@@ -588,7 +378,7 @@ function innerLoop() {
             if (start < availableCpu - 100) {
                 runRoomTask(taskName, room);
             } else {
-                if (updateStats) skipped.push(`${roomName}.task`);
+                skipped[taskName] = (skipped[taskName] || 0) + 1;
             }
             if (updateStats) {
                 cpu.roomTasks[taskName] = (cpu.roomTasks[taskName] || 0) + Game.cpu.getUsed() - start;
@@ -634,7 +424,11 @@ function innerLoop() {
                                 }
                             }
                         } else {
-                            if (updateStats) skipped.push(`${roomName}.${creep.name}`);
+                            if (updateStats) {
+                                if (creep.memory.role) {
+                                    skipped[creep.memory.role] = (skipped[creep.memory.role] || 0) + 1;
+                                }
+                            }
                         }
                         let end = Game.cpu.getUsed();
                         if (updateStats) {
@@ -651,7 +445,9 @@ function innerLoop() {
                 }
             });
         } else {
-            if (updateStats) skipped.push(`${roomName}.creeps`);
+            if (updateStats) {
+                skipped[roomName + 'creeps'] = (skipped[roomName + 'creeps'] || 0) + 1;
+            }
         }
         let creepsCpu = Game.cpu.getUsed();
         // room.log('creepsCpu', creepsCpu);
@@ -701,7 +497,9 @@ function innerLoop() {
             (roomCpu [roomName]).toFixed(1)
         );
     });
-    if (updateStats) skipped.forEach((s)=> console.log('skipped', s));
+    if (updateStats) _.keys(skipped).forEach(k=> console.log('skipped ', k, skipped[k]));
+    Memory.stats.performance = Memory.stats.performance || {};
+    Memory.stats.performance.skipped = skipped;
     Memory.stats.remoteRooms = {};
     _.keys(Memory.rooms).forEach((k)=> {
         let stat = _.get(Memory.stats, 'room.' + k + '.efficiency.remoteMining', undefined);
@@ -723,7 +521,7 @@ function innerLoop() {
         Memory.stats.cpu = Game.cpu.getUsed();
         Memory.stats.gcl = Game.gcl;
         // console.log('PathFinder.callCount', (PathFinder.callCount || 0));
-        Memory.stats.performance = {PathFinder: {search: pathFinderCost}};
+        Memory.stats.performance.PathFinder = {search: pathFinderCost};
         // Memory.stats.performance = {'PathFinder.searchCost': pathFinderCost.cost};
         Memory.stats.roster = util.roster();
         Memory.stats.market = {credits: Game.market.credits};
@@ -738,6 +536,13 @@ function innerLoop() {
 // RoomObject.prototype.creeps = [];
 module.exports.loop = function () {
     let mainStart = Game.cpu.getUsed();
+    if (loadGameTime === Game.time) {
+        if (Memory.lastLoadTime) {
+            Memory.stats.scriptReloaded = Game.time - Memory.lastLoadTime;
+            console.log('script reloaded', Memory.stats.scriptReloaded);
+        }
+        Memory.lastLoadTime = loadGameTime;
+    }
     Memory.stats = Memory.stats || {};
     Memory.stats.cpu_ = Memory.stats.cpu_ || {};
     Memory.stats.cpu_.init = mainStart;

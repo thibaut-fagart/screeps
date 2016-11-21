@@ -71,11 +71,12 @@ class RoleMineralHarvester {
 
     getHarvestPos(creep, container, mineral) {
         if (!creep.memory.harvestFrom) {
-            let positions= creep.room.findValidParkingPositions(creep, [{
+            let constraints = container ? [{
                 pos: container.pos,
                 range: 1
-            }, {pos: mineral.pos, range: 1}]);
-            creep.log('harvest positions ', JSON.stringify(positions));
+            }, {pos: mineral.pos, range: 1}] : [{pos: mineral.pos, range: 1}];
+            let positions= creep.room.findValidParkingPositions(creep, constraints);
+            // creep.log('harvest positions ', JSON.stringify(constraints),JSON.stringify(positions));
             let position = creep.pos.findClosestByRange(positions);
             if (position) {
                 creep.memory.harvestFrom = util.posToString(position);

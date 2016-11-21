@@ -1,6 +1,7 @@
 var _ = require('lodash');
 var Cache = require('./util.cache');
 
+var cache = {};
 let activityHelper = {
     HIGH_MASK: 0x8000,
     /**
@@ -426,8 +427,8 @@ class Util {
         let deposits = [];
         if (!remoteRoom) return [];
         let nonHostiles = (remoteRoom.memory.tolerates || []).concat(Memory.allies || []);
-        allowMinerals = allowMinerals && !remoteRoom.memory.ignoreMinerals;
         let hostiles = remoteRoom.find(FIND_HOSTILE_CREEPS).filter((c)=>c.owner.username !== 'Source Keeper' && (!c.owner || nonHostiles.indexOf(c.owner.username) < 0));
+        allowMinerals = allowMinerals && !remoteRoom.memory.ignoreMinerals;
         let mineralsAreHarvestable = allowMinerals && remoteRoom.structures[STRUCTURE_EXTRACTOR].length;
         // remoteRoom.log('mineralsAreHarvestable', mineralsAreHarvestable, 'hostiles?',!(hostiles.length));
         if (!(hostiles.length)) {
@@ -448,7 +449,7 @@ class Util {
                         return activeParts.length > 1;
                     } // non disabled keepers
                 ).length == 0;
-                deposits = remoteRoom.find(FIND_SOURCES).filter(safeFilter);
+                deposits = remoteRoom.find(FIND_SOURCES,{filter:safeFilter});
                 if (mineralsAreHarvestable) {
                     deposits = deposits.concat(remoteRoom.find(FIND_MINERALS).filter(safeFilter)).filter((m)=>m.mineralAmount > 0);
                 }
@@ -565,13 +566,13 @@ class Util {
             let moveTo = creep.moveByPath(path);
             // creep.log('moveTo?', moveTo);
             if (moveTo === OK) {
-                creep.say(`${pos.x},${pos.y} OK`);
+                // creep.say(`${pos.x},${pos.y} OK`);
                 // creep.log('move OK' , (new Error().stack));
                 let {x, y} = creep.pos;
                 creep.memory.lpos = x | y << 6;
                 creep.memory.triedMoved = true;
             } else if (moveTo !== ERR_TIRED) {
-                creep.say(`${pos.x},${pos.y} KO`);
+                // creep.say(`${pos.x},${pos.y} KO`);
                 // creep.log('move?', moveTo, JSON.stringify(pos), JSON.stringify(path));
                 creep.memory.triedMoved = true;
             } else {
@@ -733,7 +734,7 @@ class Util {
         return (roomName) => {
             if (roomName == room.name) {
                 return Cache.get(this.cache, 'avoid' + roomName + '_' + range + '_' + JSON.stringify(options), ()=> {
-                    let base = Cache.get(this.cache, 'base_' + roomName, ()=> {
+                    let base = Cache.get(cache, 'base_' + roomName, ()=> {
                         let matrix = new PathFinder.CostMatrix();
                         let structures = Game.rooms[roomName].find(FIND_STRUCTURES);
                         structures.forEach((s)=> {
@@ -924,6 +925,7 @@ class Util {
 
     newFlagName() {
         let flagName;
+        Memory.temp = Memory.temp || {};
         Memory.temp.flagId = Memory.temp.flagId || 0;
         Memory.temp.flagId = Memory.temp.flagId + 1;
         flagName = 'flag' + Memory.temp.flagId;
