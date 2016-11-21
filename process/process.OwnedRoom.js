@@ -51,7 +51,14 @@ class OwnedRoom extends Process {
         }
     }
 
-
+    /**
+     * registers this creep request in the spawn queue and returns a request id.
+     * When the request is processed (createCreep has been called and accepted), the owner process will be notified
+     * using the #creepRequestProcessed callback
+     * @param {{body, memory}} spec
+     * @param {Process} owner
+     * @returns {*}
+     */
     requestCreep(spec, owner) {
         this.log(`${owner.id} is requesting ${spec.name}`);
         // debugger;
@@ -88,17 +95,20 @@ class OwnedRoom extends Process {
             }
             case Process.STATUS_RUNNING : {
                 this.spawnHarvestIfNeeded(processTable, room);
-                while (this.spawnQueue.length > 0 && room.energyCapacityAvailable < this.spawnQueue[0].cost) {
+                let head = _.head(this.spawnQueue);
+                while (head && room.energyCapacityAvailable < head.cost) {
                     let spec = this.spawnQueue.shift();
                     this.processTable.get(spec.owner).requestCanceled(spec.requestId);
                     room.log('discarding unaffordable ', JSON.stringify(spec));
-
                 }
                 room.find(FIND_MY_SPAWNS).forEach((spawn) => {
                     if (!spawn.spawning) {
                         if (this.spawnQueue.length) {
-                            let spec = this.spawnQueue.shift();
-                            this.createCreep(spawn, spec);
+                            let spec = _.head(this.spawnQueue);
+                            let ret = this.createCreep(spawn, spec);
+                            if (OK === ret) {
+                                this.spawnQueue.shift();
+                            }
                         }
                     }
                 });

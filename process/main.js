@@ -3,7 +3,6 @@ var _ = require('lodash');
 var ProcessTable = require('./process.table');
 var Kernel = require('./process.Kernel');
 var OwnedRoomProcess = require('./process.OwnedRoom');
-var Process = require('./process');
 
 // var profiler = require('./screeps-profiler');
 // profiler.enable();
@@ -54,8 +53,7 @@ module.exports.loop = function () {
         processTable = new ProcessTable();
         processTable.load(Memory.processes);
     }
-    processTable.processes.forEach((p)=>
-    {
+    processTable.processes.forEach((p)=> {
         try {
             p.run(processTable);
         } catch (e) {

@@ -481,8 +481,8 @@ Room.prototype.findContainers = function () {
 Room.prototype.faucetContainers = function () {
     this.memory.cache = this.memory.cache || {};
     this.memory.cache.faucetContainers = this.memory.cache.faucetContainers || {};
-    let containerIds = Cache.get(this.memory.cache, 'faucetContainers', ()=>(this.findContainers().filter(s=>this.allowedLoadingContainer(s)), 50);
-    return containerIds.map((id)=> Game.getObjectById(id)).filter((s)=>!!s);
+    let containerIds = Cache.get(this.memory.cache, 'faucetContainers', ()=>this.findContainers(), 50);
+    return containerIds.map((id)=> Game.getObjectById(id)).filter((s)=>!!s && this.allowedLoadingContainer(s));
 };
 Room.prototype.buildStructures = function (pos) {
     'use strict';

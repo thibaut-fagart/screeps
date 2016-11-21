@@ -12,7 +12,7 @@ var SpawnManager = require('./../process/manager.spawn.js'), manager = new Spawn
 
 let room = new Room();
 RoomPosition.prototype.getRangeTo = function (firstArg, secondArg) {
-    "use strict";
+    'use strict';
     let x, y;
     if ('number' === typeof firstArg) {
         x = firstArg;
@@ -26,7 +26,7 @@ RoomPosition.prototype.getRangeTo = function (firstArg, secondArg) {
 };
 
 Room.prototype.find = function (what) {
-    "use strict";
+    'use strict';
     if (what === FIND_SOURCES_ACTIVE) {
 
         let source = new Source();
