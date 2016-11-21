@@ -86,7 +86,7 @@ class RoleCarry {
     onNoLoadStrategy(creep) {
         if (!creep.room.isValidParkingPos(creep, creep.pos)) {
             let pos = creep.room.findValidParkingPosition(creep, creep.pos, 1);
-            creep.moveTo(pos);
+            util.moveTo(creep, pos,'park',{range:0});
         }
         // creep.log('no load strategy');
 

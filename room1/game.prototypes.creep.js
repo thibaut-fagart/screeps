@@ -2,7 +2,7 @@ var _ = require('lodash');
 var util = require('./util');
 
 Creep.prototype.getSquadTarget = function () {
-    "use strict";
+    'use strict';
     if (this.memory['SquadAttackStrategy']) {
         let pos = this.memory['SquadAttackStrategy'].target;
         return new RoomPosition(pos.x, pos.y, pos.roomName);
@@ -128,7 +128,8 @@ Object.defineProperty(Creep.prototype, 'hostile', {
     get: function () {
         'use strict';
         return !Memory.allies || !this.owner || Memory.allies.indexOf(this.owner.username) < 0;
-    }
+    },
+    configurable:true,
 });
 
 /**
@@ -139,6 +140,7 @@ Object.defineProperty(Creep.prototype, 'repairCapacity', {
         'use strict';
         this.memory.repairCapacity = this.memory.repairCapacity || this.getActiveBodyparts(WORK) * REPAIR_POWER;
         return this.memory.repairCapacity;
-    }
+    },
+    configurable:true,
 });
 module.exports = Room.prototype;

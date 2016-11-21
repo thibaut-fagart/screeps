@@ -131,7 +131,7 @@ class RoleBuilder {
                 let boosted = lab.boostCreep(creep);
                 if (boosted == ERR_NOT_IN_RANGE) {
                     creep.log('moving to lab', JSON.stringify(lab.pos));
-                    creep.moveTo(lab);
+                    util.moveTo(creep,lab.pos,'boostPath');
                     return true;
                 } else if (boosted == OK) {
                     creep.memory.boosted = true;
