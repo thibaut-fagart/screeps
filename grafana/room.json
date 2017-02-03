@@ -1,35 +1,5 @@
 {
-  "__inputs": [
-    {
-      "name": "DS_LOCALGRAPHITE",
-      "label": "localGraphite",
-      "description": "",
-      "type": "datasource",
-      "pluginId": "graphite",
-      "pluginName": "Graphite"
-    }
-  ],
-  "__requires": [
-    {
-      "type": "panel",
-      "id": "graph",
-      "name": "Graph",
-      "version": ""
-    },
-    {
-      "type": "grafana",
-      "id": "grafana",
-      "name": "Grafana",
-      "version": "3.1.0"
-    },
-    {
-      "type": "datasource",
-      "id": "graphite",
-      "name": "Graphite",
-      "version": "1.0.0"
-    }
-  ],
-  "id": null,
+  "id": 2,
   "title": "Room",
   "tags": [],
   "style": "dark",
@@ -46,7 +16,7 @@
         {
           "aliasColors": {},
           "bars": false,
-          "datasource": "${DS_LOCALGRAPHITE}",
+          "datasource": null,
           "editable": true,
           "error": false,
           "fill": 1,
@@ -60,12 +30,12 @@
           "isNew": true,
           "legend": {
             "avg": false,
-            "current": false,
+            "current": true,
             "max": false,
             "min": false,
             "show": true,
             "total": false,
-            "values": false
+            "values": true
           },
           "lines": true,
           "linewidth": 2,
@@ -75,8 +45,12 @@
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
-          "repeat": null,
-          "seriesOverrides": [],
+          "seriesOverrides": [
+            {
+              "alias": "ETC",
+              "yaxis": 2
+            }
+          ],
           "span": 12,
           "stack": false,
           "steppedLine": false,
@@ -84,19 +58,31 @@
             {
               "hide": true,
               "refId": "A",
-              "target": "$room.creeps.*.select metric",
-              "textEditor": false
+              "target": "movingAverage(perSecond(screeps.room.$room.controller.progress), '30min')"
             },
             {
               "hide": false,
               "refId": "B",
-              "target": "aliasByMetric(maximumAbove(stats.gauges.room.$room.creeps.*, 0))",
-              "textEditor": false
+              "target": "aliasByMetric(screeps.room.$room.controller.progressTotal)"
+            },
+            {
+              "hide": false,
+              "refId": "C",
+              "target": "aliasByMetric(screeps.room.$room.controller.progress)"
+            },
+            {
+              "hide": true,
+              "refId": "D",
+              "target": "diffSeries(#B, #C)"
+            },
+            {
+              "refId": "E",
+              "target": "alias(divideSeries(#D, #A), 'ETC')"
             }
           ],
           "timeFrom": null,
           "timeShift": null,
-          "title": "Roster",
+          "title": "RCL",
           "tooltip": {
             "msResolution": false,
             "shared": true,
@@ -117,7 +103,7 @@
               "show": true
             },
             {
-              "format": "short",
+              "format": "dtdurations",
               "label": null,
               "logBase": 1,
               "max": null,
@@ -137,7 +123,7 @@
         {
           "aliasColors": {},
           "bars": false,
-          "datasource": "${DS_LOCALGRAPHITE}",
+          "datasource": null,
           "editable": true,
           "error": false,
           "fill": 1,
@@ -150,17 +136,23 @@
           "id": 2,
           "isNew": true,
           "legend": {
-            "avg": false,
-            "current": false,
+            "avg": true,
+            "current": true,
+            "hideEmpty": true,
+            "hideZero": true,
             "max": false,
             "min": false,
             "show": true,
             "total": false,
-            "values": false
+            "values": true
           },
           "lines": true,
           "linewidth": 2,
-          "links": [],
+          "links": [
+            {
+              "type": "dashboard"
+            }
+          ],
           "nullPointMode": "connected",
           "percentage": false,
           "pointradius": 5,
@@ -168,105 +160,31 @@
           "renderer": "flot",
           "seriesOverrides": [
             {
-              "alias": "/.*energyInStructures/",
+              "alias": "total",
               "yaxis": 2
             }
           ],
-          "span": 6,
-          "stack": false,
-          "steppedLine": false,
-          "targets": [
-            {
-              "refId": "C",
-              "target": "aliasByMetric(stats.gauges.room.$room.energyDropped)"
-            },
-            {
-              "refId": "E",
-              "target": "aliasByMetric(stats.gauges.room.$room.energyInStructures)"
-            }
-          ],
-          "timeFrom": null,
-          "timeShift": null,
-          "title": "Energy",
-          "tooltip": {
-            "msResolution": false,
-            "shared": true,
-            "sort": 0,
-            "value_type": "cumulative"
-          },
-          "type": "graph",
-          "xaxis": {
-            "show": true
-          },
-          "yaxes": [
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            },
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            }
-          ]
-        },
-        {
-          "aliasColors": {},
-          "bars": false,
-          "datasource": "${DS_LOCALGRAPHITE}",
-          "editable": true,
-          "error": false,
-          "fill": 1,
-          "grid": {
-            "threshold1": null,
-            "threshold1Color": "rgba(216, 200, 27, 0.27)",
-            "threshold2": null,
-            "threshold2Color": "rgba(234, 112, 112, 0.22)"
-          },
-          "id": 10,
-          "isNew": true,
-          "legend": {
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "show": true,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 2,
-          "links": [],
-          "nullPointMode": "connected",
-          "percentage": false,
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "span": 6,
+          "span": 12,
           "stack": false,
           "steppedLine": false,
           "targets": [
             {
               "refId": "A",
-              "target": "aliasByMetric(stats.gauges.room.$room.energyInSources)"
+              "target": "aliasByMetric(sortByMaxima(screeps.room.$room.creeps.*))"
+            },
+            {
+              "refId": "B",
+              "target": "alias(sumSeries(screeps.room.$room.creeps.*), 'total')"
             }
           ],
           "timeFrom": null,
           "timeShift": null,
-          "title": "Sources",
+          "title": "Roster",
           "tooltip": {
             "msResolution": false,
             "shared": true,
             "sort": 0,
-            "value_type": "cumulative"
+            "value_type": "individual"
           },
           "type": "graph",
           "xaxis": {
@@ -302,7 +220,7 @@
         {
           "aliasColors": {},
           "bars": false,
-          "datasource": "${DS_LOCALGRAPHITE}",
+          "datasource": null,
           "editable": true,
           "error": false,
           "fill": 1,
@@ -312,11 +230,13 @@
             "threshold2": null,
             "threshold2Color": "rgba(234, 112, 112, 0.22)"
           },
-          "id": 8,
+          "id": 3,
           "isNew": true,
           "legend": {
-            "avg": false,
+            "avg": true,
             "current": true,
+            "hideEmpty": true,
+            "hideZero": true,
             "max": false,
             "min": false,
             "show": true,
@@ -331,296 +251,6 @@
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
-          "seriesOverrides": [
-            {
-              "alias": "speed",
-              "yaxis": 2
-            },
-            {
-              "alias": "ProgressRatio",
-              "yaxis": 2
-            }
-          ],
-          "span": 6,
-          "stack": false,
-          "steppedLine": false,
-          "targets": [
-            {
-              "hide": false,
-              "refId": "A",
-              "target": "alias(movingAverage(perSecond(stats.gauges.room.$room.controller.progress), '5min'), 'speed')",
-              "textEditor": false
-            },
-            {
-              "hide": false,
-              "refId": "B",
-              "target": "aliasByMetric(stats.gauges.room.$room.controller.progress)"
-            },
-            {
-              "hide": true,
-              "refId": "C",
-              "target": "aliasByMetric(stats.gauges.room.$room.controller.ProgressRatio)"
-            },
-            {
-              "hide": false,
-              "refId": "D",
-              "target": "aliasByMetric(stats.gauges.room.$room.controller.progressTotal)"
-            },
-            {
-              "hide": true,
-              "refId": "E",
-              "target": "aliasByMetric(diffSeries(stats.gauges.room.$room.controller.progressTotal, #B))"
-            }
-          ],
-          "timeFrom": null,
-          "timeShift": null,
-          "title": "Controller upgrade",
-          "tooltip": {
-            "msResolution": false,
-            "shared": true,
-            "sort": 0,
-            "value_type": "cumulative"
-          },
-          "type": "graph",
-          "xaxis": {
-            "show": true
-          },
-          "yaxes": [
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": 0,
-              "show": true
-            },
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            }
-          ]
-        },
-        {
-          "aliasColors": {},
-          "bars": false,
-          "datasource": "${DS_LOCALGRAPHITE}",
-          "editable": true,
-          "error": false,
-          "fill": 1,
-          "grid": {
-            "threshold1": null,
-            "threshold1Color": "rgba(216, 200, 27, 0.27)",
-            "threshold2": null,
-            "threshold2Color": "rgba(234, 112, 112, 0.22)"
-          },
-          "id": 13,
-          "isNew": true,
-          "legend": {
-            "avg": false,
-            "current": true,
-            "max": false,
-            "min": false,
-            "show": true,
-            "total": false,
-            "values": true
-          },
-          "lines": true,
-          "linewidth": 2,
-          "links": [],
-          "nullPointMode": "connected",
-          "percentage": false,
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [
-            {
-              "alias": "progress) speed"
-            },
-            {
-              "alias": "remaining days",
-              "yaxis": 2
-            }
-          ],
-          "span": 6,
-          "stack": false,
-          "steppedLine": false,
-          "targets": [
-            {
-              "hide": true,
-              "refId": "B",
-              "target": "aliasByMetric(stats.gauges.room.$room.controller.progress)"
-            },
-            {
-              "hide": true,
-              "refId": "E",
-              "target": "aliasByMetric(diffSeries(stats.gauges.room.$room.controller.progressTotal, #B))"
-            },
-            {
-              "refId": "G",
-              "target": "alias(scale(scale(divideSeries(#E, #F), 0.0001), 0.115), 'remaining days')",
-              "textEditor": false
-            },
-            {
-              "hide": false,
-              "refId": "F",
-              "target": "aliasByMetric(movingAverage(aliasSub(perSecond(stats.gauges.room.$room.controller.progress), '(.*)', '\\1 per sec'), '5min'))",
-              "textEditor": false
-            }
-          ],
-          "timeFrom": null,
-          "timeShift": null,
-          "title": "Controller upgrade",
-          "tooltip": {
-            "msResolution": false,
-            "shared": true,
-            "sort": 0,
-            "value_type": "cumulative"
-          },
-          "type": "graph",
-          "xaxis": {
-            "show": true
-          },
-          "yaxes": [
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            },
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 2,
-              "max": null,
-              "min": null,
-              "show": true
-            }
-          ]
-        }
-      ],
-      "title": "New row"
-    },
-    {
-      "collapse": false,
-      "editable": true,
-      "height": "250px",
-      "panels": [
-        {
-          "aliasColors": {},
-          "bars": false,
-          "datasource": "${DS_LOCALGRAPHITE}",
-          "editable": true,
-          "error": false,
-          "fill": 1,
-          "grid": {
-            "threshold1": null,
-            "threshold1Color": "rgba(216, 200, 27, 0.27)",
-            "threshold2": null,
-            "threshold2Color": "rgba(234, 112, 112, 0.22)"
-          },
-          "id": 5,
-          "isNew": true,
-          "legend": {
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "show": true,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 2,
-          "links": [],
-          "nullPointMode": "connected",
-          "percentage": false,
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "span": 6,
-          "stack": false,
-          "steppedLine": false,
-          "targets": [
-            {
-              "refId": "B",
-              "target": "aliasByMetric(stats.gauges.room.$room.hostiles)"
-            },
-            {
-              "refId": "C",
-              "target": "aliasByMetric(stats.gauges.room.$room.strangers)"
-            }
-          ],
-          "timeFrom": null,
-          "timeShift": null,
-          "title": "Intruders",
-          "tooltip": {
-            "msResolution": false,
-            "shared": true,
-            "sort": 0,
-            "value_type": "cumulative"
-          },
-          "type": "graph",
-          "xaxis": {
-            "show": true
-          },
-          "yaxes": [
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            },
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            }
-          ]
-        },
-        {
-          "aliasColors": {},
-          "bars": false,
-          "datasource": "${DS_LOCALGRAPHITE}",
-          "editable": true,
-          "error": false,
-          "fill": 1,
-          "grid": {
-            "threshold1": null,
-            "threshold1Color": "rgba(216, 200, 27, 0.27)",
-            "threshold2": null,
-            "threshold2Color": "rgba(234, 112, 112, 0.22)"
-          },
-          "id": 6,
-          "isNew": true,
-          "legend": {
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "show": true,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 2,
-          "links": [],
-          "nullPointMode": "connected",
-          "percentage": false,
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
           "seriesOverrides": [],
           "span": 6,
           "stack": false,
@@ -628,126 +258,12 @@
           "targets": [
             {
               "refId": "A",
-              "target": "aliasByMetric(stats.gauges.room.$room.attacks)"
+              "target": "aliasByMetric(screeps.room.$room.efficiency.remoteMining.*)"
             }
           ],
           "timeFrom": null,
           "timeShift": null,
-          "title": "Tower attacking",
-          "tooltip": {
-            "msResolution": false,
-            "shared": true,
-            "sort": 0,
-            "value_type": "cumulative"
-          },
-          "type": "graph",
-          "xaxis": {
-            "show": true
-          },
-          "yaxes": [
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            },
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            }
-          ]
-        }
-      ],
-      "title": "New row"
-    },
-    {
-      "collapse": false,
-      "editable": true,
-      "height": "250px",
-      "panels": [
-        {
-          "aliasColors": {},
-          "bars": false,
-          "datasource": "${DS_LOCALGRAPHITE}",
-          "editable": true,
-          "error": false,
-          "fill": 1,
-          "grid": {
-            "threshold1": null,
-            "threshold1Color": "rgba(216, 200, 27, 0.27)",
-            "threshold2": null,
-            "threshold2Color": "rgba(234, 112, 112, 0.22)"
-          },
-          "id": 7,
-          "isNew": true,
-          "legend": {
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "show": true,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 2,
-          "links": [],
-          "nullPointMode": "connected",
-          "percentage": false,
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [
-            {
-              "alias": "/.*variation/",
-              "yaxis": 2
-            }
-          ],
-          "span": 6,
-          "stack": false,
-          "steppedLine": false,
-          "targets": [
-            {
-              "hide": false,
-              "refId": "A",
-              "target": "aliasByMetric(stats.gauges.room.$room.spawns.idle)"
-            },
-            {
-              "hide": false,
-              "refId": "B",
-              "target": "aliasByMetric(stats.gauges.room.$room.spawns.waitFull)"
-            },
-            {
-              "hide": false,
-              "refId": "E",
-              "target": "aliasByMetric(stats.gauges.room.$room.spawns.spawning)"
-            },
-            {
-              "hide": true,
-              "refId": "F",
-              "target": "aliasSub(aliasByMetric(perSecond(stats.gauges.room.$room.spawns.idle)), '(.*)', '\\1 variation')",
-              "textEditor": false
-            },
-            {
-              "hide": true,
-              "refId": "G",
-              "target": "aliasSub(aliasByMetric(perSecond(stats.gauges.room.$room.spawns.waitFull)), '(.*)', '\\1 variation')"
-            },
-            {
-              "hide": true,
-              "refId": "C",
-              "target": "aliasSub(aliasByMetric(perSecond(stats.gauges.room.$room.spawns.spawning)), '(.*)', '\\1 variation')"
-            }
-          ],
-          "timeFrom": null,
-          "timeShift": null,
-          "title": "Spawn activity",
+          "title": "Remote mining (5000 ticks)",
           "tooltip": {
             "msResolution": false,
             "shared": true,
@@ -780,7 +296,7 @@
         {
           "aliasColors": {},
           "bars": false,
-          "datasource": "${DS_LOCALGRAPHITE}",
+          "datasource": null,
           "editable": true,
           "error": false,
           "fill": 1,
@@ -816,16 +332,12 @@
           "targets": [
             {
               "refId": "A",
-              "target": "aliasByMetric(stats.gauges.room.$room.energyAvailable)"
-            },
-            {
-              "refId": "B",
-              "target": "aliasByMetric(stats.gauges.room.$room.energyCapacityAvailable)"
+              "target": "screeps.room.$room.energyInStructures"
             }
           ],
           "timeFrom": null,
           "timeShift": null,
-          "title": "Spawn energy",
+          "title": "Stored energy",
           "tooltip": {
             "msResolution": false,
             "shared": true,
@@ -866,7 +378,7 @@
         {
           "aliasColors": {},
           "bars": false,
-          "datasource": "${DS_LOCALGRAPHITE}",
+          "datasource": null,
           "editable": true,
           "error": false,
           "fill": 1,
@@ -876,7 +388,7 @@
             "threshold2": null,
             "threshold2Color": "rgba(234, 112, 112, 0.22)"
           },
-          "id": 11,
+          "id": 5,
           "isNew": true,
           "legend": {
             "avg": false,
@@ -890,29 +402,37 @@
           "lines": true,
           "linewidth": 2,
           "links": [],
-          "nullPointMode": "null as zero",
+          "nullPointMode": "connected",
           "percentage": false,
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
           "seriesOverrides": [],
-          "span": 6,
-          "stack": true,
+          "span": 4,
+          "stack": false,
           "steppedLine": false,
           "targets": [
             {
               "refId": "A",
-              "target": "aliasByMetric(stats.gauges.room.$room.spawns.queue.*)"
+              "target": "aliasByMetric(screeps.room.$room.spawns.idle)"
+            },
+            {
+              "refId": "B",
+              "target": "aliasByMetric(screeps.room.$room.spawns.spawning)"
+            },
+            {
+              "refId": "C",
+              "target": "aliasByMetric(screeps.room.$room.spawns.waitFull)"
             }
           ],
           "timeFrom": null,
           "timeShift": null,
-          "title": "Spawn queue",
+          "title": "Spawn",
           "tooltip": {
             "msResolution": false,
             "shared": true,
             "sort": 0,
-            "value_type": "individual"
+            "value_type": "cumulative"
           },
           "type": "graph",
           "xaxis": {
@@ -940,7 +460,7 @@
         {
           "aliasColors": {},
           "bars": false,
-          "datasource": "${DS_LOCALGRAPHITE}",
+          "datasource": null,
           "editable": true,
           "error": false,
           "fill": 1,
@@ -950,7 +470,7 @@
             "threshold2": null,
             "threshold2Color": "rgba(234, 112, 112, 0.22)"
           },
-          "id": 12,
+          "id": 7,
           "isNew": true,
           "legend": {
             "avg": false,
@@ -964,24 +484,111 @@
           "lines": true,
           "linewidth": 2,
           "links": [],
-          "nullPointMode": "null as zero",
+          "nullPointMode": "connected",
           "percentage": false,
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
           "seriesOverrides": [],
-          "span": 6,
+          "span": 4,
           "stack": false,
           "steppedLine": false,
           "targets": [
             {
               "refId": "A",
-              "target": "maximumAbove(stats.gauges.room.$room.spawns.building.*, 0)"
+              "target": "screeps.room.$room.queueLength"
             }
           ],
           "timeFrom": null,
           "timeShift": null,
-          "title": "Spawn Building",
+          "title": "Spawn queue",
+          "tooltip": {
+            "msResolution": false,
+            "shared": true,
+            "sort": 0,
+            "value_type": "cumulative"
+          },
+          "type": "graph",
+          "xaxis": {
+            "show": true
+          },
+          "yaxes": [
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ]
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "datasource": null,
+          "editable": true,
+          "error": false,
+          "fill": 1,
+          "grid": {
+            "threshold1": null,
+            "threshold1Color": "rgba(216, 200, 27, 0.27)",
+            "threshold2": null,
+            "threshold2Color": "rgba(234, 112, 112, 0.22)"
+          },
+          "id": 10,
+          "isNew": true,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 2,
+          "links": [],
+          "nullPointMode": "connected",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [
+            {
+              "alias": "energyInSources",
+              "yaxis": 2
+            }
+          ],
+          "span": 4,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "refId": "B",
+              "target": "aliasByMetric(screeps.room.$room.energyAvailable)"
+            },
+            {
+              "refId": "A",
+              "target": "aliasByMetric(screeps.room.$room.energyCapacityAvailable)"
+            },
+            {
+              "refId": "C",
+              "target": "aliasByMetric(screeps.room.$room.energyInSources)"
+            }
+          ],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "Spawn & source energy",
           "tooltip": {
             "msResolution": false,
             "shared": true,
@@ -1022,7 +629,7 @@
         {
           "aliasColors": {},
           "bars": false,
-          "datasource": "${DS_LOCALGRAPHITE}",
+          "datasource": null,
           "editable": true,
           "error": false,
           "fill": 1,
@@ -1032,7 +639,7 @@
             "threshold2": null,
             "threshold2Color": "rgba(234, 112, 112, 0.22)"
           },
-          "id": 14,
+          "id": 6,
           "isNew": true,
           "legend": {
             "avg": true,
@@ -1058,12 +665,12 @@
           "targets": [
             {
               "refId": "A",
-              "target": "aliasByNode(stats.gauges.room.$room.efficiency.remoteMining.*, 3, 6)"
+              "target": "aliasByMetric(screeps.room.$room.transfers.*)"
             }
           ],
           "timeFrom": null,
           "timeShift": null,
-          "title": "Remote mining balance",
+          "title": "Transfers",
           "tooltip": {
             "msResolution": false,
             "shared": true,
@@ -1104,7 +711,7 @@
         {
           "aliasColors": {},
           "bars": false,
-          "datasource": "${DS_LOCALGRAPHITE}",
+          "datasource": null,
           "editable": true,
           "error": false,
           "fill": 1,
@@ -1114,11 +721,13 @@
             "threshold2": null,
             "threshold2Color": "rgba(234, 112, 112, 0.22)"
           },
-          "id": 15,
+          "id": 8,
           "isNew": true,
           "legend": {
             "avg": false,
             "current": true,
+            "hideEmpty": true,
+            "hideZero": true,
             "max": false,
             "min": false,
             "show": true,
@@ -1140,7 +749,83 @@
           "targets": [
             {
               "refId": "A",
-              "target": "aliasByMetric(stats.gauges.room.$room.resources.storage.*)"
+              "target": "aliasByMetric(groupByNode(screeps.room.$room.resources.*.*, 6, 'sum'))"
+            }
+          ],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "Storage+Terminal",
+          "tooltip": {
+            "msResolution": false,
+            "shared": true,
+            "sort": 0,
+            "value_type": "cumulative"
+          },
+          "type": "graph",
+          "xaxis": {
+            "show": true
+          },
+          "yaxes": [
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": 0,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ]
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "datasource": null,
+          "editable": true,
+          "error": false,
+          "fill": 1,
+          "grid": {
+            "threshold1": null,
+            "threshold1Color": "rgba(216, 200, 27, 0.27)",
+            "threshold2": null,
+            "threshold2Color": "rgba(234, 112, 112, 0.22)"
+          },
+          "id": 11,
+          "isNew": true,
+          "legend": {
+            "avg": false,
+            "current": true,
+            "hideEmpty": true,
+            "hideZero": true,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": true
+          },
+          "lines": true,
+          "linewidth": 2,
+          "links": [],
+          "nullPointMode": "connected",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "span": 6,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "refId": "A",
+              "target": "aliasByMetric(groupByNode(screeps.room.$room.resources.storage.*, 6, 'sum'))"
             }
           ],
           "timeFrom": null,
@@ -1149,7 +834,7 @@
           "tooltip": {
             "msResolution": false,
             "shared": true,
-            "sort": 0,
+            "sort": 2,
             "value_type": "cumulative"
           },
           "type": "graph",
@@ -1162,7 +847,7 @@
               "label": null,
               "logBase": 1,
               "max": null,
-              "min": null,
+              "min": 0,
               "show": true
             },
             {
@@ -1178,7 +863,7 @@
         {
           "aliasColors": {},
           "bars": false,
-          "datasource": "${DS_LOCALGRAPHITE}",
+          "datasource": null,
           "editable": true,
           "error": false,
           "fill": 1,
@@ -1188,11 +873,13 @@
             "threshold2": null,
             "threshold2Color": "rgba(234, 112, 112, 0.22)"
           },
-          "id": 16,
+          "id": 12,
           "isNew": true,
           "legend": {
             "avg": false,
             "current": true,
+            "hideEmpty": true,
+            "hideZero": true,
             "max": false,
             "min": false,
             "show": true,
@@ -1208,13 +895,13 @@
           "points": false,
           "renderer": "flot",
           "seriesOverrides": [],
-          "span": 12,
+          "span": 6,
           "stack": false,
           "steppedLine": false,
           "targets": [
             {
               "refId": "A",
-              "target": "aliasByMetric(stats.gauges.room.$room.resources.terminal.*)"
+              "target": "aliasByMetric(groupByNode(screeps.room.$room.resources.terminal.*, 6, 'sum'))"
             }
           ],
           "timeFrom": null,
@@ -1223,7 +910,7 @@
           "tooltip": {
             "msResolution": false,
             "shared": true,
-            "sort": 0,
+            "sort": 2,
             "value_type": "cumulative"
           },
           "type": "graph",
@@ -1236,7 +923,7 @@
               "label": null,
               "logBase": 1,
               "max": null,
-              "min": null,
+              "min": 0,
               "show": true
             },
             {
@@ -1248,11 +935,19 @@
               "show": true
             }
           ]
-        },
+        }
+      ],
+      "title": "New row"
+    },
+    {
+      "collapse": false,
+      "editable": true,
+      "height": "250px",
+      "panels": [
         {
           "aliasColors": {},
           "bars": false,
-          "datasource": "${DS_LOCALGRAPHITE}",
+          "datasource": null,
           "editable": true,
           "error": false,
           "fill": 1,
@@ -1262,16 +957,16 @@
             "threshold2": null,
             "threshold2Color": "rgba(234, 112, 112, 0.22)"
           },
-          "id": 17,
+          "id": 9,
           "isNew": true,
           "legend": {
             "avg": false,
-            "current": true,
+            "current": false,
             "max": false,
             "min": false,
             "show": true,
             "total": false,
-            "values": true
+            "values": false
           },
           "lines": true,
           "linewidth": 2,
@@ -1288,12 +983,16 @@
           "targets": [
             {
               "refId": "A",
-              "target": "aliasByMetric(sortByMaxima(sortByMinima(groupByNode(stats.gauges.room.$room.resources.*.*, 6, 'sum'))))"
+              "target": "aliasByMetric(screeps.room.$room.hostiles)"
+            },
+            {
+              "refId": "B",
+              "target": "aliasByMetric(screeps.room.$room.strangers)"
             }
           ],
           "timeFrom": null,
           "timeShift": null,
-          "title": "Minerals",
+          "title": "Strangers & Hostiles",
           "tooltip": {
             "msResolution": false,
             "shared": true,
@@ -1328,7 +1027,7 @@
     }
   ],
   "time": {
-    "from": "now-3h",
+    "from": "now-12h",
     "to": "now"
   },
   "timepicker": {
@@ -1359,16 +1058,240 @@
   "templating": {
     "list": [
       {
-        "current": {},
-        "datasource": "${DS_LOCALGRAPHITE}",
+        "current": {
+          "tags": [],
+          "text": "W55S43",
+          "value": "W55S43"
+        },
+        "datasource": "screeps",
         "hide": 0,
         "includeAll": false,
-        "label": "room",
         "multi": false,
         "name": "room",
-        "options": [],
-        "query": "stats.gauges.room.*",
-        "refresh": 1,
+        "options": [
+          {
+            "selected": false,
+            "text": "E25S5",
+            "value": "E25S5"
+          },
+          {
+            "selected": false,
+            "text": "W15S4",
+            "value": "W15S4"
+          },
+          {
+            "selected": false,
+            "text": "W15S5",
+            "value": "W15S5"
+          },
+          {
+            "selected": false,
+            "text": "W51S46",
+            "value": "W51S46"
+          },
+          {
+            "selected": false,
+            "text": "W51S47",
+            "value": "W51S47"
+          },
+          {
+            "selected": false,
+            "text": "W52S36",
+            "value": "W52S36"
+          },
+          {
+            "selected": false,
+            "text": "W52S37",
+            "value": "W52S37"
+          },
+          {
+            "selected": false,
+            "text": "W52S38",
+            "value": "W52S38"
+          },
+          {
+            "selected": false,
+            "text": "W52S39",
+            "value": "W52S39"
+          },
+          {
+            "selected": false,
+            "text": "W52S40",
+            "value": "W52S40"
+          },
+          {
+            "selected": false,
+            "text": "W52S42",
+            "value": "W52S42"
+          },
+          {
+            "selected": false,
+            "text": "W52S43",
+            "value": "W52S43"
+          },
+          {
+            "selected": false,
+            "text": "W52S44",
+            "value": "W52S44"
+          },
+          {
+            "selected": false,
+            "text": "W52S45",
+            "value": "W52S45"
+          },
+          {
+            "selected": false,
+            "text": "W52S46",
+            "value": "W52S46"
+          },
+          {
+            "selected": false,
+            "text": "W52S47",
+            "value": "W52S47"
+          },
+          {
+            "selected": false,
+            "text": "W52S48",
+            "value": "W52S48"
+          },
+          {
+            "selected": false,
+            "text": "W52S49",
+            "value": "W52S49"
+          },
+          {
+            "selected": false,
+            "text": "W53S40",
+            "value": "W53S40"
+          },
+          {
+            "selected": false,
+            "text": "W53S41",
+            "value": "W53S41"
+          },
+          {
+            "selected": false,
+            "text": "W53S42",
+            "value": "W53S42"
+          },
+          {
+            "selected": false,
+            "text": "W53S43",
+            "value": "W53S43"
+          },
+          {
+            "selected": false,
+            "text": "W53S44",
+            "value": "W53S44"
+          },
+          {
+            "selected": false,
+            "text": "W53S45",
+            "value": "W53S45"
+          },
+          {
+            "selected": false,
+            "text": "W53S46",
+            "value": "W53S46"
+          },
+          {
+            "selected": false,
+            "text": "W53S47",
+            "value": "W53S47"
+          },
+          {
+            "selected": false,
+            "text": "W53S49",
+            "value": "W53S49"
+          },
+          {
+            "selected": false,
+            "text": "W54S42",
+            "value": "W54S42"
+          },
+          {
+            "selected": false,
+            "text": "W54S43",
+            "value": "W54S43"
+          },
+          {
+            "selected": false,
+            "text": "W54S44",
+            "value": "W54S44"
+          },
+          {
+            "selected": false,
+            "text": "W54S45",
+            "value": "W54S45"
+          },
+          {
+            "selected": false,
+            "text": "W54S46",
+            "value": "W54S46"
+          },
+          {
+            "selected": false,
+            "text": "W54S47",
+            "value": "W54S47"
+          },
+          {
+            "selected": false,
+            "text": "W54S48",
+            "value": "W54S48"
+          },
+          {
+            "selected": false,
+            "text": "W54S49",
+            "value": "W54S49"
+          },
+          {
+            "selected": false,
+            "text": "W55S42",
+            "value": "W55S42"
+          },
+          {
+            "selected": true,
+            "text": "W55S43",
+            "value": "W55S43"
+          },
+          {
+            "selected": false,
+            "text": "W55S44",
+            "value": "W55S44"
+          },
+          {
+            "selected": false,
+            "text": "W55S45",
+            "value": "W55S45"
+          },
+          {
+            "selected": false,
+            "text": "W55S46",
+            "value": "W55S46"
+          },
+          {
+            "selected": false,
+            "text": "W56S42",
+            "value": "W56S42"
+          },
+          {
+            "selected": false,
+            "text": "W56S43",
+            "value": "W56S43"
+          },
+          {
+            "selected": false,
+            "text": "W56S44",
+            "value": "W56S44"
+          },
+          {
+            "selected": false,
+            "text": "W56S45",
+            "value": "W56S45"
+          }
+        ],
+        "query": "screeps.room.*",
+        "refresh": 0,
         "regex": "",
         "type": "query"
       }
@@ -1377,9 +1300,8 @@
   "annotations": {
     "list": []
   },
-  "refresh": "5m",
   "schemaVersion": 12,
-  "version": 41,
+  "version": 29,
   "links": [],
   "gnetId": null
 }

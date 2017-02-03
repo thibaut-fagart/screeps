@@ -81,39 +81,39 @@
           "targets": [
             {
               "refId": "A",
-              "target": "aliasByNode(stats.gauges.room.E36S16.energyInSources, 3)"
+              "target": "aliasByNode(screeps.room.E36S16.energyInSources, 3)"
             },
             {
               "refId": "B",
-              "target": "aliasByNode(stats.gauges.room.E36S14.energyInSources, 3)"
+              "target": "aliasByNode(screeps.room.E36S14.energyInSources, 3)"
             },
             {
               "refId": "E",
-              "target": "aliasByNode(stats.gauges.room.E39S14.energyInSources, 3)"
+              "target": "aliasByNode(screeps.room.E39S14.energyInSources, 3)"
             },
             {
               "refId": "G",
-              "target": "aliasByNode(stats.gauges.room.E39S15.energyInSources, 3)"
+              "target": "aliasByNode(screeps.room.E39S15.energyInSources, 3)"
             },
             {
               "refId": "C",
-              "target": "aliasByNode(stats.gauges.room.E38S16.energyInSources, 3)"
+              "target": "aliasByNode(screeps.room.E38S16.energyInSources, 3)"
             },
             {
               "refId": "K",
-              "target": "aliasByNode(stats.gauges.room.E39S16.energyInSources, 3)"
+              "target": "aliasByNode(screeps.room.E39S16.energyInSources, 3)"
             },
             {
               "refId": "D",
-              "target": "aliasByNode(stats.gauges.room.E38S17.energyInSources, 3)"
+              "target": "aliasByNode(screeps.room.E38S17.energyInSources, 3)"
             },
             {
               "refId": "F",
-              "target": "aliasByNode(stats.gauges.room.E38S18.energyInSources, 3)"
+              "target": "aliasByNode(screeps.room.E38S18.energyInSources, 3)"
             },
             {
               "refId": "H",
-              "target": "aliasByNode(stats.gauges.room.E35S16.energyInSources, 3)"
+              "target": "aliasByNode(screeps.room.E35S16.energyInSources, 3)"
             }
           ],
           "timeFrom": null,
@@ -189,39 +189,39 @@
           "targets": [
             {
               "refId": "A",
-              "target": "aliasByNode(stats.gauges.room.E36S16.energyDropped, 3)"
+              "target": "aliasByNode(screeps.room.E36S16.energyDropped, 3)"
             },
             {
               "refId": "B",
-              "target": "aliasByNode(stats.gauges.room.E36S14.energyDropped, 3)"
+              "target": "aliasByNode(screeps.room.E36S14.energyDropped, 3)"
             },
             {
               "refId": "E",
-              "target": "aliasByNode(stats.gauges.room.E39S14.energyDropped, 3)"
+              "target": "aliasByNode(screeps.room.E39S14.energyDropped, 3)"
             },
             {
               "refId": "G",
-              "target": "aliasByNode(stats.gauges.room.E39S15.energyDropped, 3)"
+              "target": "aliasByNode(screeps.room.E39S15.energyDropped, 3)"
             },
             {
               "refId": "C",
-              "target": "aliasByNode(stats.gauges.room.E38S16.energyDropped, 3)"
+              "target": "aliasByNode(screeps.room.E38S16.energyDropped, 3)"
             },
             {
               "refId": "K",
-              "target": "aliasByNode(stats.gauges.room.E39S16.energyDropped, 3)"
+              "target": "aliasByNode(screeps.room.E39S16.energyDropped, 3)"
             },
             {
               "refId": "D",
-              "target": "aliasByNode(stats.gauges.room.E38S17.energyDropped, 3)"
+              "target": "aliasByNode(screeps.room.E38S17.energyDropped, 3)"
             },
             {
               "refId": "F",
-              "target": "aliasByNode(stats.gauges.room.E38S18.energyDropped, 3)"
+              "target": "aliasByNode(screeps.room.E38S18.energyDropped, 3)"
             },
             {
               "refId": "H",
-              "target": "aliasByNode(stats.gauges.room.E35S16.energyDropped, 3)"
+              "target": "aliasByNode(screeps.room.E35S16.energyDropped, 3)"
             }
           ],
           "timeFrom": null,

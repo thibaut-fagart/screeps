@@ -1,0 +1,399 @@
+{
+  "id": 6,
+  "title": "Role performance",
+  "tags": [],
+  "style": "dark",
+  "timezone": "browser",
+  "editable": true,
+  "hideControls": false,
+  "sharedCrosshair": false,
+  "rows": [
+    {
+      "collapse": false,
+      "editable": true,
+      "height": "250px",
+      "panels": [
+        {
+          "aliasColors": {},
+          "bars": false,
+          "datasource": null,
+          "editable": true,
+          "error": false,
+          "fill": 1,
+          "grid": {
+            "threshold1": null,
+            "threshold1Color": "rgba(216, 200, 27, 0.27)",
+            "threshold2": null,
+            "threshold2Color": "rgba(234, 112, 112, 0.22)"
+          },
+          "id": 1,
+          "isNew": true,
+          "legend": {
+            "avg": true,
+            "current": true,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": true
+          },
+          "lines": true,
+          "linewidth": 2,
+          "links": [],
+          "nullPointMode": "connected",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [
+            {
+              "alias": "divideSeries(screeps.cpu_.creeps.energyGatherer,screeps.roster.energyGatherer)",
+              "yaxis": 2
+            }
+          ],
+          "span": 12,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "hide": true,
+              "refId": "A",
+              "target": "screeps.cpu_.creeps.$role"
+            },
+            {
+              "hide": true,
+              "refId": "B",
+              "target": "screeps.roster.$role"
+            },
+            {
+              "hide": false,
+              "refId": "C",
+              "target": "movingAverage(divideSeries(#A, #B), '1hour')"
+            },
+            {
+              "hide": true,
+              "refId": "D",
+              "target": "divideSeries(#A, #B)"
+            }
+          ],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "$role",
+          "tooltip": {
+            "msResolution": false,
+            "shared": true,
+            "sort": 0,
+            "value_type": "cumulative"
+          },
+          "type": "graph",
+          "xaxis": {
+            "show": true
+          },
+          "yaxes": [
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ]
+        }
+      ],
+      "title": "Row"
+    }
+  ],
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ],
+    "time_options": [
+      "5m",
+      "15m",
+      "1h",
+      "6h",
+      "12h",
+      "24h",
+      "2d",
+      "7d",
+      "30d"
+    ]
+  },
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "tags": [],
+          "text": "harvester",
+          "value": "harvester"
+        },
+        "datasource": null,
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "name": "role",
+        "options": [
+          {
+            "selected": false,
+            "text": "archer",
+            "value": "archer"
+          },
+          {
+            "selected": false,
+            "text": "attacker",
+            "value": "attacker"
+          },
+          {
+            "selected": false,
+            "text": "builder",
+            "value": "builder"
+          },
+          {
+            "selected": false,
+            "text": "carry",
+            "value": "carry"
+          },
+          {
+            "selected": false,
+            "text": "claimer",
+            "value": "claimer"
+          },
+          {
+            "selected": false,
+            "text": "defender",
+            "value": "defender"
+          },
+          {
+            "selected": false,
+            "text": "energyFiller",
+            "value": "energyFiller"
+          },
+          {
+            "selected": false,
+            "text": "energyGatherer",
+            "value": "energyGatherer"
+          },
+          {
+            "selected": false,
+            "text": "energyTransporter",
+            "value": "energyTransporter"
+          },
+          {
+            "selected": true,
+            "text": "harvester",
+            "value": "harvester"
+          },
+          {
+            "selected": false,
+            "text": "keeperHarvester",
+            "value": "keeperHarvester"
+          },
+          {
+            "selected": false,
+            "text": "keeperMineralHarvester",
+            "value": "keeperMineralHarvester"
+          },
+          {
+            "selected": false,
+            "text": "labOperator",
+            "value": "labOperator"
+          },
+          {
+            "selected": false,
+            "text": "lab_operator",
+            "value": "lab_operator"
+          },
+          {
+            "selected": false,
+            "text": "linkOperator",
+            "value": "linkOperator"
+          },
+          {
+            "selected": false,
+            "text": "looter",
+            "value": "looter"
+          },
+          {
+            "selected": false,
+            "text": "mineralGatherer",
+            "value": "mineralGatherer"
+          },
+          {
+            "selected": false,
+            "text": "mineralHarvester",
+            "value": "mineralHarvester"
+          },
+          {
+            "selected": false,
+            "text": "none",
+            "value": "none"
+          },
+          {
+            "selected": false,
+            "text": "pause",
+            "value": "pause"
+          },
+          {
+            "selected": false,
+            "text": "recycle",
+            "value": "recycle"
+          },
+          {
+            "selected": false,
+            "text": "recyle",
+            "value": "recyle"
+          },
+          {
+            "selected": false,
+            "text": "remoteBuilder",
+            "value": "remoteBuilder"
+          },
+          {
+            "selected": false,
+            "text": "remoteCarry",
+            "value": "remoteCarry"
+          },
+          {
+            "selected": false,
+            "text": "remoteCarryKeeper",
+            "value": "remoteCarryKeeper"
+          },
+          {
+            "selected": false,
+            "text": "remoteDismantler",
+            "value": "remoteDismantler"
+          },
+          {
+            "selected": false,
+            "text": "remoteHarvester",
+            "value": "remoteHarvester"
+          },
+          {
+            "selected": false,
+            "text": "remoteMineralHarvester",
+            "value": "remoteMineralHarvester"
+          },
+          {
+            "selected": false,
+            "text": "remotePortalCarry",
+            "value": "remotePortalCarry"
+          },
+          {
+            "selected": false,
+            "text": "remoteUpgrader",
+            "value": "remoteUpgrader"
+          },
+          {
+            "selected": false,
+            "text": "remtoeCarry",
+            "value": "remtoeCarry"
+          },
+          {
+            "selected": false,
+            "text": "repair2",
+            "value": "repair2"
+          },
+          {
+            "selected": false,
+            "text": "reserver",
+            "value": "reserver"
+          },
+          {
+            "selected": false,
+            "text": "roleSoldier",
+            "value": "roleSoldier"
+          },
+          {
+            "selected": false,
+            "text": "rowerDrainer",
+            "value": "rowerDrainer"
+          },
+          {
+            "selected": false,
+            "text": "scout",
+            "value": "scout"
+          },
+          {
+            "selected": false,
+            "text": "scout2",
+            "value": "scout2"
+          },
+          {
+            "selected": false,
+            "text": "smallArcher",
+            "value": "smallArcher"
+          },
+          {
+            "selected": false,
+            "text": "spare",
+            "value": "spare"
+          },
+          {
+            "selected": false,
+            "text": "towerAttacker",
+            "value": "towerAttacker"
+          },
+          {
+            "selected": false,
+            "text": "towerDrainer",
+            "value": "towerDrainer"
+          },
+          {
+            "selected": false,
+            "text": "undefined",
+            "value": "undefined"
+          },
+          {
+            "selected": false,
+            "text": "upgradeFiller",
+            "value": "upgradeFiller"
+          },
+          {
+            "selected": false,
+            "text": "upgrader",
+            "value": "upgrader"
+          },
+          {
+            "selected": false,
+            "text": "wait",
+            "value": "wait"
+          }
+        ],
+        "query": "screeps.roster.*",
+        "refresh": 0,
+        "type": "query"
+      }
+    ]
+  },
+  "annotations": {
+    "list": []
+  },
+  "refresh": "5m",
+  "schemaVersion": 12,
+  "version": 9,
+  "links": [],
+  "gnetId": null
+}
