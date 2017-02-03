@@ -37,7 +37,7 @@ class RunTaskStrategy extends Base {
                         case 'pickup': {
                             let pickup = creep.pickup(obj);
                             if (pickup == ERR_NOT_IN_RANGE) {
-                                util.moveTo(creep, obj.pos, 'task.path', {range: 1});
+                                util.moveTo(creep, obj.pos);
                             } else if (pickup !== OK) {    // Action takes one tick... task complete... delete task...
                                 taskManager.finishedTask(creep);
                             }
@@ -48,7 +48,7 @@ class RunTaskStrategy extends Base {
                             let withdraw = creep.withdraw(obj, creep.memory.task.resource,
                                 (creep.memory.task.amount > creep.carryCapacity - currentCarry ? null : creep.memory.task.amount));
                             if (withdraw == ERR_NOT_IN_RANGE) {
-                                util.moveTo(creep, obj.pos, 'task.path', {range: 1});
+                                util.moveTo(creep, obj.pos);
                             } else if (withdraw !== OK) {    // Action takes one tick... task complete... delete task...
                                 taskManager.finishedTask(creep);
                             }
@@ -61,7 +61,7 @@ class RunTaskStrategy extends Base {
 
                             let transfer = creep.transfer(obj, resource);
                             if (transfer == ERR_NOT_IN_RANGE) {
-                                util.moveTo(creep, obj.pos, 'task.path', {range: 1});
+                                util.moveTo(creep, obj.pos);
                             } else if (transfer !== OK) {    // Action takes one tick... task complete... delete task...
                                 taskManager.finishedTask(creep);
                             }

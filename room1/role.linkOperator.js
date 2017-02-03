@@ -13,9 +13,9 @@ class RoleLinkOperator {
      **/
     run(creep) {
         let link = this.getLink(creep);
-
-        let isStorageLink = creep.room.storage && link.pos.getRangeTo(creep.room.storage) <= 2;
-        let isControllerLink = link.pos.getRangeTo(creep.room.controller) <= 5;
+        if (!link) {creep.memory.role = 'recycle';return }
+        let isStorageLink = creep.room.storage && /storage/.exec(link.type());
+        let isControllerLink = /controller/.exec(link.type());
         let drops = creep.room.glanceForAround(LOOK_RESOURCES, creep.pos, 1, true).map(d=>d.resource).filter(d=>d.resourceType === RESOURCE_ENERGY);
 
         // let drops = creep.pos.findInRange(FIND_DROPPED_ENERGY, 1);
@@ -34,9 +34,13 @@ class RoleLinkOperator {
                 creep.drop(_.keys(creep.carry).find(min=>min !== RESOURCE_ENERGY));
             }
         }
-        let fillLink = true;
+        let fillLink = false;
         if (isStorageLink) {
-            let controllerLink = creep.room.glanceForAround(LOOK_STRUCTURES, creep.room.controller.pos, 5, true).map(s=>s.structure).find(s=>s.structureType === STRUCTURE_LINK && s !== link);
+            let controllerLink = creep.room.controller.pos.findClosestByRange(creep.room.structures[STRUCTURE_LINK]);
+            if (controllerLink && controllerLink.pos.getRangeTo(creep.room.controller)>5) {
+                controllerLink = undefined;
+            }
+                // creep.room.glanceForAround(LOOK_STRUCTURES, creep.room.controller.pos, 5, true).map(s=>s.structure).find(s=>s.structureType === STRUCTURE_LINK && s !== link);
             if (controllerLink) {
                 fillLink = (controllerLink.energy || 0) === 0;
                 // creep.log(`controller link ${controllerLink} energy ${controllerLink.energy} , shouldFill ?${fillLink} `);
@@ -94,7 +98,7 @@ class RoleLinkOperator {
         let pos;
         let isNearStorage = container !== container.room.storage && link.pos.getRangeTo(container.room.storage) <= 2;
         if (!container && creep.pos.getRangeTo(link.pos) > 1) {
-            util.moveTo(creep, link.pos, this.constructor.name);
+            util.moveTo(creep, link.pos, undefined);
         } else if (!creep.memory.operateFrom) {
             let constraints = [{pos: container.pos, range: 1}, {pos: link.pos, range: 1}];
             if (isNearStorage) {
@@ -114,7 +118,7 @@ class RoleLinkOperator {
         }
         if (pos && !pos.isEqualTo(creep.pos)) {
             // creep.log('moving in position', pos);
-            util.moveTo(creep, pos, this.constructor.name, {range: 0});
+            util.moveTo(creep, pos, undefined, {range: 0});
         }
 
     }
@@ -133,26 +137,24 @@ class RoleLinkOperator {
             }
         }
         let link = Game.getObjectById(creep.memory.link);
-        if (link.operator !== creep) {
-            link.operator = creep;
-        }
         if (!link) {
             delete creep.memory.link;
+        } else if (link.operator !== creep) {
+            link.operator = creep;
         }
-        link.operator = creep;
         return link;
     }
 
     getContainer(creep) {
         if (!creep.memory.container) {
             let link = this.getLink(creep);
-            let container = link.container;
             let rangeToStorage = link.pos.getRangeTo(link.room.storage);
             creep.memory.near_storage = rangeToStorage <= 2;
-            // creep.log('found containers', containers.length, containers[0], link);
+            let container = creep.memory.near_storage?creep.room.storage:link.container;
             if (container) {
                 creep.memory.container = container.id;
             }
+            // creep.log('found containers', containers.length, containers[0], link);
         }
         let container = Game.getObjectById(creep.memory.container);
         if (!container) {

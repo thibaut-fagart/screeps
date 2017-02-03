@@ -121,7 +121,7 @@ class SquadAttackStrategy extends Base {
                     creep.memory.lastPos = creep.pos;
                 }
                 creep.log('moving to ennemy', closestEnemy.pos);
-                util.moveTo(creep, closestEnemy.pos, this.constructor.name, {
+                util.moveTo(creep, closestEnemy.pos, undefined, {
                     avoidCreeps: true,
                     ignoreHostiles: true,
                     range: 2

@@ -1,3 +1,5 @@
+const loadGameTime = Game.time;
+const requireStart = Game.cpu.getUsed();
 const useTasks = false;
 var _ = require('lodash');
 require('./game.prototypes.room');
@@ -14,7 +16,6 @@ if (!Game.rooms['sim'] && !Memory.disableProfiler) profiler.enable();
 const reactions = require('./role.lab_operator').reactions;
 const empire = require('./empire');
 
-const loadGameTime = Game.time;
 // var RoomManager = require('./manager.room'), roomManager = new RoomManager(); // todo manager
 // This line monkey patches the global prototypes.
 // if (Game.cpu.bucket> 500)
@@ -101,14 +102,14 @@ Object.defineProperty(StructureLink.prototype, 'container',
     {
         get: function () {
             // this.log('getOperator', this.memory.operator);
-            let cid = require('./util.cache').get(this.memory, 'container', ()=> {
-                let containers = this.room.glanceForAround(LOOK_STRUCTURES, this.pos, 2, true).map(s=>s.structure)
-                    .filter(s=> undefined !== s.store);
+            let cid = require('./util.cache').get(this.memory, 'container', () => {
+                let containers = this.room.glanceForAround(LOOK_STRUCTURES, this.pos, 2, true).map(s => s.structure)
+                    .filter(s => undefined !== s.store);
                 if (containers.length) {
                     if (containers.length > 1) {
                         // container, storage, terminal, nice order ! inside a type, choose the closest
-                        containers = _.sortBy(containers, (c=>c.pos.getRangeTo(this)));
-                        containers = _.sortBy(containers, (c=>c.structureType));
+                        containers = _.sortBy(containers, (c => c.pos.getRangeTo(this)));
+                        containers = _.sortBy(containers, (c => c.structureType));
                     }
                     return _.head(containers).id;
                 } else {
@@ -143,25 +144,31 @@ function updateFrequencies(frequencies) {
     frequencies['operateTowers'] = 1;
     frequencies['addRefillTasks'] = 1;
     frequencies['buildStructures'] = 10 * (11 - Math.ceil(Game.cpu.bucket / 1000));
-    frequencies['operateLinks'] = 3 - Math.ceil(Math.min(Game.cpu.bucket, 999) / 333);
+    frequencies['operateLinks'] = 3 - Math.floor(Math.min(Game.cpu.bucket, 999) / 333);
     frequencies['gc'] = 1000;
     frequencies['assessThreat'] = 50;
     frequencies['labs'] = Math.floor(Math.max(10, Math.min(100, 110 - Game.cpu.bucket / 5)));
-    frequencies['import'] = 1500;
-    frequencies['updateProductions'] = frequencies['labs'];
+    frequencies['import'] = 500;
+    frequencies['updateProductions'] = 5 * frequencies['labs'];
     frequencies['rotateProductions'] = 1500;
     frequencies['handleStreamingOrders'] = 100;
+    frequencies['handleMarket'] = 100;
+    frequencies['incomingTransactionReport'] = 100;
+    frequencies['outgoingTransactionReport'] = 100;
+    frequencies['stats'] = Math.floor(Math.max(1, Math.min(10, 19 - 9 * Game.cpu.bucket / 500)));
     frequencies['globalGc'] = 1000;
+    frequencies['pruneStats'] = 1000;
+    frequencies['refreshLabs'] = 500;
     return frequencies;
 }
 
 let globalTasks = {
-    globalGc: ()=> {
+    globalGc: () => {
         'use strict';
-        _.keys(Memory.rooms).forEach(name=> {
+        _.keys(Memory.rooms).forEach(name => {
             let memory = Memory.rooms[name];
+            delete memory.towersCache;
             if (!Game.rooms[name]) {
-                delete memory.towersCache;
                 delete memory.harvestContainers;
                 if (_.get(memory, ['threatAssessment', 'lastInvadersAt'], Game.time) < Game.time - 1000 * 1000) {
                     delete memory.threatAssessment;
@@ -191,12 +198,20 @@ let globalTasks = {
                 delete memory.lab_production;
                 delete memory.labs;
                 delete memory.transfers;
-                delete memory.lab_productions;
                 delete memory.lab_rotated;
                 delete memory.labs_input;
             }
+            _.keys(Memory.rooms[name].structures || {}).forEach(k => {
+                if (!Game.getObjectById(k)) {
+                    delete Memory.rooms[name].structures[k];
+                }
+            });
+            if (Memory.rooms[name].squad && Memory.rooms[name].squad.refreshed < Game.time - 1500) {
+                delete Memory.rooms[name].squad;
+            }
         });
-        _.keys(Memory.creeps).forEach((name)=> {
+
+        _.keys(Memory.creeps).forEach((name) => {
             if (!Game.creeps[name]) {
                 let creepMem = Memory.creeps[name];
                 if (creepMem.role !== 'recycle') {
@@ -223,7 +238,7 @@ let globalTasks = {
                 delete Memory.creeps[name];
             }
         });
-        _.keys(Memory.spawns).forEach((name)=> {
+        _.keys(Memory.spawns).forEach((name) => {
             if (!Game.spawns[name]) {
                 delete Memory.spawns[name];
             }
@@ -231,58 +246,123 @@ let globalTasks = {
 
 
     },
-    updateProductions: ()=> empire.updateProductions(),
-    handleStreamingOrders: ()=>empire.handleStreamingOrders()
+    updateProductions: () => empire.updateProductions(),
+    handleStreamingOrders: () => empire.handleStreamingOrders(),
+    handleMarket: () => empire.handleMarket(),
+    incomingTransactionReport: () => empire.incomingTransactionReport(),
+    outgoingTransactionReport: () => empire.outgoingTransactionReport(),
+    stats: () => {
+        let roomStatsCallback = room => {
+            if (typeof room === 'string') {
+                room = Game.rooms[room];
+            }
+            if (!room) {
+                return;
+            }
+            room.updateCheapStats();
+            Memory.stats.room = Memory.stats.room || {};
+            Memory.stats.room[room.name] = Memory.stats.room[room.name] || {};
+            let roomStat = Memory.stats.room[room.name];
+            // roomStat.energyInStructures = room.find(FIND_MY_STRUCTURES).reduce((sum, s)=>sum + (s.store ? s.store.energy : (s.energy || 0)), 0);
+            // roomStat.energyDropped = _.sum(_.map(room.find(FIND_DROPPED_RESOURCES).filter(r => r.resourceType == RESOURCE_ENERGY), (s)=> s.amount));
+            // room.log('stat efficiency',Game.time % 50);
+            let roomEfficiency = Room.efficiency(room.name);
+            if (roomEfficiency && roomEfficiency.remoteMining) {
+                roomStat.efficiency = {
+                    remoteMining: roomEfficiency.remoteMining,
+                    remoteMiningBalance: _.sum(roomEfficiency.remoteMining)
+                };
+            }
+            let strangers = room.find(FIND_HOSTILE_CREEPS);
+
+            /*
+             if (hostiles.length > 0) {
+             messages.push(' strangers ' + JSON.stringify(_.map(hostiles, (h) => {
+             let subset = _.pick(h, ['name', 'pos', 'body', 'owner', 'hits', 'hitsMax']);
+             subset.body = _.countBy(subset.body, 'type');
+             return subset;
+             })));
+             }
+             */
+            roomStat.strangers = _.size(strangers);
+            roomStat.hostiles = strangers.reduce((acc, c) => acc + c.hostile ? 1 : 0, 0);
+            roomStat.creeps = util.roster(room);
+        };
+        empire.ownedRooms().forEach(roomStatsCallback);
+        empire.remoteMiningRooms().forEach(roomStatsCallback);
+    },
+    pruneStats: () => {
+        'use strict';
+        let statRooms = _.get(Memory, ['stats', 'room'], {});
+        let remoteMining = empire.remoteMiningRooms();
+        _.set(Memory, ['stats', 'room'], _.keys(statRooms).reduce((acc, name) => {
+            if (_.get(Game.rooms,[name, 'controller','my'], false) || remoteMining.indexOf(name) >= 0) {
+                acc[name] = statRooms[name];
+            }
+            return acc;
+        }, {}));
+    }
 };
 let roomTasks = {
-    operateTowers: (r)=> r.operateTowers(),
-    addRefillTasks: (r)=> {
+    operateTowers: (r) => r.operateTowers(),
+    addRefillTasks: (r) => {
         if (useTasks && r.memory.addRefillTasks) {
             r.log('spawned, triggering refill');
             delete r.memory.addRefillTasks;
             r.addRefillTasks(require('./tasks.Manager'));
         }
     },
-    computeTasks: (r)=> {
-        if (useTasks)  r.compileTasks();
+    computeTasks: (r) => {
+        if (useTasks) r.compileTasks();
     },
-    runSpawn: (r)=> {
+    runSpawn: (r) => {
         'use strict';
         roleSpawn.run(r);
     },
-    operateLinks: (r)=> r.operateLinks(),
-    harvestContainers: (r)=>(r.memory.harvestContainers = r.memory.harvestContainers || []),
-    updateLocks: (r)=> r.updateLocks(),
-    assessThreat: (r)=> {
+    operateLinks: (r) => r.operateLinks(),
+    updateLocks: (r) => r.updateLocks(),
+    assessThreat: (r) => {
         if (Game.cpu.bucket > 200) r.assessThreat();
     },
-    labs: (r)=> r.operateLabs(),
-    rotateProductions: (r)=> {
+    labs: (r) => r.operateLabs(),
+    rotateProductions: (r) => {
         if (r.controller && r.controller.my && r.controller.level > 6) {
             r.lab_production = undefined;
         }
     },
-    import: (r)=> {
+    import: (r) => {
         'use strict';
         if (r.controller && r.controller.my && r.controller.level >= 6) {
             r.updateImportExports();
         }
     },
-    buildStructures: (r)=> r.buildStructures(),
-    observe: (r)=> {
+    buildStructures: (r) => r.buildStructures(),
+    observe: (r) => {
         if (Game.cpu.bucket > 5000) {
             r.runObserver();
         }
     },
-    gc: (r)=> r.gc(),
-
+    gc: (r) => r.gc(),
+    refreshLabs: (r)=> {
+        if ( _.get(r, ['controller', 'my'], false) && _.get(r, ['controller', 'level'], 0) >= 6) {
+            let roomLabs = r.find(FIND_STRUCTURES, {filter: s => s.structureType === STRUCTURE_LAB})
+                .map(l => l.id);
+            if (typeof r.memory.labs !== 'object') {
+                r.memory.labs = {};
+            }
+            roomLabs.forEach(id => {
+                console.log(id, '=>', r.memory.labs[id]);
+                r.memory.labs [id] = r.memory.labs[id]|| null;
+            });
+        }
+    }
 };
 function runRoomTask(taskName, room) {
     'use strict';
     let freq = frequencies[taskName] || 1;
     room.memory.tasksRan = room.memory.tasksRan || [];
     let lastRun = room.memory.tasksRan[roomTasksIndex[taskName]] || 0;
-    if (lastRun + freq < Game.time) {
+    if (lastRun + freq < Game.time && Game.cpu.getUsed() < Game.cpu.tickLimit - 10) {
         room.memory.tasksRan[roomTasksIndex[taskName]] = Game.time;
         try {
             return (roomTasks[taskName])(room);
@@ -300,7 +380,7 @@ function runGlobalTask(taskName) {
     let freq = frequencies[taskName] || 1;
     Memory.tasksRan = Memory.tasksRan || [];
     let lastRun = Memory.tasksRan[globalTasksIndex[taskName]] || 0;
-    if (lastRun + freq < Game.time) {
+    if (lastRun + freq < Game.time && Game.cpu.getUsed() < Game.cpu.tickLimit - 10) {
         Memory.tasksRan[globalTasksIndex[taskName]] = Game.time;
         try {
             return (globalTasks[taskName])();
@@ -315,10 +395,11 @@ function runGlobalTask(taskName) {
 function skippedRoomTask(taskName, room) {
     'use strict';
     if (taskName === 'labs') {
-        room.memory.lab_activity = room.memory.lab_activity || {};
-        util.recordActivity(room.memory.lab_activity, {skipped: 1, idle: 0, producing: 0, cooldown: 0}, 1500);
+        if (room.memory.lab_activity && room.memory.labs) {
+            util.recordActivity(room.memory.lab_activity, {skipped: 1, idle: 0, producing: 0, cooldown: 0}, 1500);
+        }
     } else if (taskName === 'runSpawn') {
-        room.find(FIND_MY_SPAWNS).forEach(spawn=> {
+        room.find(FIND_MY_SPAWNS).forEach(spawn => {
             spawn.memory.spawns = spawn.memory.spawns || {};
             if (spawn.spawning) {
                 util.recordActivity(spawn.memory.spawns, {idle: 0, waitFull: 0, spawning: 1, skipped: 0}, 1500);
@@ -330,11 +411,11 @@ function skippedRoomTask(taskName, room) {
         });
     }
 }
-let roomTasksIndex = _.keys(roomTasks).reduce((acc, k, index)=> {
+let roomTasksIndex = _.keys(roomTasks).reduce((acc, k, index) => {
     acc[k] = index;
     return acc;
 }, {});
-let globalTasksIndex = _.keys(globalTasks).reduce((acc, k, index)=> {
+let globalTasksIndex = _.keys(globalTasks).reduce((acc, k, index) => {
     acc[k] = index;
     return acc;
 }, {});
@@ -348,19 +429,19 @@ function innerLoop() {
     Memory.counters = {tick: Game.time, seenTick: oldSeenTick + 1};
     Memory.stats.room = Memory.stats.room || {};
     let cpu = {creeps: {}, roomTasks: {}}, roomCpu = {}, remoteCpu = {};
-    let availableCpu = Game.cpu.tickLimit;
+    let availableCpu = Math.min(Game.cpu.tickLimit, Game.cpu.bucket - 500);
 
     if (updateStats) {
         cpu.creeps = cpu.creeps || {};
-        _.keys(handlers).forEach((k)=>cpu.creeps[k] = 0);
+        _.keys(handlers).forEach((k) => cpu.creeps[k] = 0);
     }
-    let rooms = _.groupBy(_.values(Game.rooms), r=>!!(r.controller && r.controller.my && r.controller.level > 0));
-    let ownedRooms = rooms['true'] || [];
+    let rooms = _.groupBy(_.values(Game.rooms), r => !!(r.controller && r.controller.my && r.controller.level > 0));
+    let ownedRoomsByPriority = _.sortBy(rooms['true'] || [], r => (r.memory.emergency ? -1 : 8 - r.controller.level));
     let remoteRooms = rooms['false'] || [];
     let theTasks = _.keys(roomTasks);
-    _.keys(globalTasks).forEach(taskName=> {
+    _.keys(globalTasks).forEach(taskName => {
         let start = Game.cpu.getUsed();
-        if (start < availableCpu - 100) {
+        if (start < availableCpu - 10) {
             runGlobalTask(taskName);
         } else {
             skipped[taskName] = (skipped[taskName] || 0) + 1;
@@ -369,13 +450,14 @@ function innerLoop() {
             cpu.roomTasks[taskName] = (cpu.roomTasks[taskName] || 0) + Game.cpu.getUsed() - start;
         }
     });
-    ownedRooms.concat(remoteRooms).forEach(room=> {
+
+    let sortedRooms = ownedRoomsByPriority.concat(remoteRooms);
+    sortedRooms.forEach(room => {
         'use strict';
-        let roomName = room.name;
-        theTasks.forEach((taskName)=> {
+        theTasks.forEach((taskName) => {
             'use strict';
             let start = Game.cpu.getUsed();
-            if (start < availableCpu - 100) {
+            if (start < availableCpu - 10) {
                 runRoomTask(taskName, room);
             } else {
                 skipped[taskName] = (skipped[taskName] || 0) + 1;
@@ -385,11 +467,8 @@ function innerLoop() {
             }
         });
     });
-    _.sortBy(ownedRooms, r=>(r.memory.emergency ? -1 : 8 - r.controller.level));
-    let sortedRooms = ownedRooms.concat(remoteRooms);
     // _.sortBy(_.values(Game.rooms), (r)=> r.controller && r.controller.my ? r.controller.level : 10);
-    if (updateStats && Game.cpu.tickLimit < 500 && debugPerfs) console.log('room, controller, roomTasks , creeps ,spawns , labs , stats, room');
-    sortedRooms.forEach((room)=> {
+    sortedRooms.forEach((room) => {
         // for (var roomName in Game.rooms) {
         //     var room = Game.rooms[roomName];
         // cpu['roomTasks'] = (cpu['roomTasks'] || 0) + roomTasksCpu - roomStartCpu;
@@ -397,7 +476,7 @@ function innerLoop() {
         // room.prototype.sourceConsumers = {};
         let roomName = room.name;
         let roomStartCpu = Game.cpu.getUsed();
-        if (roomStartCpu < availableCpu - 100) {
+        if (roomStartCpu < availableCpu - 10) {
             var creeps = room.find(FIND_MY_CREEPS);
             // room.creeps = creeps;
             creeps.forEach(function (creep) {
@@ -406,7 +485,7 @@ function innerLoop() {
                     if (!creep.spawning) {
                         creep.memory.birthTime = creep.memory.birthTime || Game.time;
                         let start = Game.cpu.getUsed();
-                        if (start < availableCpu - 100) {
+                        if (start < availableCpu - 10) {
                             if (creep.memory.tasks && creep.memory.tasks.length) {
                                 let task = new (require('task.' + creep.memory.tasks[0].name))(creep.memory.tasks[0].args);
                                 let taskComplete = task.run(creep);
@@ -451,68 +530,30 @@ function innerLoop() {
         }
         let creepsCpu = Game.cpu.getUsed();
         // room.log('creepsCpu', creepsCpu);
-        let labsCpu = creepsCpu;
-
-        if (Game.cpu.getUsed() < availableCpu - 100 && updateStats && Game.cpu.bucket > 500) {
-            room.updateCheapStats();
-            Memory.stats.room = Memory.stats.room || {};
-            Memory.stats.room[room.name] = Memory.stats.room[room.name] || {};
-            let roomStat = Memory.stats.room[room.name];
-            // roomStat.energyInStructures = room.find(FIND_MY_STRUCTURES).reduce((sum, s)=>sum + (s.store ? s.store.energy : (s.energy || 0)), 0);
-            // roomStat.energyDropped = _.sum(_.map(room.find(FIND_DROPPED_RESOURCES).filter(r => r.resourceType == RESOURCE_ENERGY), (s)=> s.amount));
-            // room.log('stat efficiency',Game.time % 50);
-            if (0 == (Game.time % 50)) {
-                let roomEfficiency = Room.efficiency(roomName);
-                if (roomEfficiency && roomEfficiency.remoteMining) {
-                    roomStat.efficiency = {
-                        remoteMining: roomEfficiency.remoteMining,
-                        remoteMiningBalance: _.sum(roomEfficiency.remoteMining)
-                    };
-                }
-            }
-
-            let strangers = room.find(FIND_HOSTILE_CREEPS);
-            let hostiles = strangers.filter(c=>c.hostile);
-
-            /*
-             if (hostiles.length > 0) {
-             messages.push(' strangers ' + JSON.stringify(_.map(hostiles, (h) => {
-             let subset = _.pick(h, ['name', 'pos', 'body', 'owner', 'hits', 'hitsMax']);
-             subset.body = _.countBy(subset.body, 'type');
-             return subset;
-             })));
-             }
-             */
-            roomStat.strangers = _.size(strangers);
-            roomStat.hostiles = _.size(hostiles);
-            roomStat.creeps = util.roster(room);
-        }
-        let statsCpu = Game.cpu.getUsed();
-        if (updateStats) cpu ['stats'] = (cpu ['stats'] || 0) + statsCpu - labsCpu;
         if (updateStats) roomCpu[roomName] = Game.cpu.getUsed() - roomStartCpu;
         if (updateStats && Game.cpu.tickLimit < 500 && debugPerfs) room.log(
             (creepsCpu - roomStartCpu).toFixed(1),
-            (labsCpu - creepsCpu).toFixed(1),
-            (statsCpu - labsCpu).toFixed(1),
             (roomCpu [roomName]).toFixed(1)
         );
     });
-    if (updateStats) _.keys(skipped).forEach(k=> console.log('skipped ', k, skipped[k]));
-    Memory.stats.performance = Memory.stats.performance || {};
-    Memory.stats.performance.skipped = skipped;
-    Memory.stats.remoteRooms = {};
-    _.keys(Memory.rooms).forEach((k)=> {
-        let stat = _.get(Memory.stats, 'room.' + k + '.efficiency.remoteMining', undefined);
-        if (stat && remoteCpu[k] || 0) {
-            Memory.stats.remoteRooms[k] = Memory.stats.remoteRooms[k] || {};
-            Memory.stats.remoteRooms[k].cpu_efficiency = stat / remoteCpu[k];
-        }
-        // console.log(`cpu.room, ${k},${roomCpu[k] || 0}`);
-    });
+    _.keys(skipped).forEach(k => console.log('skipped ', k, skipped[k]));
+    if (updateStats && Game.cpu.getUsed() < availableCpu - 100) {
+        Memory.stats.performance = Memory.stats.performance || {};
+        Memory.stats.performance.skipped = skipped;
+        Memory.stats.remoteRooms = {};
+        _.keys(Memory.rooms).forEach((k) => {
+            let stat = _.get(Memory.stats, 'room.' + k + '.efficiency.remoteMining', undefined);
+            if (stat && remoteCpu[k] || 0) {
+                Memory.stats.remoteRooms[k] = Memory.stats.remoteRooms[k] || {};
+                Memory.stats.remoteRooms[k].cpu_efficiency = stat / remoteCpu[k];
+            }
+            // console.log(`cpu.room, ${k},${roomCpu[k] || 0}`);
+        });
+    }
     if (messages.length > 0) {
         Game.notify(messages);
     }
-    if (updateStats) {
+    if (updateStats && Game.cpu.getUsed() < availableCpu -10) {
         Memory.stats.cpu_bucket = Game.cpu.bucket;
         Memory.stats.cpu_ = cpu;
         Memory.stats.cpu_.rooms = roomCpu;
@@ -523,10 +564,12 @@ function innerLoop() {
         // console.log('PathFinder.callCount', (PathFinder.callCount || 0));
         Memory.stats.performance.PathFinder = {search: pathFinderCost};
         // Memory.stats.performance = {'PathFinder.searchCost': pathFinderCost.cost};
-        Memory.stats.roster = util.roster();
         Memory.stats.market = {credits: Game.market.credits};
         // _.keys(handlers).forEach((k)=> Memory.stats['roster.' + k] = roster[k] || 0);
 
+    }
+    if (Game.cpu.getUsed() < availableCpu - 10) {
+        Memory.stats.roster = util.roster();
     }
 
     // counting walkable tiles neer location:
@@ -538,10 +581,12 @@ module.exports.loop = function () {
     let mainStart = Game.cpu.getUsed();
     if (loadGameTime === Game.time) {
         if (Memory.lastLoadTime) {
-            Memory.stats.scriptReloaded = Game.time - Memory.lastLoadTime;
-            console.log('script reloaded', Memory.stats.scriptReloaded);
+            Memory.stats.scriptReloaded = 0;
+            console.log(`script reloaded after ${Memory.stats.scriptReloaded} , cpu ${Game.cpu.getUsed()},`);
         }
         Memory.lastLoadTime = loadGameTime;
+    } else {
+        Memory.stats.scriptReloaded = Game.time - Memory.lastLoadTime;
     }
     Memory.stats = Memory.stats || {};
     Memory.stats.cpu_ = Memory.stats.cpu_ || {};

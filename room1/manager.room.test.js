@@ -63,6 +63,7 @@ var mocha = require('mocha');
 describe('auto-produce', function () {
     it('should find produceable reactions', function () {
         let reactions = require('./role.lab_operator').reactions;
+        Memory.needs = ["XUH2O", "XGHO2", "XLHO2", "XZHO2", "GH2O", "GHO2", "KHO2", "Z", "GH"];
         let ledger = {
             "time": 15128060,
             "v": {
@@ -102,9 +103,9 @@ describe('auto-produce', function () {
                 "UL": {"amount": 41573, "goal": 5000},
                 "ZK": {"amount": 39153, "goal": 5000}
             },
-            "needs": ["XUH2O", "XGHO2", "XLHO2", "XZHO2", "GH2O", "GHO2", "KHO2", "Z", "GH"]
+
         };
-        let produceable = ledger.needs.filter(min=> {
+        let produceable = Memory.needs.filter(min=> {
             let ingredients = reactions[min];
             return ingredients && ingredients.reduce((allAvailable, i)=> allAvailable && (_.get(ledger.v, [i, 'amount'], 0) > 2000), true);
         });

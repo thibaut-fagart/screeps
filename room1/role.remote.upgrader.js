@@ -2,6 +2,7 @@ var RoleUpgrader = require('./role.upgrader');
 var MoveToRoomTask = require('./task.move.toroom');
 var LootContainerStrategy = require('./strategy.loot_container');
 var HarvestEnergySourceStrategy = require('./strategy.harvest_source');
+var util = require('./util');
 
 class RoleRemoteUpgrader extends RoleUpgrader{
     constructor() {

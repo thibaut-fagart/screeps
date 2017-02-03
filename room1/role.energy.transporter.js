@@ -36,9 +36,7 @@ class RoleEnergyTransporter extends RoleRemoteCarry {
             this.setAction(creep, 'go_remote_room');
             this.goRemoteTask.accepts(creep);
         } else {
-            creep.log('ready to die, recycling', creep.ticksToLive, tripTime);
-            creep.memory.previousRole = creep.memory.role;
-            creep.memory.role = 'recycle';
+            creep.memory.role = 'carry';
             return false;
         }
     }

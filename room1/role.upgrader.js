@@ -10,8 +10,8 @@ class RoleUpgrader {
             new LoadFromContainerStrategy(RESOURCE_ENERGY, undefined, (creep)=> ((s)=>s.pos.getRangeTo(creep) < 2)),
             new LoadFromContainerStrategy(RESOURCE_ENERGY, undefined, (creep)=> ((s)=>s.pos.getRangeTo(creep) < 5)),
             new LoadFromContainerStrategy(RESOURCE_ENERGY, undefined),
-            new PickupStrategy(RESOURCE_ENERGY)/*,
-             new HarvestEnergySourceStrategy()*/];
+            new PickupStrategy(RESOURCE_ENERGY),
+            new HarvestEnergySourceStrategy()];
         this.ACTION_FILL = 'fill';
         util.indexStrategies(this.loadStrategies);
     }
@@ -27,7 +27,7 @@ class RoleUpgrader {
         } else if (creep.carry.energy == creep.carryCapacity) {
             creep.memory.action = 'upgrade';
         }
-        if (creep.room.controller.level < 8 && creep.seekBoosts(WORK, ['XGH2O', 'GH2O', 'GH'])) return;
+        if (creep.seekBoosts(WORK, ['XGH2O', 'GH2O', 'GH'])) return;
         if (creep.memory.action == this.ACTION_FILL) {
             delete creep.memory.upgradeFrom;
             let strategy = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);
@@ -53,10 +53,10 @@ class RoleUpgrader {
             creep.memory.inplace = upgradePos && !upgradePos.isEqualTo(creep.pos);
             if (creep.memory.inplace) {
                 // creep.upgradeController(creep.room.controller);
-                util.moveTo(creep, upgradePos, this.constructor.name + 'Path', {range: 0});
+                util.moveTo(creep, upgradePos, undefined, {range: 0});
             } else if (upgraded == ERR_NOT_IN_RANGE && !upgradePos) {
                 creep.log('unexpected, moving');
-                util.moveTo(creep, creep.room.controller.pos, this.constructor.name + 'Path', {range: 3});
+                util.moveTo(creep, creep.room.controller.pos, undefined, {range: 3});
             } else if (upgraded !== OK) {
                 creep.log('unexpected upgradeController : ', upgraded);
             }
@@ -66,7 +66,7 @@ class RoleUpgrader {
             if (creep.carry.energy == 0 && creep.memory.inplace) {
                 creep.memory.wait = (creep.memory.wait || 0) + 1;
                 if (creep.memory.wait > 10) {
-                    Game.notify(`${Game.time} ${creep.name} giving up waiting`);
+                    creep.log('giving up waiting');
                     creep.memory.action = this.ACTION_FILL;
                 }
             } else if (creep.carry.energy == creep.memory.workParts && creep.memory.inplace) {
@@ -111,7 +111,7 @@ class RoleUpgrader {
         if (!creep.memory.upgradeFrom) {
             let container = this.getControllerContainer(creep);
             let position;
-            if (creep.room.isValidParkingPos(creep) && creep.pos.getRangeTo(creep.room.controller) <= 3) {
+            if (creep.room.isValidParkingPos(creep) && creep.pos.getRangeTo(creep.room.controller) <= 3 && creep.pos.getRangeTo(container)<=1) {
                 position = creep.pos;
             } else {
                 let near = container?[{pos: container.pos, range: 1}]:[];
@@ -137,9 +137,9 @@ class RoleUpgrader {
                     }
                 }
             }
-
+            // TODO sometimes position is not in range ....
             // creep.log('upgrading from '+creep.memory.upgradeFrom);
-            if (position) {
+            if (position && position.getRangeTo(creep.room.controller)<=3 && position.getRangeTo(container)<=1) {
                 creep.memory.upgradeFrom = util.posToString(position);
             }
         }

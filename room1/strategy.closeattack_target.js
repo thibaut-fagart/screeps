@@ -42,7 +42,7 @@ class CloseAttackStrategy extends BaseStrategy {
             let attack = creep.attack(target);
             if (attack == ERR_NOT_IN_RANGE) {
                 if (creep.pos.getRangeTo(target.pos)>5 && creep.hits === creep.hitsMax) {
-                    util.moveTo(creep, target.pos, this.constructor.name, {avoidCreeps: false});
+                    util.moveTo(creep, target.pos, undefined, {avoidCreeps: false});
                 } else {
                     creep.moveTo(target);
                 }

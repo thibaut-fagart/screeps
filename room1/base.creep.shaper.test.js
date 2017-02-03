@@ -103,6 +103,68 @@ describe('CreepShaper', function () {
                 }))));
             }
         });
+        it('carry with RCL 5', function () {
+            let room = new Room();
+            room.name = 'my';
+            room.memory = {allowedBoosts: []};
+            room.availableBoosts = () =>[];
+            room.glanceForAround = ()=> [];
+            room.find = ()=>1;
+            room.name = 'W55S43';
+            room.controller = {level: 3};
+            console.log('RCL ', room.controller.level);
+            room.energyCapacityAvailable = EXTENSION_ENERGY_CAPACITY[room.controller.level] * CONTROLLER_STRUCTURES[STRUCTURE_EXTENSION][room.controller.level] + SPAWN_ENERGY_CAPACITY;
+            room.find = (find)=> {
+                if (FIND_MINERALS === find) {
+                    return [{mineralAmount: 0}];
+                } else if (FIND_SOURCES === find) {
+                    return [];
+                }
+            };
+            let body = ((spec)=> {
+                if (_.isFunction(spec.body)) {
+                    return spec.body(room);
+                } else {
+                    return spec.body;
+                }
+            })(patterns['carry']);
+            console.log(JSON.stringify(_.mapValues([body], (body)=>({
+                body: _.countBy(body),
+                cost: _.sum(body, (p)=>BODYPART_COST[p])
+            }))));
+
+        });
+        it('upgrader RCL8', function () {
+            let room = new Room();
+            room.name = 'my';
+            room.memory = {allowedBoosts: []};
+            room.availableBoosts = () =>[];
+            room.glanceForAround = ()=> [{structure:{structureType:STRUCTURE_CONTAINER}}];
+            room.find = ()=>1;
+            room.name = 'W55S43';
+            room.controller = {level:8};
+            console.log('RCL ', room.controller.level);
+            room.energyCapacityAvailable = EXTENSION_ENERGY_CAPACITY[room.controller.level] * CONTROLLER_STRUCTURES[STRUCTURE_EXTENSION][room.controller.level] + SPAWN_ENERGY_CAPACITY;
+            room.find = (find)=> {
+                if (FIND_MINERALS === find) {
+                    return [{mineralAmount: 0}];
+                } else if (FIND_SOURCES === find) {
+                    return [];
+                }
+            };
+            let body = ((spec)=> {
+                if (_.isFunction(spec.body)) {
+                    return spec.body(room);
+                } else {
+                    return spec.body;
+                }
+            })(patterns['upgrader']);
+            console.log(JSON.stringify(_.mapValues([body], (body)=>({
+                body: _.countBy(body),
+                cost: _.sum(body, (p)=>BODYPART_COST[p])
+            }))));
+
+        });
         it('RCLs', function () {
             let room = new Room();
             room.name = 'my';
@@ -110,11 +172,18 @@ describe('CreepShaper', function () {
             room.availableBoosts = () =>[];
             room.glanceForAround = ()=> [];
             room.find = ()=>1;
+            room.name = 'W55S43';
             for (let rcl = 1; rcl <= 8; rcl++) {
                 room.controller = {level: rcl};
                 console.log('RCL ', rcl);
                 room.energyCapacityAvailable = EXTENSION_ENERGY_CAPACITY[rcl] * CONTROLLER_STRUCTURES[STRUCTURE_EXTENSION][rcl] + SPAWN_ENERGY_CAPACITY;
-
+                room.find = (find)=> {
+                    if (FIND_MINERALS === find) {
+                        return [{mineralAmount: 0}];
+                    } else if (FIND_SOURCES ===find) {
+                        return  [];
+                    }
+                };
                 let bodies = _.mapValues(patterns, (spec)=> {
                     if (_.isFunction(spec.body)) {
                         return spec.body(room);

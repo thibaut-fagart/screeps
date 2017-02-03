@@ -12,7 +12,7 @@ class HarvestKeeperEnergySourceToContainerStrategy extends HarvestEnergySourceTo
 
 
     moveTo(creep, source) {
-        return util.moveTo(creep, source.pos, this.constructor.name + 'Path', {range: source.structureType ? 0: 1, ignoreHostiles: creep.memory.isFighter});
+        return util.moveTo(creep, source.pos, undefined, {range: source.structureType ? 0: 1, ignoreHostiles: creep.memory.isFighter});
     }
 
 

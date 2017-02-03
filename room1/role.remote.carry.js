@@ -10,6 +10,8 @@ var DropToEnergyStorageStrategy = require('./strategy.drop_to_energyStorage');
 var AvoidRespawnStrategy = require('./strategy.avoidrespawn');
 var MoveToRoomTask = require('./task.move.toroom');
 var RegroupStrategy = require('./strategy.regroup');
+var WaitStrategy = require('./strategy.wait');
+
 var repair = true;
 class RoleRemoteCarry {
 
@@ -29,7 +31,8 @@ class RoleRemoteCarry {
             new PickupStrategy(undefined, function (creep) {
                 return ((drop)=>drop.amount > 50);
             }),
-            new LoadFromContainerStrategy(undefined, STRUCTURE_CONTAINER)
+            new LoadFromContainerStrategy(undefined, STRUCTURE_CONTAINER),
+            new WaitStrategy(10)
         ];
         this.unloadStrategies = [
             // new DropToEnergyStorageStrategy(STRUCTURE_TOWER),

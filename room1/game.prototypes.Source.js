@@ -6,7 +6,7 @@ Source.prototype.container = function () {
 };
 Source.prototype.link = function () {
     'use strict';
-    let link = this.room.glanceForAround(LOOK_STRUCTURES, this.pos, 2, true).map(f=>f.structure).find(s=>s.structureType === STRUCTURE_LINK);
+    let link = this.room.glanceForAround(LOOK_STRUCTURES, this.pos, 2, true).map(f=>f.structure).find(s=>s.structureType === STRUCTURE_LINK && Cache.get(s.memory,'active',()=>s.isActive(),1500));
     return link;
 };
 StructureLink.prototype.source= function() {
@@ -26,7 +26,7 @@ StructureLink.prototype.type= function() {
         if (this.room.storage && this.pos.getRangeTo(this.room.storage)<=2) {
             type = 'storage';
         }
-        if (this.pos.getRangeTo(this.room.controller)<=5) {
+        if (this.pos.getRangeTo(this.room.controller)<=5 && this.room.controller.pos.findClosestByRange(this.room.structures[STRUCTURE_LINK])===this) {
             if (type.length>0) {
                 type = type + '|controller';
             } else{

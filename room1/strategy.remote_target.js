@@ -7,7 +7,6 @@ class RemoteTargetStrategy extends BaseStrategy {
         super();
         this.range = 0 || range;
         this.predicate = predicate || (function(creep){return (target)=>true;})
-        this.path = 'attacking_remote';
     }
 
     clearMemory(creep) {

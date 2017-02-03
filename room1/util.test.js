@@ -514,3 +514,28 @@ JSON.stringify(_.keys(Memory.rooms).filter(k=>Memory.rooms[k].scouted && Memory.
     total[k] = {s: Memory.rooms[k].scouted.sourceCount, m: _.head(Memory.rooms[k].scouted.minerals)};
     return total;
 }, {}));
+
+describe('lab rotatations',()=>{
+    "use strict";
+    it('',()=>{
+        let ledger = {"energy":534537,"H":3,"O":760,"U":2060,"K":57299,"L":760,"Z":23441,"X":3,"G":11190,"ZK":11265,"UL":9760,"UH":42220,"KO":16710,"LO":9630,"ZH":9392,"ZO":720,"GH":680,"GO":9265,"UH2O":10550,"KHO2":16320,"LH2O":5000,"LHO2":4887,"ZH2O":12337,"ZHO2":16780,"GH2O":1160,"GHO2":4587,"XUH2O":25200,"XKHO2":2470,"XLH2O":5000,"XLHO2":4247,"XZH2O":3720,"XZHO2":26094,"XGH2O":220,"XGHO2":18518};
+        let globalLedger = {"XUH2O":{"amount":421243,"goal":275000,"ratio":1.5317927272727272},"XKHO2":{"amount":113688,"goal":275000,"ratio":0.4134109090909091},"XGHO2":{"amount":188230,"goal":223000,"ratio":0.8440807174887892},"XLHO2":{"amount":181441,"goal":276500,"ratio":0.6562061482820977},"XZHO2":{"amount":184894,"goal":275000,"ratio":0.6723418181818182},"XZH2O":{"amount":101152,"goal":275000,"ratio":0.36782545454545457},"G":{"amount":119171,"goal":450388828,"ratio":2.1667454545454548},"XLH2O":{"amount":57880,"goal":33000,"ratio":1.753939393939394},"GO":{"amount":87722,"goal":31280682,"ratio":5.848133333333333},"OH":{"amount":431,"goal":560666372,"ratio":0.00862},"energy":{"amount":2227141,"goal":200000,"ratio":11.135705},"O":{"amount":111853,"goal":14496625119,"ratio":22.3706},"U":{"amount":809087,"goal":49771549571,"ratio":112.57645749269514},"L":{"amount":239675,"goal":51209852167},"Z":{"amount":313025,"goal":53943917095},"X":{"amount":230467,"goal":24979275},"ZK":{"amount":82761,"goal":4976967836},"UL":{"amount":90341,"goal":4976967836},"UH":{"amount":211621,"goal":0},"KO":{"amount":78678,"goal":165827900,"ratio":3.9339},"LO":{"amount":203946,"goal":94445340,"ratio":33.991},"ZH":{"amount":97959,"goal":180052390,"ratio":9.7959},"ZO":{"amount":66441,"goal":89061060},"GH":{"amount":23620,"goal":0},"UH2O":{"amount":82213,"goal":0},"LHO2":{"amount":87705,"goal":4277655},"ZH2O":{"amount":70258,"goal":7823160},"ZHO2":{"amount":93376,"goal":4054770},"GHO2":{"amount":107444,"goal":1564650},"XGH2O":{"amount":20423,"goal":18987,"ratio":1.0756306946858376},"LH2O":{"amount":23821,"goal":0},"H":{"amount":79836,"goal":11481541489,"ratio":15.9672},"K":{"amount":115844,"goal":52355167022,"ratio":3.2600889289131536},"KHO2":{"amount":73180,"goal":7259040},"GH2O":{"amount":9284,"goal":0},"LH":{"amount":70730,"goal":0},"UO":{"amount":21430,"goal":0}};
+        let reactions= require('./role.lab_operator').reactions;
+        let produceable ={"LHO2":4354};
+        Game.gcl = {level:12};
+        // {"XKHO2":73180,"XGHO2":107444,"XLHO2":87705,"XZHO2":93376,"XZH2O":73857,"OH":82065,"KO":113099,"ZH":82065,"LHO2":4354,"ZH2O":4354,"KHO2":4354};
+
+        _.keys(produceable)
+            .map(min=>[min, reactions[min] ?
+                reactions[min].reduce((available, i)=>{
+                    var locallyAvailable = ((ledger[i] || 0) > 2000 ? 1 : 0) ;
+                    var globallyAvailable = ((_.get(globalLedger, [min, 'amount'], 0) < Game.gcl.level * 3000 ? -1 : 0));
+                    return available + locallyAvailable + globallyAvailable
+
+                },0)
+                : 0]);
+
+    })
+})
+
+

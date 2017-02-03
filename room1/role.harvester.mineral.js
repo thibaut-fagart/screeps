@@ -29,16 +29,17 @@ class RoleMineralHarvester {
                 if (creep.pos.getRangeTo(pos) < 2) {
                     if (!creep.room.isValidParkingPos(creep, pos)) {
                         delete creep.memory.harvestFrom;
-                        pos = this.getHarvestPos(creep, container, mineral);
+                        let newpos = this.getHarvestPos(creep, container, mineral);
+                        pos = newpos ? newpos : pos;
                     }
                 }
-                util.moveTo(creep, pos, 'harvestPath', {range: 0});
+                util.moveTo(creep, pos, undefined, {range: 0});
             } else {
                 creep.log('no parking pos near mineral ? ');
                 if (creep.pos.getRangeTo(mineral)>2) {
-                    util.moveTo(creep, mineral.pos, 'harvestPath', {range: 1});
+                    util.moveTo(creep, mineral.pos, undefined, {range: 1});
                 } else {
-                    util.moveTo(creep, mineral.pos, 'harvestPath', {range: 1, ignoreCreeps: false});
+                    util.moveTo(creep, mineral.pos, undefined, {range: 1, ignoreCreeps: false});
                 }
             }
         }
@@ -61,10 +62,13 @@ class RoleMineralHarvester {
             if (drops && drops.length && _.sum(drops, d=>d.amount) >= 2000) {
                 return;
             }
-            if (ERR_NOT_ENOUGH_RESOURCES === creep.harvest(mineral)) {
-                Game.notify(`${Game.time} ${creep.room.name} ${creep.name} resigning, mineral depleted`);
+            let harvest = creep.harvest(mineral);
+            if (ERR_NOT_ENOUGH_RESOURCES === harvest) {
+                // Game.notify(`${Game.time} ${creep.room.name} ${creep.name} resigning, mineral depleted`);
                 creep.log('resigning, mineral depleted');
                 creep.memory.role = 'recycle';
+            } else if (ERR_NOT_IN_RANGE === harvest) {
+                creep.memory.inplace = false;
             }
         }
     }

@@ -89,7 +89,7 @@ class DropToContainerStrategy extends BaseStrategy {
             }
             // creep.log('transfer?', ret);
             if (ret == ERR_NOT_IN_RANGE) {
-                ret = util.moveTo(creep, target.pos, this.constructor.name + 'Path');
+                ret = util.moveTo(creep, target.pos);
                 if (ret == ERR_NO_PATH) {
                     creep.log('no path to target');
                     delete creep.memory[this.PATH];
@@ -114,35 +114,12 @@ class DropToContainerStrategy extends BaseStrategy {
             matchingStructures
                 .filter((s)=>!s.room.isHarvestContainer(s)) // do not drop in harvest containers
                 .filter(this.predicate(creep));
-        // creep.log('allCOntainers has storage ?', allContainers.find((c)=>c.structureType === STRUCTURE_STORAGE));
-        // creep.log('1allCOntainers has links?', allContainers.find((c)=>c.structureType === STRUCTURE_LINK));
-        // creep.log('1allCOntainers has labs?', this.structure, allContainers.length, allContainers.filter((c)=>c.structureType === STRUCTURE_LAB).length);
         let containersWithCapacity = allContainers.filter((s)=> s.energyCapacity || s.storeCapacity || s.mineralCapacity || s.ghodiumCapacity);
-        // creep.log('1.5allCOntainers has labs?', this.structure, containersWithCapacity.filter((c)=>c.structureType === STRUCTURE_LAB).length);
-        // creep.log('1.5allCOntainers has storage?', this.structure, containersWithCapacity.filter((c)=>c.structureType === STRUCTURE_STORAGE).length);
         allContainers = containersWithCapacity.filter((s) =>this.containerAccepts(creep, s) && excludedContainers.indexOf(s.id) < 0);// all containers
-        // creep.log('2allCOntainers has links?', allContainers.find((c)=>c.structureType === STRUCTURE_LINK));
-        // creep.log('2allCOntainers has labs?', this.structure, allContainers.filter((c)=>c.structureType === STRUCTURE_LAB).length);
         allContainers = allContainers.filter((s)=> this.containerFreeSpace(creep, s) > 0// !full
         && !s.room.isHarvestContainer(s));
-        // creep.log('allContainers has storage ?', this.structure,allContainers.find((c)=>c.structureType === STRUCTURE_STORAGE));
-        // creep.log('allCOntainers has links?', allContainers.find((c)=>c.structureType === STRUCTURE_LINK));
-        // creep.log('allContainers has lab ?', allContainers.filter((c)=>c.structureType === STRUCTURE_LAB).length);
 
         var emptyEnoughContainers = _.filter(allContainers, (s) => this.containerFreeSpace(creep, s) >= this.droppableQty(creep));
-        /*
-         if ((creep.carry.energy == _.sum(creep.carry)) && (this.structureType === STRUCTURE_LINK || !this.structure)) {
-         let links = creep.room.find(FIND_STRUCTURES, {filter: {structureType: STRUCTURE_LINK}});
-         let sum2 = _.sum(links, (s)=>(s.energyCapacity - s.energy));
-         // creep.log('links allowed', JSON.stringify(links.map((l)=>({'e':l.energy, 'c':l.cooldown}))), sum2);
-         if (sum2 >= creep.carry.energy) {
-         emptyEnoughContainers = emptyEnoughContainers.concat(links.filter((l)=>l.cooldown === 0));
-         // allContainers.concat(links);
-         }
-         }
-         */
-        // creep.log('emptyEnoughContainers has lab ?', emptyEnoughContainers.find((c)=>c.structureType === STRUCTURE_LAB));
-        // creep.log('emptyEnoughContainers has lab ?', emptyEnoughContainers.filter((c)=>c.structureType === STRUCTURE_LAB).length);
         var targets = emptyEnoughContainers.length > 0 ?
             emptyEnoughContainers : allContainers;
         target = creep.pos.findClosestByRange(targets);
@@ -153,7 +130,10 @@ class DropToContainerStrategy extends BaseStrategy {
         let excludedContainers = [];
         let sourceContainerId = creep.memory['containerSource'];
         if (sourceContainerId) excludedContainers.push(sourceContainerId);
-        if (creep.room.memory.harvestContainers) excludedContainers = excludedContainers.concat(creep.room.memory.harvestContainers);
+        let harvestContainers = creep.room.harvestContainers;
+        if (harvestContainers)  {
+            excludedContainers = excludedContainers.concat(harvestContainers.map(c=>c.id));
+        }
         return excludedContainers;
     }
 

@@ -4,7 +4,7 @@ class BaseStrategy {
     }
 
     clearMemory(creep) {
-        console.log("base clear", this.name, creep);
+        // console.log('base clear', this.name, creep);
     }
 
     /**
@@ -15,11 +15,11 @@ class BaseStrategy {
     acceptsState(state) {
         // if (state.name === this.constructor.name) {
         //     state = state.state;
-            let stateKeys = _.keys(state);
-            let myKeys = _.keys(this);
-            let allKeys = _.union(stateKeys, myKeys);
-            let diff = allKeys.find((k)=>this[k] !== state[k] );
-            return !diff;
+        let stateKeys = _.keys(state);
+        let myKeys = _.keys(this);
+        let allKeys = _.union(stateKeys, myKeys);
+        let diff = allKeys.find((k)=>this[k] !== state[k]);
+        return !diff;
         // }
         // return false;
 
@@ -35,4 +35,5 @@ class BaseStrategy {
 }
 
 
-require('./profiler').registerClass(BaseStrategy, 'BaseStrategy'); module.exports = BaseStrategy;
+require('./profiler').registerClass(BaseStrategy, 'BaseStrategy');
+module.exports = BaseStrategy;

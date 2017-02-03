@@ -30,7 +30,7 @@ class DropToEnergyStorageStrategy extends BaseStrategy {
     /** @param {Creep} creep
      * @return {boolean}**/
     accepts(creep) {
-        if (creep.carry.energy === 0) return null;
+        if (creep.carry.energy === 0|| creep.room.energyAvailable === creep.room.energyCapacityAvailable ) return null;
         let target = util.objectFromMemory(creep.memory, this.PATH, (c)=> (c.energy < c.energyCapacity && (this.predicate(creep))(c)));
         // creep.log(this.structureType, 'target', target);
         if (!target || target.room.name !== creep.room.name) {
@@ -64,7 +64,7 @@ class DropToEnergyStorageStrategy extends BaseStrategy {
 
     moveToTarget(creep, target) {
         // creep.log('moving to ', target.pos);
-        let ret = util.moveTo(creep, target.pos, this.constructor.name + 'Path', {ignoreHostiles: true, range: 1});
+        let ret = util.moveTo(creep, target.pos, undefined, {ignoreHostiles: true, range: 1});
         if (ret == ERR_NO_PATH) {
             creep.log('no path to target');
             delete creep.memory[this.PATH];
@@ -74,7 +74,7 @@ class DropToEnergyStorageStrategy extends BaseStrategy {
     }
 
     acquireTarget(creep,exclude) {
-        var targets = (this.structureType ? creep.room.structures[this.structureType] : creep.room.find(FIND_STRUCTURES))
+        var targets = (this.structureType ? (creep.room.structures[this.structureType]||[]) : creep.room.find(FIND_STRUCTURES))
             .filter((s)=> s.my && (s.energy < s.energyCapacity) && (exclude ? s.id !== exclude.id:true)  && (this.predicate(creep))(s));
         if (targets.length > 0) {
             return this.setTarget(creep, creep.pos.findClosestByPath(targets));

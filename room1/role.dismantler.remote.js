@@ -75,7 +75,7 @@ class RoleRemoteDismantler extends RoleDismantler {
         let labs = creep.room.memory.labs;
 //        creep.log('labs?', JSON.stringify(labs));
         if (!labs) return false;
-        labs = _.keys(labs).map((id)=>Game.getObjectById(id));
+        labs = _.keys(labs).map((id)=>Game.getObjectById(id)).filter(lab=>lab);
         let lab;
         for (let i = 0; i < RoleRemoteDismantler.WANTED_BOOSTS[part_type].length && !lab; i++) {
             let boost = RoleRemoteDismantler.WANTED_BOOSTS[part_type][i];
@@ -95,7 +95,7 @@ class RoleRemoteDismantler extends RoleDismantler {
         // creep.log('boosted', boosted);
         if (boosted == ERR_NOT_IN_RANGE) {
             // creep.log('moving to lab', JSON.stringify(lab.pos));
-            util.moveTo(creep, lab.pos, 'labMove');
+            util.moveTo(creep, lab.pos);
             return true;
         } else if (boosted == OK) {
             return false;

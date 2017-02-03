@@ -6,6 +6,7 @@ var PickupStrategy = require('./strategy.pickup');
 var ClosePickupStrategy = require('./strategy.pickup.close');
 var BuildStrategy = require('./strategy.build');
 var DropToContainerStrategy = require('./strategy.drop_to_container');
+var WaitStrategy = require('./strategy.wait');
 
 
 class RoleBuilder {
@@ -18,10 +19,12 @@ class RoleBuilder {
             new PickupStrategy(RESOURCE_ENERGY),
             new DropToContainerStrategy(util.ANY_MINERAL),
             new HarvestEnergySourceStrategy(),
+            new WaitStrategy(10)
         ];
-        this.buildStrategy = new BuildStrategy();
+        this.buildStrategies = [new BuildStrategy(),new WaitStrategy(10)];
         this.BUILD_TARGET = 'buildtarget';
         util.indexStrategies(this.loadStrategies);
+        util.indexStrategies(this.buildStrategies);
     }
 
 
@@ -63,14 +66,14 @@ class RoleBuilder {
             delete creep.memory.source;
             delete creep.memory.pickupSource;
             util.setCurrentStrategy(creep, null);
-            delete creep.memory[this.buildStrategy.BUILD_TARGET];
+            delete creep.memory[this.buildStrategies[0].BUILD_TARGET];
         }
 
         if (creep.memory.building) {
             if (creep.carry.energy <0.5 * _.sum(creep.carry)) {
             // WTF creep pickep up some minerals !!
                 if (creep.pos.getRangeTo(creep.room.storage)>1) {
-                    util.moveTo(creep, creep.room.storage.pos, {range: 1});
+                    util.moveTo(creep, creep.room.storage.pos, undefined, {range: 1});
                 } else {
                     for (let min in creep.carry) {
                         if (min !== RESOURCE_ENERGY) {
@@ -80,12 +83,22 @@ class RoleBuilder {
                 }
                 return ;
             }
-            if (!this.buildStrategy.accepts(creep)) {
+            let strategy = util.getAndExecuteCurrentStrategy(creep, this.buildStrategies);
+
+            if (!strategy) {
+                strategy = _.find(this.buildStrategies, (strat)=> (strat.accepts(creep)));
+            }
+
+            if (strategy) {
+                util.setCurrentStrategy(creep, strategy);
+                // creep.log('strategy ', strategy.constructor.name);
+            } else {
                 this.resign(creep);
+                // creep.log('no loadStrategy');
             }
         } else {
             this.travelingPickup.accepts(creep);
-            if (creep.room.storage && _.sum(creep.room.findContainers(),c=>_.get(c,['store','energy'],0))<5000 ) {
+            if (_.get(creep.room,['controller','my'],false) && creep.room.storage && _.sum(creep.room.findContainers(),c=>_.get(c,['store','energy'],0))<5000 ) {
                 // do not deplete storage
                 return;
             }
@@ -131,7 +144,7 @@ class RoleBuilder {
                 let boosted = lab.boostCreep(creep);
                 if (boosted == ERR_NOT_IN_RANGE) {
                     creep.log('moving to lab', JSON.stringify(lab.pos));
-                    util.moveTo(creep,lab.pos,'boostPath');
+                    util.moveTo(creep,lab.pos);
                     return true;
                 } else if (boosted == OK) {
                     creep.memory.boosted = true;

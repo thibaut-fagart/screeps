@@ -18,7 +18,6 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
 
         this.SOURCE_PATH = 'source';
         this.CONTAINER_PATH = 'container';
-        this.PATH_TO_SOURCE_PATH = 'pathToSource';
     }
 
     clearMemory(creep) {
@@ -79,7 +78,7 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
                 if (creep.pos.getRangeTo(container.pos) == 1) {
                     let obstacleCreeps = container.pos.lookFor(LOOK_CREEPS);
                     if (obstacleCreeps.length) {
-                        if (!obstacleCreeps[0].memory.role === creep.memory.role) {
+                        if (obstacleCreeps[0].my && !obstacleCreeps[0].memory.role === creep.memory.role) {
                             obstacleCreeps[0].moveTo(creep.pos);
                         } else if (creep.pos.getRangeTo(source.pos) >1){
                             creep.moveTo(source);
@@ -114,11 +113,7 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
                 }
             } else {
                 // creep.log('moving to source');
-                let moveTo2 = this.moveTo(creep, source);
-                if (ERR_NOT_FOUND === moveTo2) {
-                    creep.log('discarding path');
-                    delete creep.memory[this.PATH_TO_SOURCE_PATH];
-                }
+                this.moveTo(creep, source);
             }
         }
 
@@ -132,7 +127,7 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
     }
 
     moveTo(creep, source) {
-        return util.moveTo(creep, source.pos, this.constructor.name + 'Path', {range: source.structureType ? 0 : 1});
+        return util.moveTo(creep, source.pos, undefined, {range: source.structureType ? 0 : 1});
     }
 
 
@@ -200,12 +195,6 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
             if (container && container instanceof StructureContainer && util.reserve(creep, container, 'harvest')) {
                 // creep.log('source && container');
                 creep.memory[this.CONTAINER_PATH] = container.id;
-                let harvestContainers = creep.room.memory.harvestContainers || [];
-                // creep.log('harvestContainers', harvestContainers, (harvestContainers&& harvestContainers.length));
-                if (!container.room.isHarvestContainer(container)) {
-                    harvestContainers.push(container.id);
-                    creep.room.memory.harvestContainers = harvestContainers;
-                }
                 // creep.log('harvestContainers2', harvestContainers, (harvestContainers&& harvestContainers.length));
 
             } else {
@@ -248,8 +237,8 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
     buildContainer(pos, creep) {
         if (creep.room.controller && creep.room.controller.owner && creep.room.controller.level < 3) return;
         let buildPos = creep.room.findValidParkingPosition(creep, pos, 1);
-        creep.log('building container at', buildPos.x, buildPos.y);
         if (buildPos) {
+            creep.log('building container at', buildPos.x, buildPos.y);
             let ret = creep.room.createConstructionSite(buildPos.x, buildPos.y, STRUCTURE_CONTAINER);
             creep.log('built a container?', ret, buildPos.x, buildPos.y);
         }
@@ -266,7 +255,13 @@ class HarvestEnergySourceToContainerStrategy extends BaseStrategy {
     }
 
     findSources(creep) {
-        let sources = util.findSafeSources(creep.room, (!this.resourceType) || (RESOURCE_ENERGY !== this.resourceType));
+        let sources;
+        if (_.get(creep.room, ['controller','my'],false)) {
+            sources = creep.room.find(FIND_SOURCES).concat(creep.room.find(FIND_MINERALS));
+        } else {
+            sources =  util.findSafeSources(creep.room, (!this.resourceType) || (RESOURCE_ENERGY !== this.resourceType));
+        }
+
         // creep.log('util.safeSources',RESOURCE_ENERGY !==this.resourceType, this.resourceType === util.ANY_MINERAL, this.resourceType, sources.length, JSON.stringify(sources.map((s)=>s.pos)));
         let safeSources = sources.filter((s)=> {
             // if (!this.resourceType) return true;

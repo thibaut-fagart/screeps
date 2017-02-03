@@ -59,7 +59,7 @@ class MoveToActiveKeeperLair extends BaseStrategy {
         }
         // creep.log('moving, keeper ? ', keeper);
         if (isLeader && keeper) {
-            util.moveTo(creep, keeper.pos, this.constructor.name);
+            util.moveTo(creep, keeper.pos);
             return true;
         } else if (!isLeader) {
             creep.moveTo(leader);

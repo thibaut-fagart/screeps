@@ -38,7 +38,7 @@ class RegroupStrategy extends Base {
         let pos = this.getRegroupPos(creep);
         if (pos) {
             // creep.log('regrouping on ', pos);
-            util.moveTo(creep, pos, 'regroup_' + this.flagColor);
+            util.moveTo(creep, pos);
             // return pos.getRangeTo(creep)> 1;
         }  else {
             // creep.log('no flag', this.flagColor);

@@ -17,6 +17,7 @@ class LoadFromContainerStrategy extends BaseStrategy {
 
     clearMemory(creep) {
         delete creep.memory[LoadFromContainerStrategy.PATH];
+        delete creep.memory[this.PATH_TO_SOURCE_PATH];
     }
 
     /** @param {Creep} creep
@@ -81,7 +82,7 @@ class LoadFromContainerStrategy extends BaseStrategy {
             // creep.log('transfer?', ret);
             delete creep.memory[LoadFromContainerStrategy.PATH];
         } else if (ret === ERR_NOT_IN_RANGE) {
-            ret = util.moveTo(creep, source.pos, this.constructor.name + 'Path');
+            ret = util.moveTo(creep, source.pos);
             // ret = creep.moveTo(source);
             if (ret !== OK && ret !== ERR_TIRED) {
                 creep.log('no path to source');
@@ -90,6 +91,7 @@ class LoadFromContainerStrategy extends BaseStrategy {
         } else if (ret == OK) {
             delete creep.memory[LoadFromContainerStrategy.PATH];
         }
+        return ret;
     }
 
     /**
@@ -107,7 +109,11 @@ class LoadFromContainerStrategy extends BaseStrategy {
         // creep.log('containers have labs', this.index, containers.length, _.filter(containers, (s)=>s.structureType === STRUCTURE_LAB).length);
         let allowedContainers = creep.room.faucetContainers();
             // containers.filter((s)=>creep.room.allowedLoadingContainer(s));
-        let predicate = this.predicate ? (this.predicate(creep)):()=>true;
+        let predicate = _.isFunction(this.predicate) ? (this.predicate(creep)):()=>true;
+        if (!_.isFunction(predicate)) {
+            creep.log('!predicate !!!', this.index, predicate.toString(), predicate.source, this.predicate, this.predicate.source);
+        }
+
         let allSources = allowedContainers
             .filter((s)=>(s.structureType !== STRUCTURE_NUKER && (this.structure ? (s.structureType === this.structure ) : true)) && predicate (s) );
         // creep.log('allSources', allSources.length);

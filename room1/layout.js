@@ -481,7 +481,8 @@ module.exports = {
         });
         console.log(JSON.stringify(result));
         this.createFlags(result.path, Game.rooms[pos1.roomName], colors);
-    }
+    },
+
 }
 ;
 

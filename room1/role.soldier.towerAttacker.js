@@ -1,7 +1,5 @@
 var _ = require('lodash');
 var util = require('./util');
-var RemoteAttackStrategy = require('./strategy.remote_target');
-var AttackWallStrategy = require('./strategy.attack_wall');
 var MoveToRoomTask = require('./task.move.toroom');
 var AttackStructureStrategy = require('./strategy.attack.structure');
 var CloseAttackStrategy = require('./strategy.closeattack_target');
@@ -14,8 +12,8 @@ class RoleTowerAttacker {
             // new CloseAttackStrategy(undefined,(creep)=>((target)=>target.getActiveBodyparts(ATTACK)+target.getActiveBodyparts(HEAL)>0)),
             // new RemoteAttackStrategy(),
             new RegroupStrategy(COLOR_GREEN),
-            new AttackStructureStrategy(),
             new CloseAttackStrategy(2),
+            new AttackStructureStrategy(),
             new HealStrategy()/*, new AttackWallStrategy()*/
             /*new AttackStructureStrategy()*/];
         this.moveTask = new MoveToRoomTask('attack');
@@ -110,7 +108,7 @@ class RoleTowerAttacker {
         let labs = creep.room.memory.labs;
 //        creep.log('labs?', JSON.stringify(labs));
         if (!labs) return false;
-        labs = _.keys(labs).map((id)=>Game.getObjectById(id));
+        labs = _.keys(labs).map((id)=>Game.getObjectById(id)).filter(lab=>lab);
         let lab;
         for (let i = 0; i < RoleTowerAttacker.WANTED_BOOSTS[part_type].length && !lab; i++) {
             let boost = RoleTowerAttacker.WANTED_BOOSTS[part_type][i];
@@ -130,7 +128,7 @@ class RoleTowerAttacker {
         // creep.log('boosted', boosted);
         if (boosted == ERR_NOT_IN_RANGE) {
             // creep.log('moving to lab', JSON.stringify(lab.pos));
-            util.moveTo(creep, lab.pos, 'labMove');
+            util.moveTo(creep, lab.pos);
             return true;
         } else if (boosted == OK) {
             return false;

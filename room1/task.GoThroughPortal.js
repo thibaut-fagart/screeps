@@ -51,7 +51,7 @@ class GoThroughPortal {
             if (chosen.pos.getRangeTo(creep) === 1) {
                 moved = creep.moveTo(chosen);
             } else {
-                moved = util.moveTo(creep, chosen.pos, 'portal_path', {range: 1});
+                moved = util.moveTo(creep, chosen.pos);
             }
             // creep.log('moving to portal ', chosen.pos, moved);
             return false;

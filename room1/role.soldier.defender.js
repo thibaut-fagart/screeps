@@ -45,7 +45,7 @@ class RoleDefender {
             let chosenEnnemy = chosenEnnemyWithRamparts.creep;
             if (chosenEnnemy.pos.getRangeTo(creep) > 1) {
                 // creep.log('moving to ', chosenEnnemyWithRamparts.ramparts[0].pos);
-                util.moveTo(creep, chosenEnnemyWithRamparts.ramparts[0].pos, 'ennemyPath', {range: 0, ignoreHostiles:true});
+                util.moveTo(creep, chosenEnnemyWithRamparts.ramparts[0].pos, undefined, {range: 0, ignoreHostiles:true});
             } else if (validEnnemies.length) {
                 // creep.log('atttacking ', chosenEnnemy.pos);
                 creep.attack(chosenEnnemy);
@@ -58,8 +58,10 @@ class RoleDefender {
         let part_type = parts[0].type;
         let labs = creep.room.memory.labs;
 //        creep.log('labs?', JSON.stringify(labs));
-        if (!labs) return false;
-        labs = _.keys(labs).map((id)=>Game.getObjectById(id));
+        labs = _.keys(labs).map((id)=>Game.getObjectById(id)).filter(l=>l);
+        if (!labs || !labs.length) {
+            return false;
+        }
         let lab;
         for (let i = 0; i < RoleDefender.WANTED_BOOSTS[part_type].length && !lab; i++) {
             let boost = RoleDefender.WANTED_BOOSTS[part_type][i];
@@ -79,7 +81,7 @@ class RoleDefender {
         // creep.log('boosted', boosted);
         if (boosted == ERR_NOT_IN_RANGE) {
             // creep.log('moving to lab', JSON.stringify(lab.pos));
-            util.moveTo(creep, lab.pos, 'labMove');
+            util.moveTo(creep, lab.pos);
             return true;
         } else if (boosted == OK) {
             return false;
@@ -104,7 +106,7 @@ class RoleDefender {
 
 }
 RoleDefender.WANTED_BOOSTS = {};
-RoleDefender.WANTED_BOOSTS[ATTACK] = ['UH2O','UH'];
+RoleDefender.WANTED_BOOSTS[ATTACK] = ['XUH2O','UH2O','UH'];
 
 require('./profiler').registerClass(RoleDefender, 'RoleDefender');
 module.exports = RoleDefender;

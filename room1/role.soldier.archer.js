@@ -1,6 +1,5 @@
 var _ = require('lodash');
 var util = require('./util');
-var RemoteAttackStrategy = require('./strategy.remote_target');
 var MoveToRoomTask = require('./task.move.toroom');
 var HealStrategy = require('./strategy.remote_heal');
 var RegroupStrategy = require('./strategy.regroup');
@@ -46,41 +45,55 @@ class RoleArcher {
         }
 
         this.healStrategy.accepts(creep);
-/*
-        if (creep.hits < creep.hitsMax && creep.getActiveBodyparts(HEAL)>0) {
-            creep.heal(creep);
-        }
-*/
+        /*
+         if (creep.hits < creep.hitsMax && creep.getActiveBodyparts(HEAL)>0) {
+         creep.heal(creep);
+         }
+         */
         if (creep.memory.action == 'attack' && creep.memory.remoteRoom == creep.room.name) {
-            let hostiles = creep.room.find(FIND_HOSTILE_CREEPS).filter(c=>c.hostile);
+            let hostiles = creep.room.find(FIND_HOSTILE_CREEPS).filter(c=>c.hostile && c.owner.username !== 'Source Keeper');
+            if (creep.memory.ignoreInvader) {
+                hostiles = hostiles.filter(c=>c.owner.username !== 'Invader');
+            }
             if (hostiles.length) {
                 let dangerous = hostiles.filter(c=>c.getActiveBodyparts(ATTACK) + c.getActiveBodyparts(RANGED_ATTACK) > 0);
-                let closest = creep.pos.findClosestByRange(dangerous.length ? dangerous : hostiles);
+                let closestDangerous = creep.pos.findClosestByRange(dangerous);
+                let closest = creep.pos.findClosestByRange(hostiles);
+                if (closestDangerous && creep.pos.getRangeTo(closest) > creep.pos.getRangeTo(closestDangerous) - 10) {
+                    closest = closestDangerous;
+                }
                 let range = creep.pos.getRangeTo(closest);
-                if (range > 4 || (range ===4 && (closest.getActiveBodyparts(MOVE) ===0 || closest.getActiveBodyparts(ATTACK) === 0|| closest.fatigue >0))) {
+                if (range > 4 || (range === 4 && (closest.getActiveBodyparts(MOVE) === 0 || closest.getActiveBodyparts(ATTACK) === 0 || closest.fatigue > 0))) {
+                    delete creep.memory.atRange4;
                     creep.moveTo(closest);
-                    let inRange = hostiles.find(c=>c.pos.getRangeTo(creep) <=3);
-                    if (inRange) {
-                        creep.rangedAttack(inRange);
+                } else if (range === 4) {
+                    if (creep.memory.atRange4 > 3) {
+                        creep.moveTo(closest);
+                    } else {
+                        creep.memory.atRange4 = (creep.memory.atRange4 || 0) + 1;
                     }
-                } else if (range ===4) {
+
                     // do not advance, or we can end up in range
                 } else {
+                    delete creep.memory.atRange4;
                     let MAdamage = [0, 10, 4, 1];
                     let massAttackDamage = hostiles.reduce((total, h)=> {
                         let range = h.pos.getRangeTo(creep);
                         return total + (range <= 3 ? MAdamage[range] : 0);
                     }, 0);
-                    if (massAttackDamage <10) {
+                    if (massAttackDamage < 10) {
                         creep.rangedAttack(closest);
                     } else {
                         creep.rangedMassAttack();
                     }
-                    if (range <3 && dangerous.length) {
-                        let pathAndCost = PathFinder.search(creep.pos, dangerous.map(c=>({pos:c.pos, range:10})),{flee:true, maxRooms: 1});
+                    if (range < 3 && dangerous.length) {
+                        let pathAndCost = PathFinder.search(creep.pos, dangerous.map(c=>({
+                            pos: c.pos,
+                            range: 10
+                        })), {flee: true, maxRooms: 1});
                         let path = pathAndCost.path;
                         creep.move(creep.pos.getDirectionTo(path[0]));
-                    } else if (range >=2) {
+                    } else if (range > 2 || !dangerous.length) {
                         creep.moveTo(closest);
                     }
                 }
@@ -90,6 +103,8 @@ class RoleArcher {
 
         }
     }
-};
+}
+;
 
-require('./profiler').registerClass(RoleArcher, 'RoleArcher'); module.exports = RoleArcher;
+require('./profiler').registerClass(RoleArcher, 'RoleArcher');
+module.exports = RoleArcher;

@@ -35,7 +35,7 @@ class MoveToSpawningKeeperLair extends BaseStrategy {
                 // delete creep.memory[this.KEEPER_PATH];
                 return true;
             } else {
-                util.moveTo(creep, lair.pos, this.constructor.name, {range: 1});
+                util.moveTo(creep, lair.pos);
                 return true;
             }
         }
@@ -65,7 +65,7 @@ class MoveToSpawningKeeperLair extends BaseStrategy {
                 let rangeTo = creep.pos.getRangeTo(target);
                 // creep.log('rangeto lair', rangeTo);
                 if (rangeTo > 7 && target && target.pos) {
-                    let to = util.moveTo(creep, target.pos, this.constructor.name, {range:5});
+                    let to = util.moveTo(creep, target.pos, undefined, {range:5});
 
                     // let path = PathFinder.search(creep.pos, {pos: target.pos, range: 5}, {
                     //     roomCallback: util.avoidCostMatrix(creep,hostiles,4)}).path;
@@ -75,7 +75,7 @@ class MoveToSpawningKeeperLair extends BaseStrategy {
                         creep.log('moving?', to);
                     }
                 } else if (rangeTo <= (creep.getActiveBodyparts(ATTACK).length>0?4:8)) {
-                    let byPath = util.moveTo(creep, target.pos, this.constructor.name, {range:2, avoidCreeps:true});
+                    let byPath = util.moveTo(creep, target.pos, undefined, {range:2, avoidCreeps:true});
                     // let path = PathFinder.search(creep.pos, {pos: target.pos, range: 1}, {
                     //     flee: true,
                     //     roomCallback: util.avoidCostMatrix(creep, hostiles)

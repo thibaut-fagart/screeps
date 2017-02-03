@@ -58,7 +58,8 @@ class MoveToRoomTask extends BaseStrategy {
             } else if (creep.room.name === exit.roomName) {
                 this.repairRoad(creep);
                 // creep.log('moveTo', exit);
-                let moveTo = util.moveTo(creep, exit, 'move_Task', {range: 0});
+                creep.heal(creep);
+                let moveTo = util.moveTo(creep, exit, undefined, {range: 0});
                 if (moveTo !== OK && moveTo !== ERR_TIRED) {
                     // creep.log('checking collision');
                     if (creep.pos.getRangeTo(exit) ==1) {
@@ -79,7 +80,7 @@ class MoveToRoomTask extends BaseStrategy {
                             let test = _.sample(walkables);
                             if (!test) return true;
                             // creep.log('trying', JSON.stringify(test));
-                            moveTo = util.moveTo(creep, test, 'move_Task', {range: 0});
+                            moveTo = util.moveTo(creep, test, undefined, {range: 0});
                             if (moveTo !== OK && moveTo !== ERR_TIRED) {
                                 creep.log('moved after jam ?', moveTo);
                             }
@@ -90,7 +91,7 @@ class MoveToRoomTask extends BaseStrategy {
                 }
 
                 // }
-                creep.log("should not reach ");
+                creep.log('should not reach ');
                 return true;
             } else {
                 creep.log('unexpected',JSON.stringify(exit));
@@ -206,7 +207,7 @@ class MoveToRoomTask extends BaseStrategy {
     }
 
     isRoomTooFar(room1, room2) {
-        return Game.map.getRoomLinearDistance(room1,room2)> 10;
+        return Game.map.getRoomLinearDistance(room1,room2)> 25;
     }
 }
 require('./profiler').registerClass(MoveToRoomTask, 'MoveToRoomTask'); module.exports = MoveToRoomTask;

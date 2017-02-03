@@ -209,7 +209,7 @@ class RoleRemoteRoomGuard {
         // creep.log('boosted', boosted);
         if (boosted == ERR_NOT_IN_RANGE) {
             // creep.log('moving to lab', JSON.stringify(lab.pos));
-            util.moveTo(creep, lab.pos, 'labMove');
+            util.moveTo(creep, lab.pos);
             return true;
         } else if (boosted == OK) {
             return false;

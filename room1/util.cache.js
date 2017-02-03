@@ -1,10 +1,10 @@
 module.exports = {
     get: function (memory, path, fetcher, ttl) {
-        if (!memory[path] || !memory[path].expires || ( Game.time > memory[path].expires)) {
+        if (!memory[path] || !memory[path].e || ( Game.time > memory[path].e)) {
             // console.log('Cache.get, expired ', path, memory[path].expires, Game.time);
-            memory[path] = {value: fetcher(), expires: Game.time + ttl, hits:0};
+            memory[path] = {v: fetcher(), e: Game.time + ttl, h:0};
         }
-        memory[path].hits = memory[path].hits + 1;
-        return memory[path].value;
+        // memory[path].h = memory[path].h + 1;
+        return memory[path].v;
     }
 };

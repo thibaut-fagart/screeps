@@ -522,7 +522,7 @@ class Util {
         // creep.log('path before moveTo', creep.memory[memory].path);
         // creep.log('moveTo', Game.time, JSON.stringify(pos),JSON.stringify(options));
         if (creep.pos.getRangeTo(pos) <= options.range) {
-            return;
+            return OK ;
             //    TODO is this worth it ?
             // } else if (creep.pos.getRangeTo(pos)-options.range <2) {
             //     creep.moveTo(pos);
@@ -534,7 +534,7 @@ class Util {
         let path = creep.memory[memory];
         // creep.log('memory[path]',memory, JSON.stringify(path));
         // check the target pos didn't change
-        let isPathValid = path && path.target && (pos.getRangeTo(path.target.x, path.target.y) <= options.range) && pos.roomName == path.target.roomName;
+        let isPathValid = path && path.target && (pos.isEqualTo(path.target.x, path.target.y)) && pos.roomName == path.target.roomName;
         if (isPathValid) {
             path = this.restorePath(path.path);
             // creep.log('restored path', JSON.stringify(path));
@@ -739,8 +739,8 @@ class Util {
                         let structures = Game.rooms[roomName].find(FIND_STRUCTURES);
                         structures.forEach((s)=> {
                             if (s.structureType === STRUCTURE_ROAD) {
-                                matrix.set(s.pos.x, s.pos.y, 1);
-                            } else if (s.structureType === STRUCTURE_CONTAINER || (s.structureType === STRUCTURE_RAMPART && s.my || s.isPublic)) {
+                                matrix.set(s.pos.x, s.pos.y, matrix.get(s.pos.x,s.pos.y)< 10?1:matrix.get(s.pos.x,s.pos.y));
+                            } else if (s.structureType === STRUCTURE_CONTAINER || (s.structureType === STRUCTURE_RAMPART && (s.my || s.isPublic))) {
                             } else if (s.structureType === STRUCTURE_PORTAL) {
                                 matrix.set(s.pos.x, s.pos.y, 0xff);
                             } else {
@@ -750,7 +750,7 @@ class Util {
                         let constructionSites = Game.rooms[roomName].find(FIND_CONSTRUCTION_SITES);
                         constructionSites.forEach((s)=> {
                             if (s.structureType === STRUCTURE_ROAD) {
-                                matrix.set(s.pos.x, s.pos.y, 1);
+                                matrix.set(s.pos.x, s.pos.y, matrix.get(s.pos.x,s.pos.y)< 10?1:matrix.get(s.pos.x,s.pos.y));
                             } else if (s.structureType === STRUCTURE_CONTAINER || (s.structureType === STRUCTURE_RAMPART && s.my)) {
 
                             } else {

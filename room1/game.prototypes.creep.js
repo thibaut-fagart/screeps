@@ -37,45 +37,38 @@ Creep.prototype.speed = function () {
  */
 Creep.prototype.seekBoosts = function (partType, minerals) {
     // this.log('seekBoosts');
-    if (this.memory.boosted) return false;
-    let parts = _.filter(this.body, (p)=>p.type === partType);
+    if (this.memory.boosted || !this.room.controller || this.room.controller.level < 6 || _.get(this.room.memory,['preparedBoosts'],[]).length===0) {
+        this.memory.boosted = true;
+        return false;
+    }
+    let myboost = (minerals || []).find(b=>this.room.memory.preparedBoosts.indexOf(b)>=0);
+    if (!myboost) {
+        this.memory.boosted = true;
+        return false;
+    }
+    let parts = _.filter(this.body, (p)=>p.type === partType && !p.boost);
     if (parts.length) {
-        let neededBoosts = parts.length - parts.filter((p)=>p.boost).length;
-        if (!neededBoosts) return false;
         let labs = this.room.structures[STRUCTURE_LAB];
-        labs = minerals.reduce((foundLabs, min)=> {
-            if (foundLabs && foundLabs.length) return foundLabs;
-            let found = labs.filter(lab => lab.mineralType === min && lab.mineralAmount >= 30 && lab.energy >= 20);
-            // this.log('testing ', min, found.length);
-            if (found.length) {
-                return found;
-            }
-        }, []);
-        if (!labs) {
+        let mylabid = _.keys(this.room.memory.labs).find(id=>this.room.memory.labs[id]===myboost);
+        if (!mylabid) {
+            this.log('NO LAB???', JSON.stringify(labs));
+            this.memory.boosted = true;
             return false;
         }
+        let mylab = Game.getObjectById(mylabid);
         // this.log('boosting?', parts.length, neededBoosts, labs);
-        if (labs.length && neededBoosts) {
-            // this.log('labs', JSON.stringify(labs));
-            let lab = this.pos.findClosestByRange(labs);
-            this.log('lab', JSON.stringify(lab));
-            if (!lab) {
-                this.log('NO LAB???', JSON.stringify(labs));
-                this.memory.boosted = true;
-                return false;
-            }
-            let boosted = lab.boostCreep(this);
-            if (boosted == ERR_NOT_IN_RANGE) {
-                // this.log('moving to lab', JSON.stringify(lab.pos));
-                this.moveTo(lab);
-                return true;
-            } else if (boosted == OK) {
-                this.memory.boosted = true;
-                return false;
-            } else {
-                this.log('boost failed', boosted, lab);
-            }
-
+        // this.log('labs', JSON.stringify(labs));
+        this.log('lab', JSON.stringify(mylab.pos));
+        let boosted = mylab.boostCreep(this);
+        if (boosted == ERR_NOT_IN_RANGE) {
+            // this.log('moving to lab', JSON.stringify(lab.pos));
+            this.moveTo(mylab);
+            return true;
+        } else if (boosted == OK) {
+            this.memory.boosted = true;
+            return false;
+        } else {
+            this.log('boost failed or incomplete', boosted, mylab);
         }
     }
     return false;
@@ -115,7 +108,7 @@ Creep.prototype.boostPartType = function (parts) {
     // this.log('boosted', boosted);
     if (boosted == ERR_NOT_IN_RANGE) {
         // this.log('moving to lab', JSON.stringify(lab.pos));
-        util.moveTo(this, lab.pos, 'labMove');
+        util.moveTo(this, lab.pos);
         return true;
     } else if (boosted == OK) {
         Game.notify(`${this.room.name} , boosted ${this.memory.role} with ${lab.mineralType}`)

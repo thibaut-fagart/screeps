@@ -48,10 +48,10 @@ class StrategyLootContainer extends LoadFromContainerStrategy {
      */
     findSource(creep, neededCarry, source) {
         delete creep.memory[LoadFromContainerStrategy.PATH];
-        creep.log('Looting', 'finding source');
+        // creep.log('Looting', 'finding source');
         // find a new source, if no type specified, allow links if shared links have enough energy
         let containers = creep.room.findContainers();
-        creep.log('containers', containers.length);
+        // creep.log('containers', containers.length);
         let nonEmptySources = [];
         if (creep.room.memory.loot && !_.isString(creep.room.memory.loot)) {
             let sourceid = creep.room.memory.loot.find(id=> {
@@ -72,10 +72,10 @@ class StrategyLootContainer extends LoadFromContainerStrategy {
                 nonEmptySources.push(s);
             }
         });
-        creep.log('nonEmpty', nonEmptySources.length);
+        // creep.log('nonEmpty', nonEmptySources.length);
         source = _.min(nonEmptySources, c=>c.pos.getRangeTo(creep.pos));
         if (source) {
-            creep.log('LoadFromContainerStrategy', 'finding source', 'chose',JSON.stringify(source.pos), this.containerQty(creep,source));
+            // creep.log('LoadFromContainerStrategy', 'finding source', 'chose',JSON.stringify(source.pos), this.containerQty(creep,source));
             creep.memory[LoadFromContainerStrategy.PATH] = source.id;
             // creep.memory.action = 'load';
         }

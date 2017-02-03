@@ -16,7 +16,8 @@ class BuildStrategy extends BaseStrategy {
         // if (target) creep.log('buildTarget', target);
         if (!target) {
             // console.log('finding target for  ', creep.name);
-            var targets = creep.room.find(FIND_CONSTRUCTION_SITES).filter(c=>c.my && (this.predicate(creep))(c));
+            var targets = _.sortBy(creep.room.find(FIND_CONSTRUCTION_SITES,{filter:c=>c.my && (this.predicate(creep)(c))}), c=>-c.progress/c.progressTotal);
+
             if (targets.length) {
                 if (targets[0].progress > 0) {
                     target = targets[0];
@@ -61,11 +62,11 @@ class BuildStrategy extends BaseStrategy {
                 let buildPos = this.findBuildPos(creep, target);
                 if (buildPos && !creep.pos.isEqualTo(buildPos)) {
                     // creep.log('moving', buildPos);
-                    util.moveTo(creep, buildPos, this.constructor.name + 'Path', {range: 0});
+                    util.moveTo(creep, buildPos, undefined, {range: 0});
                 } else {
                     let build = creep.build(target);
                     if (build == ERR_NOT_IN_RANGE && !buildPos) {
-                        util.moveTo(creep, target.pos, this.constructor.name + 'Path', {range: 3});
+                        util.moveTo(creep, target.pos, undefined, {range: 3});
                     } else if (build === ERR_INVALID_TARGET) {
                         delete creep.memory[this.BUILD_TARGET];
                     } else if (build !== OK) {
@@ -96,7 +97,7 @@ class BuildStrategy extends BaseStrategy {
             let pos = util.posFromString(creep.memory.buildFrom, creep.room.name);
             let creepAtPos = pos.lookFor(LOOK_CREEPS).filter(c=>c.name !== creep.name);
             // creep.log('creepAtPos', JSON.stringify(creepAtPos));
-            if (creepAtPos.length || pos.getRangeTo(target)>3) {
+            if (creepAtPos.length || pos.getRangeTo(target)>3 || pos.isEqualTo(target.pos)) {
                 // creep.log('conflict',creepAtPos[0].name);
                 delete creep.memory.buildFrom;
             }

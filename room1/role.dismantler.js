@@ -3,11 +3,12 @@ var util = require('./util');
 var DismantleStrategy = require('./strategy.dismantle');
 var DropToContainerStrategy = require('./strategy.drop_to_container');
 var DropToEnergyStorageStrategy = require('./strategy.drop_to_energyStorage');
+var WaitStrategy = require('./strategy.wait');
 
 
 class RoleDismantler {
     constructor() {
-        this.loadStrategies = [new DismantleStrategy()];
+        this.loadStrategies = [new DismantleStrategy(), new WaitStrategy(10)];
         this.unloadStrategies = [
             new DropToContainerStrategy(),
             new DropToEnergyStorageStrategy()

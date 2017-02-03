@@ -1,113 +1,112 @@
 var _ = require('lodash');
 var util = require('./util');
-var LoadFromContainerStrategy = require('./strategy.load_from_container');
-var PickupStrategy = require('./strategy.pickup');
-var DropToContainerStrategy = require('./strategy.drop_to_container');
+var PickupManager = require('./util.manager.pickup');
+var WaitStrategy = require('./strategy.wait');
+var BaseStrategy = require('./strategy.base');
+const TERMINAL_ENERGY = 50000;
 
+class LabUnloadStrategy extends BaseStrategy {
+    constructor() {
+        super();
+    }
+
+    clearMemory(creep) {
+        return super.clearMemory(creep);
+    }
+
+    accepts(creep) {
+        let goal = creep.memory.lab_goal;
+        if (!goal && creep.room.storage) {
+            creep.memory.lab_goal = {
+                unloadTarget: creep.room.storage.id,
+                resourceType: _.keys(creep.carry).find(m => creep.carry[m])
+            };
+            goal = creep.memory.lab_goal;
+        }
+        if (!goal) {
+            return false;
+        }
+        if (!goal.unloadTarget) {
+            // TODO
+            creep.memory.lab_goal.unloadTarget = creep.room.storage.id;
+        }
+        if (goal.unloadTarget) {
+            let target = Game.getObjectById(goal.unloadTarget);
+            let resource = goal.mineralType || _.keys(creep.carry).find(m => creep.carry[m]);
+            let transfer = creep.transfer(target, resource);
+            if (ERR_NOT_IN_RANGE === transfer) {
+                util.moveTo(creep, target.pos);
+            } else if (OK === transfer) {
+                // clean up ?
+            } else {
+                creep.log('transfer?', target.pos, resource, creep.carry[resource], transfer);
+            }
+            return true;
+        } else {
+            return false;
+        }
+    }
+}
+class LabLoadStrategy extends BaseStrategy {
+    constructor() {
+        super();
+    }
+
+    clearMemory(creep) {
+        return super.clearMemory(creep);
+    }
+
+    accepts(creep) {
+        let goal = creep.memory.lab_goal;
+        if (!goal) {
+            let target = PickupManager.getManager(creep.room.name).allocateDrop(creep, undefined, creep => ((drop => drop.amount - 2 * drop.pos.getRangeTo(creep) > 100)));
+            if (target) {
+                creep.memory.lab_goal = {name: 'pickup', loadTarget: target.id};
+                goal = creep.memory.lab_goal;
+            } else {
+                return false;
+            }
+        }
+        if (!goal.loadTarget) {
+            // TODO
+            creep.log('goal with no loadTarget', JSON.stringify(goal));
+            creep.memory.lab_goal.loadTarget = creep.room.storage.id;
+        }
+        if (goal.loadTarget) {
+            let target = Game.getObjectById(goal.loadTarget);
+            if (!target) {
+                delete creep.memory.lab_goal;
+                return false;
+            }
+            let transfer = (goal.mineralType) ? creep.withdraw(target, goal.mineralType) : creep.pickup(target);
+            if (ERR_NOT_IN_RANGE === transfer) {
+                util.moveTo(creep, target.pos);
+            } else if (OK === transfer) {
+                // clean up ?
+            } else if (ERR_NOT_ENOUGH_RESOURCES === transfer && _.sum(creep.carry) > 0) {
+                creep.memory.action = 'unload';
+            } else {
+                creep.log('withdraw?', target.pos, transfer);
+            }
+            return true;
+        } else {
+            return false;
+        }
+    }
+}
 /**
  * searches for labs missing resources
  */
 class RoleLabOperator {
     constructor() {
-        this.noGoalLoadStrategies = [
-            new PickupStrategy(util.ANY_MINERAL),
-            new LoadFromContainerStrategy(util.ANY_MINERAL, STRUCTURE_CONTAINER, (creep)=>((s)=>s.structureType === STRUCTURE_CONTAINER && s.store && (_.sum(s.store) - (s.store.energy || 0) > 0) )),
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_TERMINAL, (creep)=>((s)=>s.structureType === STRUCTURE_TERMINAL && s.store && s.store[RESOURCE_ENERGY] > this.terminalEnergyTarget(creep.room) + creep.carryCapacity)),
-            {
-                accepts: function (creep) {
-                    if (!creep.room.isValidParkingPos(creep)) {
-                        const pos = creep.room.findValidParkingPosition(creep, creep.pos, 5);
-                        if (pos) {
-                            util.moveTo(creep, pos, undefined, {range: 0});
-                        } else {
-                            creep.log('no valid parking pos in range 5');
-                        }
-                    }
-                }
-            }
-        ];
         this.loadStrategies = [
-            new LoadFromContainerStrategy((creep)=>creep.memory.lab_goal.mineralType || 'none', undefined,
-                (creep) => {
-                    if (creep.memory.lab_goal && creep.memory.lab_goal.name === 'fillStorage') {
-                        return ()=>false;
-                    } else if (creep.memory.lab_goal && creep.memory.lab_goal.action == this.ACTION_FILL) {
-                        // creep.log('fill lab predicate');
-                        return function (s) {
-                            if (creep.memory.lab_goal.container) {
-                                return creep.memory.lab_goal.container == s.id;
-                            } else if (s.structureType === STRUCTURE_TERMINAL) {
-                                // creep.log('testing terminal', !!creep.memory.lab_goal.lab && (!creep.room.memory.exports || creep.room.memory.exports.indexOf(creep.memory.lab_goal.mineralType) < 0));
-                                return !!creep.memory.lab_goal.lab && (!creep.room.memory.exports || creep.room.memory.exports.indexOf(creep.memory.lab_goal.mineralType) < 0); // only load from terminal if we intend to load a lab
-                            } else if ([STRUCTURE_CONTAINER, STRUCTURE_STORAGE, STRUCTURE_LAB].indexOf(s.structureType) < 0) {
-                                return false;
-                            }
-                            // creep.log('testing ', s, (s.store && s.store[creep.memory.lab_goal.mineralType]));
-                            return !!(creep.memory.lab_goal && (creep.memory.lab_goal.lab !== s.id) && (s.structureType !== STRUCTURE_LAB || s.mineralType === creep.memory.lab_goal.mineralType && creep.memory.lab_goal.mineralAmount > 0));
-                        };
-                    } else if (creep.memory.lab_goal && creep.memory.lab_goal.action == this.ACTION_UNLOAD) {
-                        // creep.log('unloadlab predicate');
-                        return function (s) {
-                            // if (s.structureType === STRUCTURE_LAB) creep.log('testing ', s.id, creep.memory.lab_goal.lab.id, creep.memory.lab_goal.lab === s.id);
-                            return s.structureType === STRUCTURE_LAB && creep.memory.lab_goal && (creep.memory.lab_goal.lab === s.id);
-                        };
-                    }
-                    return ()=>false;
-                }
-            ),
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_TERMINAL, (creep)=>creep.room.controller && creep.room.controller.level < 8 ? (term)=>term.store.energy > (10000) : (term)=>term.store.energy > (100000)),
-            new LoadFromContainerStrategy((creep)=>creep.memory.lab_goal.mineralType, STRUCTURE_CONTAINER),
-            new LoadFromContainerStrategy((creep)=>creep.memory.lab_goal.mineralType || 'none', STRUCTURE_TERMINAL, (creep)=>((s)=>creep.memory.lab_goal && s.store && s.store[creep.memory.lab_goal.mineralType])),
-            new LoadFromContainerStrategy(RESOURCE_ENERGY, STRUCTURE_STORAGE, (creep)=> {
-                if (creep.memory.lab_goal && creep.memory.lab_goal.mineralType === RESOURCE_ENERGY) return ()=>true;
-                else return ()=>false;
-            }),
-            new PickupStrategy()
+            new LabLoadStrategy(),
+            new WaitStrategy(10)
+
         ];
         this.unloadStrategies = [
-            new DropToContainerStrategy((creep)=>(creep.memory && creep.memory.lab_goal && ('fillLab' === creep.memory.lab_goal.name) && creep.memory.lab_goal.mineralType ? creep.memory.lab_goal.mineralType : 'none'), STRUCTURE_LAB,
-                (creep) => {
-                    // creep.log('goal', creep.memory.lab_goal? creep.memory.lab_goal.action: 'none');
-                    if (creep.memory.lab_goal && creep.memory.lab_goal.action == this.ACTION_FILL) {
-                        // creep.log('returning labfill predicate');
-                        return function (s) {
-                            // creep.log('testing ', creep.memory.lab_goal.lab, s.id, creep.memory.lab_goal && creep.memory.lab_goal.lab === s.id);
-                            return creep.memory.lab_goal && creep.memory.lab_goal.lab === s.id;
-                        };
-                    } else if (creep.memory.lab_goal && creep.memory.lab_goal.action == this.ACTION_UNLOAD) {
-                        return function (s) {
-                            // creep.log('testing ', creep.memory.lab_goal.lab, s.id);
-                            return creep.memory.lab_goal && creep.memory.lab_goal.container === s.id;
-                        };
-
-                    } else {
-                        return ()=>false;
-                    }
-                }
-            ),
-            new DropToContainerStrategy(RESOURCE_GHODIUM, STRUCTURE_NUKER,
-                (creep) => {
-                    // creep.log('goal', creep.memory.lab_goal? creep.memory.lab_goal.action: 'none');
-                    if (creep.memory.lab_goal && creep.memory.lab_goal.action === this.ACTION_FILL && creep.memory.lab_goal.name === 'fillNuker') {
-                        return ()=>true;
-                    } else {
-                        return ()=>false;
-                    }
-                }
-            ),
-            new DropToContainerStrategy((creep)=>_.get(creep.memory, ['lab_goal', 'mineralType'], 'none'), STRUCTURE_TERMINAL,
-                (creep) => {
-                    // creep.log('goal', creep.memory.lab_goal? creep.memory.lab_goal.action: 'none');
-                    if (creep.memory.lab_goal && creep.memory.lab_goal.action == this.ACTION_FILL && creep.memory.lab_goal.name === 'fillTerminal' && creep.carry[creep.memory.lab_goal.mineralType] > 0) {
-                        return ()=>true;
-                    } else {
-                        return ()=>false;
-                    }
-                }
-            ),
-            new DropToContainerStrategy(RESOURCE_ENERGY, STRUCTURE_LAB, (creep)=>((lab)=>creep.carry && creep.carry.energy)),
-
-            new DropToContainerStrategy(undefined, STRUCTURE_STORAGE)
+            new LabUnloadStrategy(),
+            new WaitStrategy(10)
         ];
         util.indexStrategies(this.loadStrategies);
         util.indexStrategies(this.unloadStrategies);
@@ -116,7 +115,7 @@ class RoleLabOperator {
     }
 
     terminalEnergyTarget(room) {
-        return room.controller && room.controller.level === 8 ? 100000 : 10000;
+        return room.controller && room.controller.level === 8 ? TERMINAL_ENERGY : 10000;
     }
 
     /** @param {Creep} creep **/
@@ -126,6 +125,7 @@ class RoleLabOperator {
             // creep.log('reloading');
             creep.memory.action = this.ACTION_FILL;
             delete creep.memory.source;
+            delete creep.memory.containerSource;
             delete creep.memory.lab_goal;
             delete creep.memory[util.CURRENT_STRATEGY];
             let s = util.currentStrategy(creep, this.loadStrategies);
@@ -140,6 +140,7 @@ class RoleLabOperator {
         } else if (_.sum(creep.carry) == creep.carryCapacity && creep.memory.action !== this.ACTION_UNLOAD) {
             // creep.log('unloading');
             creep.memory.action = this.ACTION_UNLOAD;
+            delete creep.memory.containerTarget;
             delete creep.memory[util.CURRENT_STRATEGY];
             let s = util.currentStrategy(creep, this.unloadStrategies);
             if (s) {
@@ -150,31 +151,37 @@ class RoleLabOperator {
         if (creep.memory.action == this.ACTION_FILL) {
             // this.oldGoalLogic(creep);
             this.newGoalLogic(creep);
-            strategy = util.getAndExecuteCurrentStrategy(creep, (creep.memory.lab_goal ? this.loadStrategies : this.noGoalLoadStrategies));
+            strategy = util.getAndExecuteCurrentStrategy(creep, this.loadStrategies);
             if (!strategy) {
-                strategy = _.find((creep.memory.lab_goal ? this.loadStrategies : this.noGoalLoadStrategies), (strat)=>(strat.accepts(creep)));
+                strategy = _.find(this.loadStrategies, (strat) => (strat.accepts(creep)));
             }
             if (strategy) {
                 util.setCurrentStrategy(creep, strategy);
             } else if (_.sum(creep.carry) > 0) {
                 // unable to load more, unload
                 creep.memory.action = this.ACTION_UNLOAD;
-            } else if (creep.memory.lab_goal) {
-                creep.log(`no strategy and empty, clearning goal ${JSON.stringify(creep.memory.lab_goal)}`);
+                /*
+                 } else if (creep.memory.lab_goal) {
+                 creep.log(`no strategy and empty, clearning goal ${JSON.stringify(creep.memory.lab_goal)}`);
+                 delete creep.memory.goalCheck;
+                 delete creep.memory.lab_goal;
+                 */
+            }
+        } else {
+            if (!this.isGoalValid(creep, creep.memory.lab_goal)) {
                 delete creep.memory.lab_goal;
             }
-            // creep.log('no load strategy, clearing current goal');
-        } else {
             if (creep.memory.lab_goal && creep.carry && !creep.carry[creep.memory.lab_goal.mineralType]) {
                 creep.log('creep empty', JSON.stringify(creep.memory.lab_goal));
                 delete creep.memory.lab_goal;
+                delete creep.memory.goalCheck;
             }
 // creep.log('unloading');
             let strategy = util.getAndExecuteCurrentStrategy(creep, this.unloadStrategies);
             if (!strategy) {
-                strategy = _.find(this.unloadStrategies, (strat)=>(strat.accepts(creep)));
+                strategy = _.find(this.unloadStrategies, (strat) => (strat.accepts(creep)));
             }
-// creep.log(util.strategyToLog(strategy));
+// creep.log('unloadStrategy ' ,util.strategyToLog(strategy));
             if (strategy) {
                 util.setCurrentStrategy(creep, strategy);
             }
@@ -195,10 +202,9 @@ class RoleLabOperator {
         }
 
         if (!creep.memory.lab_goal) {
-            if (creep.memory.goalCheck && creep.memory.goalCheck > Game.time -10) {
-                return ;
+            if (creep.memory.goalCheck && creep.memory.goalCheck > Game.time - 10) {
+                return;
             }
-            creep.memory.goalCheck = Game.time;
             // export minerals go to terminal
 
             // labs with bad min
@@ -212,37 +218,55 @@ class RoleLabOperator {
             // }
 
             // creep.log('room labs', labs, labs.map((lab)=>this.expectedMineralType(lab)));
-            let requireEmptying = (lab)=>(lab.mineralType && (lab.mineralType !== lab.room.expectedMineralType(lab)
+            let requireEmptying = (lab) => (lab.mineralType && (lab.mineralType !== lab.room.expectedMineralType(lab)
             || (lab.room.expectedMineralType(lab) === roomProduction && lab.mineralAmount > lab.mineralCapacity / 2)));
-            let requireRefilling = (lab)=> {
+            let requireRefilling = (lab) => {
                 let expected = lab.room.expectedMineralType(lab);
                 return (!roomProduction || expected !== roomProduction) // production target, ignore
                     && (!lab.mineralType || lab.mineralType === expected)
-                    && (!lab.mineralAmount || lab.mineralAmount < lab.mineralCapacity / 2); // ingredient, refill
+                    && ((lab.mineralAmount || 0) < lab.mineralCapacity / 2); // ingredient, refill
             };
             let terminal = creep.room.terminal;
             let desiredLedger = creep.room.desiredLedger;
-            let currentLedger = creep.room.currentLedger;
             let carryCapacity = creep.carryCapacity;
             let goalFinders = [
-                // empty lab
-                (labs)=> {
-                    let needEmptying = _.sortBy(labs.filter((lab)=> requireEmptying(lab)), lab=>-lab.mineralAmount);
+                // gather minerals from containers
+                () => {
+                    let needEmptying = _.max(creep.room.structures[STRUCTURE_CONTAINER] || [], container => {
+                        let totalStore = _.sum(container.store) || 0;
+                        let energy = (container.store.energy || 0);
+                        return energy < totalStore // has minerals
+                            && totalStore > 0.5 * container.storeCapacity;
+                    });
                     // creep.log('needEmptying labs', needEmptying, needEmptying.map((lab)=>creep.room.expectedMineralType(lab)));
-                    let goal = needEmptying.reduce((goal, lab)=> {
+                    if (needEmptying && needEmptying !== -Infinity && _.sum(needEmptying.store) - needEmptying.store.energy) {
+                        creep.memory.lab_goal = {
+                            name: 'unloadContainer',
+                            action: this.ACTION_UNLOAD,
+                            loadTarget: needEmptying.id,
+                            mineralType: _.max(_.pull(_.keys(needEmptying.store), RESOURCE_ENERGY), r => needEmptying.store[r])
+                        };
+                    }
+                },
+                // empty wrong mineral labs
+                (labs) => {
+                    if ((!creep.room.storage) || (creep.room.storage.storeCapacity - 10000 < _.sum(creep.room.storage.store))) return;
+                    let needEmptying = _.sortBy(labs.filter((lab) => requireEmptying(lab)), lab => -lab.mineralAmount);
+                    // creep.log('needEmptying labs', needEmptying, needEmptying.map((lab)=>creep.room.expectedMineralType(lab)));
+                    let goal = needEmptying.reduce((goal, lab) => {
                         if (goal) {
                             return goal;
                         } else {
-                            let containerId = lab.room.find(FIND_STRUCTURES).filter(s=>!s.runReaction && s.store && s.store[lab.mineralType]) // do not drop in other labs
-                                    .map((c)=>c.id).find((s)=>s.id !== lab.id) || lab.room.storage.id;
+                            let containerId = lab.room.find(FIND_STRUCTURES).filter(s => !s.runReaction && s.store && s.store[lab.mineralType]) // do not drop in other labs
+                                    .map((c) => c.id).find((s) => s.id !== lab.id) || lab.room.storage.id;
                             if (containerId) {
-                                // TODO 
+                                // TODO
                                 return {
                                     name: 'unloadLab',
                                     action: this.ACTION_UNLOAD,
-                                    lab: lab.id,
+                                    unloadTarget: lab.room.storage.id,
                                     mineralType: lab.mineralType,
-                                    container: containerId
+                                    loadTarget: lab.id,
                                 };
                             } else {
                                 return undefined;
@@ -256,33 +280,36 @@ class RoleLabOperator {
                     }
                 },
                 // refill lab mineral
-                (labs)=> {
-                    let needRefilling = _.sortBy(labs.filter((lab)=> requireRefilling(lab)), lab=>lab.mineralAmount);
-
+                (labs) => {
+                    let ledger = creep.room.currentLedger;
+                    let needRefilling = labs.filter((lab) => requireRefilling(lab) && (ledger[lab.room.expectedMineralType(lab)] || 0) > 0);
                     // creep.log('needRefilling labs', needRefilling, needRefilling.map((lab)=>lab.room.expectedMineralType(lab)));
-                    let lab = needRefilling.find((lab)=>lab.room.findContainers().filter((s)=>s.id !== lab.id && s.store && s.store[lab.room.expectedMineralType(lab)] > 0).length > 0);
+                    if (needRefilling.length ===0) return;
+                    let lab = _.min(needRefilling, lab=>lab.mineralAmount);
+                    // creep.log('chosen', lab);
                     if (lab) {
+                        let expectedMineralType = lab.room.expectedMineralType(lab);
+                        let source = lab.room.storage.store[expectedMineralType] ? lab.room.storage : lab.room.terminal;
                         creep.memory.lab_goal = {
                             name: 'fillLab',
                             action: this.ACTION_FILL,
-                            lab: lab.id,
-                            dropAt: lab.id,
-                            mineralType: lab.room.expectedMineralType(lab),
+                            loadTarget: source.id,
+                            unloadTarget: lab.id,
+                            mineralType: expectedMineralType,
                         };
                     }
                 },
                 // refill lab energy
-                (labs)=> {
-                    let missingEnergyLabs = labs.filter((lab)=>lab.energy < lab.energyCapacity);
+                (labs) => {
+                    let missingEnergyLabs = labs.filter((lab) => lab.energy < lab.energyCapacity);
                     // creep.log('missingEnergyLabs', missingEnergyLabs.length);
-                    let goal = _.sample(missingEnergyLabs.map((lab)=> {
+                    let goal = _.sample(missingEnergyLabs.map((lab) => {
                         let goal = {
-                            name: 'fillEnergy',
+                            name: 'fillLab',
                             action: this.ACTION_FILL,
-                            lab: lab.id,
                             mineralType: RESOURCE_ENERGY,
-                            container: _.sortBy(lab.room.structures[STRUCTURE_LAB].filter(s => s.store && s.store[RESOURCE_ENERGY]), (s)=>-s.store[RESOURCE_ENERGY])
-                                .map((c)=>c.id).find(()=>true) || lab.room.storage.id
+                            loadTarget: lab.room.storage.id,
+                            unloadTarget: lab.id
                         };
                         return goal;
                     }));
@@ -291,86 +318,102 @@ class RoleLabOperator {
                         creep.memory.lab_goal = goal;
                     }
                 },
-                // export mineral , fill terminal
-                (labs)=> {
-                    if ((creep.room.export || creep.room.sellOrders) && creep.room.storage && creep.room.storage.store && terminal && terminal.storeCapacity > _.sum(terminal.store)) {
-                        // creep.log('seeking exports', JSON.stringify(creep.room.memory.exports), JSON.stringify(creep.room.storage.store));
-                        let min = creep.room.export.find((min)=> {
-                            // creep.log('testing', min, creep.room.storage.store[min], (!terminal.store || ! terminal.store[min] ||terminal.store[min]<10000));
-                            return RESOURCE_ENERGY !== min && (creep.room.storage.store[min] || 0) - carryCapacity > (desiredLedger[min] || 0)
-                                - _.sum(_.values(Game.market.orders).filter(o=>o.type === 'sell' && o.roomName === creep.room.name && o.resourceType === min), o=>o.remainingAmount)// enough stored to spare
-                                && (_.get(terminal, ['store', min], 0) < 10000);
-                        });
-                        // creep.log('testing sellOrders?', !min);
-                        if (!min && creep.room.sellOrders) {
-                            min = _.keys(creep.room.sellOrders).find(m=> creep.room.storage.store[m] && (terminal.store[m] || 0) < creep.room.sellOrders[m]);
-                            // creep.log('sellOrder min ', min);
-                        }
-                        if (min) {
+                // refill/unload terminal energy
+                () => {
+                    let terminalEnergy = _.get(creep.room.terminal, ['store', RESOURCE_ENERGY], 0);
+                    let storageEnergy = _.get(creep.room.storage, ['store', RESOURCE_ENERGY], 0);
+                    if (terminal) {
+                        if (creep.room.export.length > 0 && storageEnergy > 10000 && terminalEnergy < this.terminalEnergyTarget(creep.room) - carryCapacity) {
                             creep.memory.lab_goal = {
                                 name: 'fillTerminal',
-                                dropAt: creep.room.terminal.id,
                                 action: this.ACTION_FILL,
-                                mineralType: min,
+                                // lab: terminal.id,
+                                mineralType: RESOURCE_ENERGY,
+                                unloadTarget: creep.room.terminal.id,
+                                loadTarget: creep.room.storage.id,
+                            };
+                        } else if (terminalEnergy > this.terminalEnergyTarget(creep.room)) {
+                            creep.memory.lab_goal = {
+                                name: 'fillStorage',
+                                action: this.ACTION_UNLOAD,
+                                // lab: terminal.id,
+                                mineralType: RESOURCE_ENERGY,
+                                loadTarget: creep.room.terminal.id,
+                                unloadTarget: creep.room.storage.id,
                             };
                         }
                     }
                 },
-                // import mineral , move to storage
-                (labs)=> {
-                    if (creep.room.terminal && creep.room.terminal.store && creep.room.storage && creep.room.storage.storeCapacity > _.sum(creep.room.storage.store)) {
+                // export mineral , fill terminal
+                () => {
+                    let min;
+                    if (creep.room.export && _.get(creep.room.storage, ['store', RESOURCE_ENERGY], 0) > 10000 && terminal && terminal.storeCapacity > _.sum(terminal.store)) {
                         // creep.log('seeking exports', JSON.stringify(creep.room.memory.exports), JSON.stringify(creep.room.storage.store));
-                        let min = _.keys(creep.room.terminal.store).find((min)=> {
+                        min = creep.room.export.find((min) => {
                             // creep.log('testing', min, creep.room.storage.store[min], (!terminal.store || ! terminal.store[min] ||terminal.store[min]<10000));
-                            let neededForTrade = _.sum(_.values(Game.market.orders).filter(o=>o.type === 'sell' && o.roomName === creep.room.name && o.resourceType === min), o=>o.remainingAmount);
-                            let wantedInTerminal = Math.max(neededForTrade,(creep.room.currentLedger[min]||0) - (creep.room.desiredLedger[min]||0));
-                            return min !== RESOURCE_ENERGY && (creep.room.terminal.store[min] || 0)-carryCapacity > wantedInTerminal;
+                            return RESOURCE_ENERGY !== min
+                                && (creep.room.storage.store[min] || 0) - carryCapacity > (desiredLedger[min] || 0)
+                                && (_.get(terminal, ['store', min], 0) < 10000);
+                        });
+                        // creep.log('testing sellOrders?', !min);
+                    }
+                    if (!min && creep.room.sellOrders) {
+                        min = _.keys(creep.room.sellOrders).find(m => creep.room.storage.store[m] && (terminal.store[m] || 0) < Math.min(creep.room.sellOrders[m], 5000));
+                        // creep.log('sellOrder min ', min);
+                    }
+                    if (!min) {
+                        let streamingOrder = (Memory.streamingOrders || []).find(
+                            o => o.from === creep.room.name && (o.amount > 100) && o.what !== RESOURCE_ENERGY
+                            && _.get(creep.room.storage, ['store', o.what], 0) > 0 && _.get(creep.room.terminal, ['store', o.what], 0) < 10000);
+                        if (streamingOrder) {
+                            min = streamingOrder.what;
+                        }
+                    }
+                    if (min) {
+                        creep.memory.lab_goal = {
+                            name: 'fillTerminal',
+                            unloadTarget: creep.room.terminal.id,
+                            loadTarget: creep.room.storage.id,
+                            action: this.ACTION_FILL,
+                            mineralType: min,
+                        };
+                    }
+                },
+                // import mineral , move to storage
+                () => {
+                    if (creep.room.terminal && creep.room.terminal.store && creep.room.storage && creep.room.storage.storeCapacity - 10000 > _.sum(creep.room.storage.store)) {
+                        // creep.log('seeking exports', JSON.stringify(creep.room.memory.exports), JSON.stringify(creep.room.storage.store));
+                        let min = _.keys(creep.room.terminal.store).find((min) => {
+                            // creep.log('testing', min, creep.room.storage.store[min], (!terminal.store || ! terminal.store[min] ||terminal.store[min]<10000));
+                            let neededForTrade = _.sum(_.values(Game.market.orders).filter(o => o.type === 'sell' && o.roomName === creep.room.name && o.resourceType === min), o => o.remainingAmount);
+                            let wantedInTerminal = Math.max(neededForTrade, Math.min(10000, (creep.room.currentLedger[min] || 0) - (creep.room.desiredLedger[min] || 0)));
+                            return min !== RESOURCE_ENERGY && (creep.room.terminal.store[min] || 0) - carryCapacity > wantedInTerminal;
                         });
                         if (min) {
                             creep.memory.lab_goal = {
                                 name: 'fillStorage',
-                                dropAt: creep.room.storage.id,
+                                unloadTarget: creep.room.storage.id,
+                                loadTarget: creep.room.terminal.id,
                                 action: this.ACTION_FILL,
                                 mineralType: min,
                             };
                         }
                     }
                 },
-                // refill terminal energy
-                (labs)=> {
-                    let terminalEnergy = _.get(creep.room.terminal, ['store', RESOURCE_ENERGY], 0);
-                    let storageEnergy = _.get(creep.room.storage, ['store', RESOURCE_ENERGY], 0);
-                    if (terminal && creep.room.export.length > 0 && storageEnergy > 10000
-                        && ((terminalEnergy < (creep.room.controller.level == 8 ? 100000 : this.terminalEnergyTarget(creep.room)) - carryCapacity))) {
-                        let goal = {
-                            name: 'fillTerminal',
-                            action: this.ACTION_FILL,
-                            // lab: terminal.id,
-                            mineralType: RESOURCE_ENERGY,
-                            dropAt: creep.room.terminal.id,
-                            container: _.sortBy(creep.room.structures[STRUCTURE_LAB].filter(s =>s.store && s.store[RESOURCE_ENERGY]), (s)=>-s.store[RESOURCE_ENERGY])
-                                .map((c)=>c.id).find(()=>true) || creep.room.storage.id
-                        };
-                        if (goal && goal.container) {
-                            creep.memory.lab_goal = goal;
-                        }
-                    }
-
-                },
                 // fill nuker
-                (labs)=> {
+                () => {
                     let nuker = _.head(creep.room.structures[STRUCTURE_NUKER]);
                     if (!nuker || (nuker.ghodium || 0) == nuker.ghodiumCapacity) {
                         return;
                     }
-                    let ghodiumProvider = [creep.room.storage, creep.room.terminal].find(s=> s && _.get(s, ['store', RESOURCE_GHODIUM], 0));
+                    let ghodiumProvider = [creep.room.storage, creep.room.terminal].find(s => s && _.get(s, ['store', RESOURCE_GHODIUM], 0));
                     if (ghodiumProvider) {
                         let goal = {
                             name: 'fillNuker',
                             action: this.ACTION_FILL,
                             mineralType: RESOURCE_GHODIUM,
                             container: ghodiumProvider.id,
-                            dropAt: nuker.id
+                            unloadTarget: nuker.id
                         };
                         creep.memory.lab_goal = goal;
                     }
@@ -382,7 +425,11 @@ class RoleLabOperator {
                 // creep.log('finding goal', i);
                 goalFinders[i](labs);
             }
+
             // creep.log('chosen goal', JSON.stringify(creep.memory.lab_goal));
+            if (!creep.memory.lab_goal) {
+                creep.memory.goalCheck = Game.time;
+            }
         }
 
 
@@ -392,23 +439,38 @@ class RoleLabOperator {
     isGoalValid(creep, lab_goal) {
         let valid = false;
         if (lab_goal && lab_goal.name) {
-            let lab = Game.getObjectById(lab_goal.lab);
             switch (lab_goal.name) {
+                case 'pickup':
+                    valid = Game.getObjectById(lab_goal.loadTarget);
+                    break;
                 case 'fillTerminal':
+                    valid = creep.room.terminal.storeCapacity > _.sum(creep.room.terminal.store) - 5000;
+                    break;
                 case 'fillStorage':
-                    valid = true;
+                    valid = creep.room.storage.storeCapacity - 10000 > _.sum(creep.room.storage.store);
                     break;
-                case 'unloadLab':
-                    valid = lab && (lab.mineralAmount && lab.mineralAmount > 0 && lab.mineralType === lab_goal.mineralType);
+                case 'unloadContainer': {
+                    valid = _.get(Game.getObjectById(lab_goal.loadTarget), ['store', lab_goal.mineralType], 0) > 0;
                     break;
-                case 'fillLab':
+                }
+                case 'unloadLab': {
+                    let lab = Game.getObjectById(lab_goal.loadTarget);
+                    valid = lab && (lab.mineralAmount && lab.mineralAmount > 0 && lab.mineralType === lab_goal.mineralType)
+                        && creep.room.storage.storeCapacity - 10000 > _.sum(creep.room.storage.store);
+                    break;
+                }
+                case 'fillLab': {
+                    let lab = Game.getObjectById(lab_goal.unloadTarget);
                     valid = lab && (!lab.mineralType || (lab.mineralAmount < lab.mineralCapacity && lab.mineralType === lab_goal.mineralType));
                     break;
-                case 'fillEnergy':
+                }
+                case 'fillEnergy': {
+                    let lab = Game.getObjectById(lab_goal.unloadTarget);
                     valid = lab && (!lab.energy || lab.energy < lab.energyCapacity);
                     break;
+                }
                 case 'fillNuker': {
-                    let nuker = creep.room.structures[STRUCTURE_NUKER].find(s=>true);
+                    let nuker = Game.getObjectById(lab_goal.unloadTarget);
                     valid = nuker && nuker.ghodium < nuker.ghodiumCapacity;
                     break;
                 }
@@ -422,9 +484,9 @@ class RoleLabOperator {
 function reverseReactions() {
     'use strict';
     let result = {};
-    _.keys(REACTIONS).forEach((min1)=> {
+    _.keys(REACTIONS).forEach((min1) => {
         let temp = REACTIONS[min1];
-        _.keys(temp).forEach((min2)=> {
+        _.keys(temp).forEach((min2) => {
             result[temp[min2]] = [min1, min2];
         });
     });

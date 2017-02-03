@@ -1,10 +1,81 @@
-var _ = require('lodash');
-var util = require('./util');
-var Cache = require('./util.cache');
-var handlers = require('./base.handlers');
-var PickupManager = require('./util.manager.pickup');
+const _ = require('lodash');
+const util = require('./util');
+const Cache = require('./util.cache');
+const PickupManager = require('./util.manager.pickup');
 const reactions = require('./role.lab_operator').reactions;
 let cache = {};
+const towerRepairRoad = false;
+Object.defineProperty(Room.prototype, 'desiredLedger', {
+    configurable: true,
+    get: function () {
+        'use strict';
+        if (this.controller && this.controller.my && this.controller.level >= 6) {
+            if (!this._desiredLedger) {
+                let desired = _.cloneDeep(rcl8Ledger);
+                if ((this.structures[STRUCTURE_LAB] || 0) < 10 || (this.structures[STRUCTURE_NUKER] || 0) < 1 || (this.structures[STRUCTURE_POWER_SPAWN] || 0) || (this.structures[STRUCTURE_OBSERVER] || 0) < 1) {
+                    desired['XLH2O'] = 3000;
+                }
+                // collect each reaction ingredients
+                if ((this.structures[STRUCTURE_LAB].length || 0) >= 3 && this.memory.lab_production) {
+                    let requiredMinsForLabs = reactions[this.memory.lab_production];
+                    requiredMinsForLabs.forEach(m=> desired[m] = (desired[m] || 0) + 5000);
+                }
+                // let myMin = _.head(this.find(FIND_MINERALS)).mineralType;
+                // remove local mineral
+                // _.pull(requiredMinsForLabs, myMin);
+                // remove each creation outputs
+                // this.lab_productions.forEach(m=> _.pull(requiredMinsForLabs, m));
+                let sellOrders = {};
+                _.values(Game.market.orders).forEach(o=> {
+                    if (o.type === 'sell' && o.roomName === this.name) {
+                        desired[o.resourceType] = (desired[o.resourceType] || 0) + o.remainingAmount;
+                        sellOrders[o.resourceType] = o.remainingAmount;
+                    }
+                });
+                this.sellOrders = sellOrders;
+                if (this.memory.preparedBoosts) {
+                    this.memory.preparedBoosts.forEach(k=>desired[k] =  3000);
+                }
+                if (this.controller.level < 8) {
+                    desired['XGH2O'] = (desired['XGH2O'] || 0) + 5000;
+                    desired['energy'] = 200000;
+                }
+
+                this._desiredLedger = desired;
+            }
+            return this._desiredLedger;
+        } else {
+            return {};
+        }
+    }
+});
+Object.defineProperty(Room.prototype, 'currentLedger', {
+    configurable: true,
+    get: function () {
+        'use strict';
+        return Cache.get(this, '_ledger', ()=> {
+            let ledger = {};
+            if (this.storage) _.merge(ledger, this.storage.store);
+            if (this.terminal) _.merge(ledger, this.terminal.store, (a, b)=>(a || 0) + (b || 0));
+            return ledger;
+        }, 5);
+    }
+});
+Object.defineProperty(Room.prototype, 'harvestContainers', {
+    get: function () {
+        this.memory.cache = this.memory.cache || {};
+        return Cache.get(this.memory.cache, 'harvestContainers', ()=> {
+            let containers = this.find(FIND_SOURCES).map(s=>this.glanceForAround(LOOK_STRUCTURES, s.pos, 1, true)
+                .map(s=>s.structure).find(s=> s.structureType === STRUCTURE_CONTAINER)).filter(s=>s);
+            containers = containers.concat(this.find(FIND_MINERALS).map(s=>
+                this.glanceForAround(LOOK_STRUCTURES, s.pos, 1, true).map(s=>s.structure)
+                    .find(s=> s.structureType === STRUCTURE_CONTAINER))).filter(s=>s);
+            return containers.map(c=>c.id);
+        }, 1500).map(id=>Game.getObjectById(id)).filter(c=>c);
+    },
+    configurable: true,
+});
+
 Room.prototype.findLabWith = function (resource) {
     let pairs = _.pairs(this.memory.labs);
     // creep.log('pairs', JSON.stringify(pairs));
@@ -78,18 +149,20 @@ Room.prototype.operateLinks = function () {
     // this.log('full links', otherLinks.length);
     otherLinks.forEach((l)=> {
         'use strict';
-        let target = chooseTargetLink(energies[l.id], controllerLink, storageLink);
-        if (target) {
-            let ret = l.transferEnergy(target);
-            if (ret !== OK && ret !== ERR_TIRED) {
-                this.log(`failed link transfer ${l.pos}=>${target.pos} ${ret}`);
-            } else if (ret === OK) {
-                let tranferred = Math.min(target.energyCapacity - target.energy, l.energy);
-                energies[target.id] = energies[target.id] + tranferred;
-                energies[l.id] = energies[l.id] - tranferred;
+        if (l.energy > 0.9 * l.energyCapacity) {
+            let target = chooseTargetLink(energies[l.id], controllerLink, storageLink);
+            if (target) {
+                let ret = l.transferEnergy(target);
+                if (ret !== OK && ret !== ERR_TIRED) {
+                    this.log(`failed link transfer ${l.pos}=>${target.pos} ${ret}`);
+                } else if (ret === OK) {
+                    let tranferred = Math.min(target.energyCapacity - target.energy, l.energy);
+                    energies[target.id] = energies[target.id] + tranferred;
+                    energies[l.id] = energies[l.id] - tranferred;
+                }
+            } else {
+                // this.log('no valid link target');
             }
-        } else {
-            // this.log('no valid link target');
         }
     });
     if (controllerLink && storageLink && energies[controllerLink.id] < controllerLink.energyCapacity && energies[storageLink.id] > 0) {
@@ -97,7 +170,7 @@ Room.prototype.operateLinks = function () {
     }
 };
 Room.prototype.isHarvestContainer = function (container) {
-    return this.memory.harvestContainers && this.memory.harvestContainers.indexOf(container.id) >= 0;
+    return !!this.harvestContainers.find(c=>c.id === container.id);
 };
 
 Room.prototype.harvestPositions = function () {
@@ -222,39 +295,72 @@ Room.prototype.updateLocks = function () {
     });
 
 };
+
+let towerEffect = (pos, tower, effectAtMin) => {
+    'use strict';
+    let range = Math.min(TOWER_FALLOFF_RANGE, Math.max(pos.getRangeTo(tower), TOWER_OPTIMAL_RANGE));
+    let a = effectAtMin * (1 - TOWER_FALLOFF) / (TOWER_FALLOFF_RANGE - TOWER_OPTIMAL_RANGE);
+    let b = effectAtMin - a * TOWER_OPTIMAL_RANGE;
+    return a * range + b;
+};
+
+Room.prototype.wallsBreached = function (spawn, target) {
+    let matrix = new PathFinder.CostMatrix();
+    let obstacles = this.find(FIND_STRUCTURES, {filter: s=>s.structureType === STRUCTURE_RAMPART || s.structureType === STRUCTURE_WALL});
+    for (let i in obstacles) {
+        let obstacle = obstacles[i];
+        matrix.set(obstacle.x, obstacle.y, 0xff);
+    }
+
+    let breached = PathFinder.search(spawn.pos, {
+        pos: target.pos,
+        range: 0
+    }, {
+        ignoreCreep: true,
+        maxRooms: 1,
+        plainCost: 1, swampCost: 1, roomCallback: function (roomName) {
+            if (roomName !== this.name) return false;
+            else return matrix;
+        }
+    }).incomplete;
+    return breached;
+};
 Room.prototype.operateTowers = function () {
-    if (!this.controller || !this.controller.my) return;
-    let towers = this.structures[STRUCTURE_TOWER].filter(s=>s.my);
+    if (!this.controller || !this.controller.my || this.controller.level < 3) return;
+    this.memory.hostiles = false;
+    let towers = this.structures[STRUCTURE_TOWER].filter(s=>s.my && Cache.get(cache, s.id + 'active', ()=>s.isActive(), 1000));
     if (!towers.length) {
         return;
     }
+
+    let usedTowerIds = [];
     let hostileCreeps = this.find(FIND_HOSTILE_CREEPS, {filter: c=>c.hostile});
-    let towerEffect = (pos, tower, effectAtMin) => {
-        'use strict';
-        let range = Math.min(TOWER_FALLOFF_RANGE, Math.max(pos.getRangeTo(tower), TOWER_OPTIMAL_RANGE));
-        let a = effectAtMin * (1 - TOWER_FALLOFF) / (TOWER_FALLOFF_RANGE - TOWER_OPTIMAL_RANGE);
-        let b = effectAtMin - a * TOWER_OPTIMAL_RANGE;
-        return a * range + b;
-    };
-    if (towers.length && hostileCreeps.length > 0) {
+    if (hostileCreeps.length > 0) {
+        this.memory.hostiles = true;
         let target = this.memory.target ? Game.getObjectById(this.memory.target) : undefined;
         if (!target || target.room.name !== this.name) {
             target = undefined;
+            this.memory.target = undefined;
         }
         if (!target) {
-            let ignoredStructures = [STRUCTURE_ROAD, STRUCTURE_EXTRACTOR];
-            let targets = hostileCreeps.filter((target) => {
-                let ranged = target.getActiveBodyparts(RANGED_ATTACK);
-                let attack = target.getActiveBodyparts(ATTACK);
-                let work = target.getActiveBodyparts(WORK);
-                let endangeredStructures = (attack + ranged + work > 0) ? this.glanceForAround(LOOK_STRUCTURES, target.pos, 5, true).map(p=>p.structure).filter((s)=>ignoredStructures.indexOf(s.structureType) < 0) : [];
-                let endangeredCreeps = (attack + ranged > 0) ? this.glanceForAround(LOOK_CREEPS, target.pos, 5, true).map(p=>p.creep).filter((c)=>c.my) : [];
-                // tower.log(`target ${JSON.stringify(target.pos)}, ${target.owner.username} endangeredStructures ${endangeredStructures.length}, endangeredCreeps ${endangeredCreeps.length}`);
-                if ('Invader' !== target.owner.username) {
-                    Game.notify(`target ${JSON.stringify(target.pos)}, ${target.owner.username} endangeredStructures ${endangeredStructures.length}, endangeredCreeps ${endangeredCreeps.length}`);
-                }
-                return (target.owner.username === 'Invader') || ((endangeredStructures.length + endangeredCreeps.length) > 0);
-            });
+            let targets = hostileCreeps;
+            /* TODO does not seem to properly target hostiles !
+             let ignoredStructures = [STRUCTURE_ROAD, STRUCTURE_EXTRACTOR];
+             let targets = hostileCreeps.filter((target) => {
+             let parts = {RANGED_ATTACK: 0, ATTACK: 0, WORK: 0};
+             for (let i = target.body.lengh; i > 0 && target.body[--i].hits;) {
+             parts[target.body[i].type] = parts[target.body[i].type] + 1;
+             }
+             let {attack, ranged_attack, work}= parts;
+             let endangeredStructures = (attack + ranged_attack + work > 0) ? this.glanceForAround(LOOK_STRUCTURES, target.pos, 5, true).map(p=>p.structure).filter((s)=>ignoredStructures.indexOf(s.structureType) < 0) : [];
+             let endangeredCreeps = (attack + ranged_attack > 0) ? this.glanceForAround(LOOK_CREEPS, target.pos, 5, true).map(p=>p.creep).filter((c)=>c.my) : [];
+             // tower.log(`target ${JSON.stringify(target.pos)}, ${target.owner.username} endangeredStructures ${endangeredStructures.length}, endangeredCreeps ${endangeredCreeps.length}`);
+             if ('Invader' !== target.owner.username) {
+             Game.notify(`target ${JSON.stringify(target.pos)}, ${target.owner.username} endangeredStructures ${endangeredStructures.length}, endangeredCreeps ${endangeredCreeps.length}`);
+             }
+             return (target.owner.username === 'Invader') || ((endangeredStructures.length + endangeredCreeps.length) > 0);
+             });
+             */
             if (targets.length) {
                 let towerDamage = (tower, target)=>towerEffect(target.pos, tower, TOWER_POWER_ATTACK);
                 _.max(targets, target=>towers.reduce((totalDamage, tower)=>totalDamage + towerDamage(tower, target), 0));
@@ -263,52 +369,137 @@ Room.prototype.operateTowers = function () {
             }
         }
         if (target) {
+            this.memory.target = target.id;
             this.log(`firing at ${target.owner.username} ${target.pos}`);
-            towers.forEach((tower)=> tower.attack(target));
-            return;
+            towers.forEach((tower)=> {
+                tower.attack(target);
+                usedTowerIds.push(tower.id);
+            });
         }
-    }
-    let hurtCreeps = _.sortBy(this.find(FIND_MY_CREEPS).filter(c=>c.hits < c.hitsMax && c.getActiveBodyparts(HEAL) == 0), c=>c.hits - c.hitsMax);
-    if (hurtCreeps.length) {
-        let expectedHeal = (creep, tower)=> towerEffect(creep.pos, tower, TOWER_POWER_HEAL);
+        if (this.memory.emergency) {
+            if ((this.memory.wallchecked || 0) < Game.time - 5) {
+                let spawn = _.head(this.find(FIND_MY_SPAWNS));
+                if (spawn && target) {
+                    var breached = this.wallsBreached(spawn, target);
+                    this.memory.wallchecked = Game.time;
 
-        hurtCreeps.forEach(c=> {
-            'use strict';
-            if (towers.length) {
-                let missingHealth = c.hitsMax - c.hits;
-                while (towers.length > 0 && missingHealth > 0) {
-                    _.sortBy(towers, (t=>t.pos.getRangeTo(c)));
-                    let healBy = _.head(_.pullAt(towers, 0));
-                    missingHealth = missingHealth - expectedHeal(c, healBy);
-                    healBy.heal(c);
+                    if (breached) {
+
+                        // walls not breached
+                    } else if (!this.controller.safeMode) {
+                        let safe = this.controller.activateSafeMode();
+                        Game.notify(`${this.name}, walls breached ! activated safe Mode ${safe}`);
+                        if (safe !== OK) {
+                            try {
+                                let availableEnergy = this.terminal.store.energy;
+                                let maxAffordable = (toRoomName, isEnergy)=> {
+                                    let distance = Game.map.getRoomLinearDistance(this.name, toRoomName, true);
+                                    let number = Math.log((distance + 9) * 0.1) + 0.1;
+                                    let amount = (availableEnergy || 0);
+
+                                    if (isEnergy) {
+                                        return {
+                                            amount: Math.floor((amount / (1 + number))),
+                                            cost: Math.ceil(amount * (number))
+                                        };
+                                    } else {
+                                        return {amount: Math.ceil(amount / number), cost: amount};
+                                    }
+
+                                };
+                                let targetRooms = _.sort(_.values(Game.rooms).filter(r=>r.controller && r.controller.my && r.terminal && !r.memory.emergency), r=>Game.market.calcTransactionCost(1000, this.name, r.name));
+                                let sentMins = {};
+                                let sentToRooms = {};
+                                let inventory = _.sortBy(_.keys(this.terminal.store), k=>-k.length);
+                                inventory.forEach(min=> {
+                                    if (RESOURCE_ENERGY !== min && availableEnergy > 200) {
+                                        let targetRoom, freeCapacity;
+                                        do {
+                                            targetRoom = _.head(targetRooms);
+                                            freeCapacity = targetRoom.terminal.storeCapacity - _.sum(targetRoom.terminal.store) - (sentToRooms[targetRoom.name] || 0);
+                                            if (freeCapacity < 100) {
+                                                targetRooms.shift();
+                                                targetRoom = undefined;
+                                                freeCapacity = 0;
+                                            }
+                                        } while (!targetRoom);
+
+                                        let howMuch = Math.min(maxAffordable(targetRoom.name, false) - 100,
+                                            this.terminal.store[min] - (sentMins[min] || 0),
+                                            freeCapacity
+                                        );
+                                        let send = this.terminal.send(min, howMuch, targetRoom.name);
+                                        if (send !== OK) {
+                                            Game.notify('failed ', min);
+                                        }
+                                        sentMins[min] = (sentMins[min] || 0) + howMuch;
+                                        sentToRooms[targetRoom.name] = (sentToRooms[targetRoom.name] || 0) + howMuch;
+                                        availableEnergy = availableEnergy - Game.market.calcTransactionCost(howMuch, this.name, targetRoom.name);
+
+                                    }
+
+
+                                });
+                            } catch (e) {
+                                Game.notify('exception during emergency send', e);
+                                Game.notify(e.stack);
+                            }
+                        }
+                    } else {
+                        // safeMode activated
+                    }
                 }
             }
-        });
-    } else {
-        // decaying
-        let decaying = Cache.get(cache, this.name + 'decaying', () =>
-                _.sortBy(
-                    this.find(FIND_STRUCTURES, {
-                        filter: s=> s.structureType === STRUCTURE_ROAD || (s.structureType === STRUCTURE_RAMPART && s.ticksToVanish < 1500)
-                    })
-                    , s=>s.ticksToVanish).slice(0, 20).map(s=>s.id),
-            20).map(id=>Game.getObjectById(id)).filter(s=>s);
-
-        let mostDecaying = decaying.find(s=>s.hits + TOWER_POWER_REPAIR < s.hitsMax);
-
-        if (mostDecaying) { // this.log('mostDecaying ', mostDecaying.pos, mostDecaying.hits);
-            let tower = mostDecaying.pos.findClosestByRange(towers);
-            // this.log(`expectedRepair ${expectedRepair(mostDecaying, tower)}`);
-            let ret = tower.repair(mostDecaying);
-            if (OK !== ret) {
-                this.log('repair failed', ret);
-            } else {
-                towers = towers.filter(t=>t.id !== tower.id);
-            }
         } else {
-            // this.log('no road to repair');
-        }
+            delete this.memory.wallchecked;
 
+        }
+    }
+    if (hostileCreeps.length == 0 && usedTowerIds.length < towers.length) {
+        let hurtCreeps = _.sortBy(this.find(FIND_MY_CREEPS, {filter: c=>c.hits < c.hitsMax}), c=>c.hits - c.hitsMax);
+        if (hurtCreeps.length) {
+            let expectedHeal = (creep, tower)=> towerEffect(creep.pos, tower, TOWER_POWER_HEAL);
+
+            hurtCreeps.forEach(c=> {
+                'use strict';
+                if (towers.length) {
+                    let missingHealth = c.hitsMax - c.hits;
+                    _.sortBy(towers, (t=>t.pos.getRangeTo(c)));
+                    while (towers.length > 0 && missingHealth > 0) {
+                        let healBy = _.head(towers);
+                        towers = _.pullAt(towers, 0);
+                        missingHealth = missingHealth - expectedHeal(c, healBy);
+                        healBy.heal(c);
+                        usedTowerIds.push(healBy);
+                    }
+                }
+            });
+        }
+        if (towers.length && towerRepairRoad) {
+            // decaying
+            let decaying = Cache.get(cache, this.name + 'decaying', () =>
+                    _.sortBy(
+                        this.find(FIND_STRUCTURES, {
+                            filter: s=> s.structureType === STRUCTURE_ROAD || (s.structureType === STRUCTURE_RAMPART && s.ticksToVanish < 1500)
+                        })
+                        , s=>s.ticksToVanish).slice(0, 20).map(s=>s.id),
+                20).map(id=>Game.getObjectById(id)).filter(s=>s && s.hits + TOWER_POWER_REPAIR < s.hitsMax);
+            // this.log('tower :decaying ', decaying.length);
+
+            decaying.slice(0, towers.length).forEach(road=> {
+                'use strict';
+                if (towers.length) {
+                    let tower = road.pos.findClosestByRange(towers);
+                    // this.log(`expectedRepair ${tower} ${road}`);
+                    let ret = tower.repair(road);
+                    if (OK !== ret) {
+                        this.log('repair failed', ret);
+                    } else {
+                        towers = towers.filter(t=>t.id !== tower.id);
+                    }
+                }
+            });
+        }
         //non wall non decaying. should be empty unless attacked ... ?
         if (towers.length && this.memory.towerRepair) {
             let myDamagedStructures = _.sortBy(this.find(FIND_STRUCTURES, {
@@ -352,7 +543,10 @@ Room.prototype.operateTowers = function () {
                 }
             }
         }
+
     }
+
+
 };
 Room.prototype.gc = function () {
     'use strict';
@@ -366,7 +560,6 @@ Room.prototype.gc = function () {
             }
         }
     }
-    this.memory.harvestContainers = (this.memory.harvestContainers || []).filter((id)=>Game.getObjectById(id));
     if (this.memory.pickupManager) {
         PickupManager.getManager(this.name).gc();
     }
@@ -600,7 +793,6 @@ Room.prototype.tripTimeToSources = function (toRoom, force) {
 
 Room.prototype.updateCheapStats = function () {
     try {
-        let mySpawns = this.find(FIND_MY_SPAWNS);
         Memory.stats.room = Memory.stats.room || {};
         Memory.stats.room [this.name] = Memory.stats.room [this.name] || {};
         let roomStats = Memory.stats.room [this.name];
@@ -608,6 +800,7 @@ Room.prototype.updateCheapStats = function () {
         roomStats.threats.harvested = (this.memory.threatAssessment || {harvested: 0}).harvested;
         roomStats.energyInSources = _.sum(_.map(this.find(FIND_SOURCES_ACTIVE), (s)=> s.energy));
 
+        let mySpawns = this.find(FIND_MY_SPAWNS);
         if (this.controller && this.controller.my) {
             roomStats.queueLength = this.memory.queueLength;
             let building = this.memory.building;
@@ -642,6 +835,7 @@ Room.prototype.updateCheapStats = function () {
             }
             if (this.terminal) {
                 roomStats.transfers = _.keys(this.memory.transfers || {}).reduce((acc, slot)=> _.merge(acc, this.memory.transfers[slot], (a, b)=>_.isNumber(a) ? a + b : undefined), {});
+                roomStats.transfercosts = this.memory.transfercosts;
                 delete roomStats.transfers.lastUpdate;
             } else {
                 delete roomStats.transfers;
@@ -651,7 +845,7 @@ Room.prototype.updateCheapStats = function () {
             roomStats.controller.progress = this.controller.progress;
             roomStats.controller.progressTotal = this.controller.progressTotal;
             roomStats.controller.ProgressRatio = 100 * this.controller.progress / this.controller.progressTotal;
-            roomStats.lab_activity = _.omit(this.memory.lab_activity, (v)=>_.isArray(v));
+            roomStats.lab_activity = _.omit(this.memory.lab_activity, (v)=>_.isArray(v) || _.isString(v));
         }
         if (mySpawns.length) {
             roomStats.spawns = mySpawns
@@ -756,6 +950,7 @@ Room.prototype.buildStructures = function (pos) {
     'use strict';
     if (this.lastChecked && this.lastChecked + 10 >= Game.time) return;
     this.lastChecked = Game.time;
+
     let genericBuilder = (type)=> {
         let colors = util.buildColors(type);
         let flags = ((pos) ?
@@ -843,7 +1038,7 @@ Room.prototype.buildStructures = function (pos) {
                 return true;
             }
         };
-        let builders = [extractorBuilder, terminalBuilder, towerBuilder, storageBuilder, rampartBuilder, wallsBuilder, linksBuilder, containerBuilder, roadBuilder, extensionsBuilder, labsBuilder];
+        let builders = [extractorBuilder, terminalBuilder, towerBuilder, storageBuilder, linksBuilder, rampartBuilder, wallsBuilder, containerBuilder, roadBuilder, extensionsBuilder, labsBuilder];
         return builders.find((builder)=>builder());
 
     }
@@ -854,7 +1049,7 @@ Room.prototype.availableBoosts = function () {
     if (!(this.memory.boosts && this.memory.boosts.date && this.memory.boosts.date > Game.time - 1000)) {
         this.memory.boosts = {
             date: Game.time,
-            value: this.structures[STRUCTURE_LAB].map((lab)=>lab.mineralType).filter((min)=>EFFICIENT_BOOSTS.indexOf(min) >= 0)
+            value: _.uniq(this.structures[STRUCTURE_LAB].map((lab)=>lab.mineralType).filter((min)=>EFFICIENT_BOOSTS.indexOf(min) >= 0))
         };
     }
     return this.memory.boosts.value;
@@ -866,10 +1061,11 @@ Room.prototype.allowedBoosts = function (role) {
         case 'roleSoldier':
         case 'roleRemoteGuard':
         case 'towerDrainer': {
-            return this.availableBoosts();
+            boosts = this.availableBoosts();
+            break;
         }
         case 'upgrader':
-            boosts = boosts.concat(_.keys(BOOSTS[WORK]));
+            boosts = boosts.concat(_.keys(BOOSTS[WORK]).filter(k=>BOOSTS[WORK][k].upgradeController));
             break;
         case 'keeperGuard':
         case 'keeperMineralHarvester':
@@ -881,23 +1077,7 @@ Room.prototype.allowedBoosts = function (role) {
             // boosts = boosts.concat(_.keys(BOOSTS[WORK]));
         }
     }
-    return _.intersection(boosts, this.availableBoosts());
-};
-/**
- *
- * @param {string} part
- * @param {string} feature
- */
-Room.prototype.maxBoost = function (part, feature) {
-    let labs = this.structures[STRUCTURE_LAB];
-    let minerals = labs.map((lab)=>lab.mineralType);
-    if (!minerals || minerals.length === 0) return 1;
-    else {
-        let max = _.max(_.keys(BOOSTS[part])
-            .filter((boost)=>minerals.indexOf(boost) >= 0) // available in the room
-            .map((boost)=>BOOSTS[part][boost][feature]));
-        return Math.max(max, 1);
-    } // bonus
+    return _.intersection(boosts, this.availableBoosts(), this.memory.preparedBoosts);
 };
 
 /**
@@ -1033,6 +1213,9 @@ Room.prototype.recordTransfer = function (mineral, qty, toRoom, cost) {
      let removeBefore = Game.time - 10 * slotSize;
      Memory.global.transfers = Memory.global.transfers.filter(a=>a[0] < removeBefore);
      */
+    this.memory.transfercosts= this.memory.transfercosts || {};
+    this.memory.transfercosts[mineral] = (this.memory.transfercosts[mineral] || 0 )+ cost;
+
     this.memory.transfers = this.memory.transfers || {lastUpdate: Game.time};
     let slot = Math.floor(Game.time / slotSize) % 10;
     let previousSlot = Math.floor(this.memory.transfers.lastUpdate / slotSize) % 10;
@@ -1047,6 +1230,7 @@ Room.prototype.recordTransfer = function (mineral, qty, toRoom, cost) {
 
 let parkForbiddenStructureTypes = OBSTACLE_OBJECT_TYPES.concat([STRUCTURE_ROAD]);
 
+
 /**
  *
  * @param {string[]} boosts
@@ -1056,26 +1240,40 @@ Room.prototype.prepareBoosts = function (boosts) {
     if (_.isString(boosts)) {
         boosts = [boosts];
     }
+    let invalidBoosts = boosts.filter(b => !(reactions[b]));
+    if (invalidBoosts.length>0) {
+        this.log(`'preparing invalid boosts ${invalidBoosts}`);
+        return;
+    }
     this.memory.preparedBoosts = boosts;
     if (boosts && boosts.length) {
-        let chosenLabs = _.keys(this.memory.labs);
-        this.log('all lab ids ', JSON.stringify(chosenLabs));
+        this.memory.labs = this.memory.labs || this.find(FIND_STRUCTURES, {filter: s=>s.structureType === STRUCTURE_LAB})
+                .reduce((acc, l)=> {
+                    acc[l.id] = null;
+                    return acc;
+                }, {});
+        let chosenLabIds = _.keys(this.memory.labs);
+        this.log('all lab ids ', JSON.stringify(chosenLabIds));
         this.memory.reserved_labs = this.memory.reserved_labs || {};
         this.log('previously reserved labs', JSON.stringify(this.memory.reserved_labs));
-        if (boosts.length < chosenLabs.length - 2) {
-            (this.memory.labs_input || []).forEach(l=>_.pull(chosenLabs, l));
-            this.log(`removed inputs ${this.memory.labs_input} from chosen=> ${chosenLabs}`);
+        if (boosts.length < chosenLabIds.length - 2) {
+            (this.memory.labs_input || []).forEach(l=>_.pull(chosenLabIds, l));
+            this.log(`removed inputs ${this.memory.labs_input} from chosen=> ${chosenLabIds}`);
             boosts.forEach(b=> {
-                let lab = chosenLabs.shift();
-                this.log(`assigning ${b} to ${lab}`);
-                this.memory.labs[lab] = b;
-                this.memory.reserved_labs[lab] = b;
+                let labId = chosenLabIds.shift();
+                if (labId) {
+                    this.log(`assigning ${b} to ${labId}`);
+                    this.memory.labs[labId] = b;
+                    this.memory.reserved_labs[labId] = b;
+                }
             });
         } else {
             boosts.forEach(b=> {
-                let lab = chosenLabs.shift();
-                this.memory.labs[lab] = b;
-                this.memory.reserved_labs[lab] = b;
+                let labId = chosenLabIds.shift();
+                if (labId) {
+                    this.memory.labs[labId] = b;
+                    this.memory.reserved_labs[labId] = b;
+                }
             });
         }
 
@@ -1089,6 +1287,10 @@ Room.prototype.operateLabs = function () {
     if (!this.controller || !this.controller.my || this.controller.level < 6 || this.structures[STRUCTURE_LAB].length < 3) {
         return;
     }
+    if (_.keys(_.get(this.memory, 'labs', {})).length !== this.structures[STRUCTURE_LAB].length) {
+        delete this.memory.labs;
+        this.lab_production = this.lab_production;
+    }
     const defaultActivity = {idle: 0, producing: 0, cooldown: 0, skipped: 0};
     let updateCounters = (o) => {
         'use strict';
@@ -1097,24 +1299,36 @@ Room.prototype.operateLabs = function () {
         this.memory.lab_activity = this.memory.lab_activity || {};
         util.recordActivity(this.memory.lab_activity, act, 1500);
     };
-    const OVERFLOWING = 10000;
+    const OVERFLOWING = 3000;
     let currentLedger = this.currentLedger;
+    let globalLedger = Memory.stats.ledger.v;
+    let overflowing = (mineral)=> currentLedger[mineral] > OVERFLOWING + (this.desiredLedger[mineral] || 0) || _.get(Memory.stats, ['ledger', 'v', mineral, 'amount'], 0) > _.get(Memory.stats, ['ledger', 'v', mineral, 'goal'], 0);
     let rotateLabs = () => {
         if (Game.time < (this.memory.lab_rotated || 0) + 150) return;
         try {
             // ingredients locally available ?
             let ledger = this.currentLedger;
-            let localIndex = _.keys(Memory.stats.ledger.produceable).map(min=>[min, reactions[min] ? reactions[min].reduce((available, i)=>available + ((ledger[i] || 0) > 2000 ? 1 : 0), 0) : 0])
+            let localIndex = _.keys(Memory.stats.ledger.produceable).filter(min=>!overflowing(min))
+                .map(min=>[min, reactions[min] ?
+                    reactions[min].reduce((available, i)=> {
+                        var locallyAvailable = ((ledger[i] || 0) > 2000 ? 1 : 0);
+                        if (locallyAvailable) return available + locallyAvailable;
+                        else {
+                            let globallyAvailable = ((_.get(globalLedger, [i, 'amount'], 0) < Game.gcl.level * 3000 ? -2 : 0));
+                            return available + globallyAvailable;
+                        }
+                    }, 0)
+                    : 0]);
             this.log(`locallyProduceable with ingredients presence ${JSON.stringify(localIndex)}`);
             let chosenPair = localIndex.reduce((chosen, pair)=>chosen[1] > pair[1] ? chosen : pair, ['A', 0]);
             this.log(`chosenPair ${JSON.stringify(chosenPair)}`);
             let nextMin = (chosenPair[1]) ? chosenPair[0] : false;
             if (!nextMin) {
-                nextMin = _.keys(Memory.stats.ledger.produceable).find(min=>Memory.stats.ledger.produceable[min] > 10000 && currentLedger[min] < OVERFLOWING);
+                nextMin = _.keys(Memory.stats.ledger.produceable).find(min=>Memory.stats.ledger.produceable[min] > OVERFLOWING && currentLedger[min] < OVERFLOWING);
                 this.log(`no production with locally present mins, selecting ${nextMin}`);
             }
             if (nextMin && this.lab_production !== nextMin) {
-                Game.notify(`${this.name} switching production ${this.lab_production}=> ${nextMin}`);
+                // Game.notify(`${this.name} switching production ${this.lab_production}=> ${nextMin}`);
                 this.log(`switching production ${this.lab_production}=> ${nextMin}`);
                 Memory.stats.ledger.produceable[nextMin] = Memory.stats.ledger.produceable[nextMin] - 5000;
                 this.lab_production = nextMin;
@@ -1126,10 +1340,6 @@ Room.prototype.operateLabs = function () {
             this.log(e.stack);
         }
     };
-    if (_.keys(_.get(this.memory, 'labs', {})).length !== this.structures[STRUCTURE_LAB].length) {
-        this.lab_production = this.lab_production;
-    }
-    let overflowing = (mineral)=> currentLedger[mineral]>OVERFLOWING || _.get(Memory.stats, ['ledger', 'v', mineral, 'amount'], 0) > _.get(Memory.stats, ['ledger', 'v', mineral, 'goal'], 0);
     this.log('producing', this.memory.lab_production);
     let activity = {};
     if (!this.memory.lab_production || !this.memory.labs) {
@@ -1158,34 +1368,38 @@ Room.prototype.operateLabs = function () {
                 labPairs.forEach((pair)=> {
                     let labid = pair[0];
                     let lab = Game.getObjectById(labid);
-                    let reaction = pair[1];
+                    if (!lab) {
+                        delete this.memory.labs[pair[0]];
+                    } else {
+                        let reaction = pair[1];
 
-                    if (!lab.cooldown && this.lab_production === reaction) {
-                        // this.log('testing ', labid);
-                        // this.log('using ', reaction);
-                        if (reaction) {
-                            // this.log('searching labs with ingredients', ingredients, !!ingredients);
-                            if (ingredientLabs[0] && ingredientLabs[1]) {
-                                // this.log('running with ', JSON.stringify(ingredientLabs.map((lab)=>lab.id)));
-                                let result = lab.runReaction(ingredientLabs[0], ingredientLabs[1]);
-                                if (result !== OK) {
-                                    ingredientsExhausted |= (ERR_NOT_ENOUGH_RESOURCES === result);
-                                    activity.idle = 1;
-                                    if (ERR_NOT_ENOUGH_RESOURCES !== result) {
-                                        this.log('run reaction?', lab.mineralType, result);
+                        if (!lab.cooldown && this.lab_production === reaction) {
+                            // this.log('testing ', labid);
+                            // this.log('using ', reaction);
+                            if (reaction) {
+                                // this.log('searching labs with ingredients', ingredients, !!ingredients);
+                                if (ingredientLabs[0] && ingredientLabs[1]) {
+                                    // this.log('running with ', JSON.stringify(ingredientLabs.map((lab)=>lab.id)));
+                                    let result = lab.runReaction(ingredientLabs[0], ingredientLabs[1]);
+                                    if (result !== OK) {
+                                        ingredientsExhausted |= (ERR_NOT_ENOUGH_RESOURCES === result);
+                                        activity.idle = 1;
+                                        if (ERR_NOT_ENOUGH_RESOURCES !== result) {
+                                            this.log('run reaction?', lab.mineralType, result);
+                                        }
+
+                                    } else {
+                                        activity.producing = 1;
                                     }
-
-                                } else {
-                                    activity.producing = 1;
                                 }
+                            } else {
+                                activity.idle = 1;
                             }
+                        } else if (lab.cooldown) {
+                            activity.cooldown = 1;
                         } else {
                             activity.idle = 1;
                         }
-                    } else if (lab.cooldown) {
-                        activity.cooldown = 1;
-                    } else {
-                        activity.idle = 1;
                     }
                 });
             }
@@ -1195,6 +1409,7 @@ Room.prototype.operateLabs = function () {
                     this.log(`${this.memory.lab_production} out of ingredients, rotating `);
                     rotateLabs();
                 } else {
+                    this.updateImportExports();
                     this.log('waiting for refill');
                 }
             }
@@ -1219,18 +1434,9 @@ Object.defineProperty(Room.prototype, 'lab_production',
         set: function (value) {
             this.memory.labs = {};
             _.merge(this.memory.labs, this.memory.reserved_labs);
-            if (value) {
-                let ingredients = reactions[value];
-                this.log('ingredients', JSON.stringify(ingredients));
-                if (!ingredients || ingredients.length < 2) return;
-                this.memory.lab_production = value;
-                let produceable = _.get(Memory.stats, ['ledger', 'produceable'], {});
-                if (produceable[value]) {
-                    produceable[value] = produceable[value] - 3000;
-                }
-                let excluded = _.keys(this.memory.reserved_labs) || [];
-                let labs = this.find(FIND_STRUCTURES).filter(s=>s.structureType === STRUCTURE_LAB && excluded.indexOf(s.id) < 0);
-                this.log('labs ', labs.length);
+            let labs = this.find(FIND_STRUCTURES,{filter : s=>s.structureType === STRUCTURE_LAB});
+            if (_.get(this.memory,['labs_input','length'],0)<2 || this.memory.labs_input.find(id=> labs.find(l=>l.pos.getRangeTo(Game.getObjectById(id))>2))) {
+                this.log('recomputing centerlabs');
                 let centerLabs = labs.reduce((acc, lab)=> {
                     if (acc.length >= 2) {
                         return acc;
@@ -1241,15 +1447,32 @@ Object.defineProperty(Room.prototype, 'lab_production',
                     return acc;
                 }, []);
                 this.memory.labs_input = centerLabs.map(l=>l.id);
-                this.log('center labs', centerLabs);
-                centerLabs.forEach((lab, idx)=> {
-                    this.memory.labs[lab.id] = ingredients[idx];
-                    _.pull(labs, lab);
+            }
+            if (value) {
+                let ingredients = reactions[value];
+                this.log('ingredients', JSON.stringify(ingredients));
+                if (!ingredients || ingredients.length < 2) return;
+                this.memory.lab_production = value;
+                let produceable = _.get(Memory.stats, ['ledger', 'produceable'], {});
+                if (produceable[value]) {
+                    produceable[value] = produceable[value] - 3000;
+                }
+
+                this.log('labs ', labs.length);
+                this.log('center labs', this.memory.labs_input);
+                this.memory.labs_input.forEach((id, idx)=> {
+                    this.memory.labs[id] = ingredients[idx];
+                    _.pull(labs, Game.getObjectById(id));
                 });
-                labs.forEach(lab=> this.memory.labs[lab.id] = value);
+                labs.forEach(lab=> this.memory.labs[lab.id] = this.memory.reserved_labs[lab.id] ||value);
             } else {
                 delete this.memory.lab_production;
+                this.memory.labs = labs.reduce((acc, lab) => {
+                    acc[lab.id] = acc[lab.id] || '';
+                    return acc;
+                }, {});
             }
+            _.merge(this.memory.labs,this.memory.reserved_labs)
             this.updateImportExports();
         },
         configurable: true
@@ -1430,7 +1653,7 @@ Room.prototype.runObserver = function () {
     offsetVector[1] = Number.parseInt(offsetVector[1]);
     let observeRoom = offset(offsetVector);
     let lastScouted = _.get(Memory.rooms, [observeRoom, 'scouted', 'time'], 0);
-    if (lastScouted < Game.time - 1500) {
+    if (lastScouted < Game.time - 150) {
         if (!Game.rooms[observeRoom]) {
             // observe
             // this.log(`observing ${observeRoom}`);
@@ -1498,7 +1721,8 @@ Room.prototype.importMinerals = function () {
             (r)=> r.name !== this.name
             && r.export && _.contains(r.export, mineral) // exports
             && _.get(r, ['terminal', 'store', mineral], 0) > 100// has available
-            && (r.currentLedger[mineral] || 0) > (r.desiredLedger[mineral] || 0)
+            && r.controller.level >= 6
+            && (r.currentLedger[mineral] || 0) > 1.1 * (r.desiredLedger[mineral] || 0)
         );
         // room.log(`trying to import ${mineral}, offering rooms ${offeringRooms}`);
         let offeringRoomsWithEnergy = offeringRooms.filter((r)=> r.terminal.store.energy && r.terminal.store.energy > 1000);
@@ -1515,7 +1739,8 @@ Room.prototype.importMinerals = function () {
                 // room.terminal.send(RESOURCE_ENERGY, amount, r.name);
             });
         } else if (offeringRoomsWithEnergy.length > 0) {
-            let theRoom = _.min(offeringRooms, (r)=>(Game.map.getRoomLinearDistance(r.name, this.name, true)));
+            // let theRoom = _.min(offeringRooms, (r)=>(Game.map.getRoomLinearDistance(r.name, this.name, true)));
+            let theRoom = _.max(offeringRooms, (r)=>_.sum(r.terminal.store) + _.sum(r.storage.store));
             // this.log(`importing ${mineral} from ${theRoom === Infinity ? 'none' : theRoom.name}`);
             if (Infinity !== theRoom) {
                 if ((this.currentLedger[mineral] || 0) < (this.desiredLedger[mineral] || 0)) {
@@ -1537,9 +1762,9 @@ Room.prototype.importMinerals = function () {
                                     theRoom.recordTransfer(mineral, qty, this.name, cost);
                                 }
                                 this.log(`importing ${qty} ${mineral} from ${theRoom.name}: ${imported}`);
-                                //if (OK !== imported) {
-                                Game.notify((`${this.name} importing from ${theRoom.name} using terminal ${qty} ${mineral}  : ${imported}`));
-                                //}
+                                if (OK !== imported) {
+                                    Game.notify((`${this.name} importing from ${theRoom.name} using terminal ${qty} ${mineral}  : ${imported}`));
+                                }
                             }
                         }
                     }
@@ -1548,72 +1773,16 @@ Room.prototype.importMinerals = function () {
         }
     });
 };
-var rcl8Ledger = Memory.rcl8ledger || {
-    'XUH2O': 25000,
-    'XKHO2': 25000,
-    'XGHO2': 25000,
-    'XLHO2': 25000,
-    'XZHO2': 25000,
-    'XZH2O': 25000,
-    'G': 5000,
-    // 'energy': 400000
-};
-Object.defineProperty(Room.prototype, 'desiredLedger', {
-    configurable: true,
-    get: function () {
-        'use strict';
-        if (this.controller && this.controller.my && this.controller.level >= 6) {
-            if (!this._desiredLedger) {
-                let desired = _.cloneDeep(rcl8Ledger);
-                if ((this.structures[STRUCTURE_LAB] || 0) < 10 || (this.structures[STRUCTURE_NUKER] || 0) < 1 || (this.structures[STRUCTURE_POWER_SPAWN] || 0) || (this.structures[STRUCTURE_OBSERVER] || 0) < 1) {
-                    desired['XLH2O'] = 3000;
-                }
-                // collect each reaction ingredients
-                if ((this.structures[STRUCTURE_LAB].length || 0) >= 3 && this.memory.lab_production) {
-                    let requiredMinsForLabs = reactions[this.memory.lab_production];
-                    requiredMinsForLabs.forEach(m=> desired[m] = (desired[m] || 0) + 5000);
-                }
-                // let myMin = _.head(this.find(FIND_MINERALS)).mineralType;
-                // remove local mineral
-                // _.pull(requiredMinsForLabs, myMin);
-                // remove each creation outputs
-                // this.lab_productions.forEach(m=> _.pull(requiredMinsForLabs, m));
-                let sellOrders = {};
-                _.values(Game.market.orders).forEach(o=> {
-                    if (o.type === 'sell' && o.roomName === this.name) {
-                        desired[o.resourceType] = (desired[o.resourceType] || 0) + o.remainingAmount;
-                        sellOrders[o.resourceType] = o.remainingAmount;
-                    }
-                });
-                this.sellOrders = sellOrders;
-                if (this.memory.preparedBoosts) {
-                    this.memory.preparedBoosts.forEach(k=>desired[k] = (!desired[k] || desired[k] < 3000) ? 3000 : desired[k]);
-                }
-                if (this.controller.level < 8) {
-                    desired['XGH2O'] = (desired['XGH2O'] || 0) + 5000;
-                    desired['energy'] = 200000;
-                }
-
-                this._desiredLedger = desired;
-            }
-            return this._desiredLedger;
-        } else {
-            return {};
-        }
-    }
-});
-Object.defineProperty(Room.prototype, 'currentLedger', {
-    configurable: true,
-    get: function () {
-        'use strict';
-        return Cache.get(this, '_ledger', ()=> {
-            let ledger = {};
-            if (this.storage) _.merge(ledger, this.storage.store);
-            if (this.terminal) _.merge(ledger, this.terminal.store, (a, b)=>(a || 0) + (b || 0));
-            return ledger;
-        }, 5);
-    }
-});
+var rcl8Ledger = Memory.rcl8ledger
+    || {
+        'XUH2O': 25000,
+        'XKHO2': 25000,
+        'XGHO2': 25000,
+        'XLHO2': 25000,
+        'XZHO2': 25000,
+        'XZH2O': 25000,
+        'G': 1000,
+    };
 
 /**
  * energy suppliers

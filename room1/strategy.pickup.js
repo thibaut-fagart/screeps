@@ -63,7 +63,7 @@ class PickupStrategy extends BaseStrategy {
 
             let ret = creep.pickup(source);
             if (ret == ERR_NOT_IN_RANGE) {
-                let move = util.moveTo(creep, source.pos,this.constructor.name+"Path");
+                let move = util.moveTo(creep, source.pos);
                 // creep.log('pickup  move?', move);
             } else if (ret == OK) {
                 delete creep.memory[this.PATH];

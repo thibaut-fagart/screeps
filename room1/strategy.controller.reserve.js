@@ -34,14 +34,14 @@ class ReserveControllerStrategy extends BaseStrategy {
             if (target) {
                 let reserveFrom = this.findSpot(creep, target);
                 if (reserveFrom && !(reserveFrom.x === creep.pos.x && reserveFrom.y === creep.pos.y)) {
-                    let moveTo = util.moveTo(creep, reserveFrom,this.constructor.name + 'Path', {range:0});
+                    let moveTo = util.moveTo(creep, reserveFrom,undefined, {range:0});
                     if (moveTo!==OK && moveTo !== ERR_TIRED) creep.log('moved?',moveTo);
                 } else {
                     let claim;
                     claim = creep.reserveController(target);
                     // creep.log('transfer', claim);
                     if (claim == ERR_NOT_IN_RANGE) {
-                        let moveTo = util.moveTo(creep, target.pos, this.constructor.name + 'Path');
+                        let moveTo = util.moveTo(creep, target.pos);
                         // creep.log('move', moveTo);
                     } else if (claim !== OK) {
                         // creep.log('claim?', claim, target.upgradeBlocked, JSON.stringify(target.reservation), JSON.stringify(target));
